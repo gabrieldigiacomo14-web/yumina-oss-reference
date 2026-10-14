@@ -108,6 +108,7 @@ export function finish(g, why) {
 // ------------------------------------------------------------------ turns
 export function update(g, dt) {
   var b = g.battle; if (!b) { if (g.after) { g.after.t += dt; if (g.after.t > 2) g.after = null; } return; }
+  dt = Math.min(0.25, Math.max(dt, g.wall || 0)); /* scripts follow the wall clock, so slow devices do not stretch turns */
   g.dtc = dt; b.t += dt; if (b.banner) { b.banner.t += dt; if (b.banner.t > 1.5) b.banner = null; }
   if (b.script || b.queue.length) { if (!b.script) { b.script = b.queue.shift(); b.sw = 0; } tick(g, dt); return; }
   if (b.next === "turn") { b.wait -= dt; if (b.wait <= 0) { b.next = null; nextTurn(g); } }

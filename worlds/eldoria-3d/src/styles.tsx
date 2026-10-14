@@ -126,8 +126,8 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .ePName{display:flex;justify-content:space-between;align-items:baseline}.ePName b{font-size:22px;font-weight:600}.ePName span{font:600 18px Cinzel,Georgia,serif;color:#e8e2d4}
 .eRank{display:flex;align-items:center;gap:5px;font-size:14.5px;color:#c9c2b2}.eRank b{margin-left:auto;font-weight:500;color:#ddd5c4}
 .eBars{display:flex;flex-direction:column;gap:5px;margin-top:2px}.eBars>div{display:flex;align-items:center;gap:6px}
-.eMenuToggle{position:absolute;top:130px;left:12px;z-index:6;width:38px;height:38px;display:none!important;place-items:center;background:var(--e-bg2)!important;border:1px solid var(--e-line)!important}
-.eMenu{top:136px;left:12px;width:244px;z-index:5;padding:8px 6px;display:flex;flex-direction:column}
+.eMenuToggle{position:absolute;top:136px;left:12px;z-index:6;width:38px;height:38px;display:grid!important;place-items:center;background:var(--e-bg2)!important;border:1px solid var(--e-line)!important}
+.eMenu{top:180px;left:12px;width:244px;max-height:calc(100vh - 290px);overflow:auto;z-index:5;padding:8px 6px;display:flex;flex-direction:column}
 .eMenu button{display:flex;align-items:center;gap:12px;padding:6px 10px;font-size:15.5px;color:#d9d2c3!important;letter-spacing:.02em;text-align:left;border-bottom:1px solid rgba(255,255,255,.04)!important}
 .eMenu button svg{color:#c9bfa2;flex:none}.eMenu button span{flex:1}
 .eMenu button:hover,.eMenu button.on{background:linear-gradient(90deg,rgba(70,100,150,.35),transparent)!important;color:#fff!important}
@@ -352,7 +352,7 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
  .eEcon{padding:2px 8px;font-size:11.5px}.eMoveBar{width:54px}
  .eWallet{display:none}
  .eQuick{right:6px;bottom:auto;top:110px;flex-direction:column}.eQuick .eRound{width:36px;height:36px}
- .eInit{top:6px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 600px)}.eChip{width:48px}.eChipP{width:30px;height:30px}.eChip span{display:none}
+ .eInit{top:6px;bottom:auto;left:50%;transform:translateX(-50%);max-width:calc(100vw - 600px);min-width:0}.eChip{width:48px}.eChipP{width:30px;height:30px}.eChip span{display:none}
  .eTouch{bottom:58px}.eStick{left:12px;bottom:0;width:100px;height:100px}.eKnob{left:28px;top:28px}.eActs{right:56px;bottom:0;grid-template-columns:repeat(2,48px);gap:8px}.eActs button{width:48px;height:48px}.eActs button:first-child{width:56px;height:56px}
  .ePrompt{bottom:66px}.eDialog{bottom:52px;left:140px;right:140px;max-height:70vh}
  .eBanner{top:20%}
