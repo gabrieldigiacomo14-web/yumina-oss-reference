@@ -1,0 +1,26 @@
+[
+ {
+  "id": "player-avatar",
+  "name": "Player Avatar (3D)",
+  "type": "json",
+  "category": "custom",
+  "description": "3D appearance chosen in the creator: species, hair, face, skin, build, calling outfit.",
+  "defaultValue": {},
+  "behaviorRules": "Client-owned. Never write this variable. Read player-appearance for prose descriptions.",
+  "aiAccess": "none"
+ },
+ {
+  "id": "world3d-state",
+  "name": "3D World State",
+  "type": "json",
+  "category": "custom",
+  "description": "Fog-of-war bitmap (run-length encoded, 5-mile cells) and recently slain monster populations.",
+  "defaultValue": {
+   "v": 1,
+   "fog": "",
+   "slain": {}
+  },
+  "behaviorRules": "Client-owned engine bookkeeping. Never write this variable.",
+  "aiAccess": "none"
+ }
+]
