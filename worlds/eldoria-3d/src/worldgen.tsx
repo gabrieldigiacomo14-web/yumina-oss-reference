@@ -58,24 +58,33 @@ export function nearestPlace(x, y, filter) {
 
 // ------------------------------------------------------------------ coastline (signed distance in miles, + = land)
 function capsule(px, py, ax, ay, bx, by) { var vx = bx - ax, vy = by - ay, wx = px - ax, wy = py - ay; var t = clamp((wx * vx + wy * vy) / (vx * vx + vy * vy), 0, 1); return { d: Math.hypot(px - (ax + vx * t), py - (ay + vy * t)), t: t }; }
+// [centre x, centre y, radius x, radius y] in miles — the realm landmasses of the continent.
+var LAND_BLOBS = [[0, 0, 300, 260], [450, 250, 300, 230], [-660, 300, 380, 230], [0, 700, 470, 210], [650, 700, 330, 180], [850, 150, 330, 420], [720, -210, 260, 140], [500, -40, 150, 120], [-720, -420, 540, 420], [-60, 370, 220, 150]];
 function baseLand(x, y) {
   var n = fbm(x / 140, y / 140, 3) * 34 + fbm(x / 26, y / 26, 2) * 7;
-  var sd = Math.min(1215 - Math.abs(x), 875 - Math.abs(y)) + n;
+  var big = fbm(x / 420 + 3, y / 420 - 7, 2) * 48;
+  // One organic continent: the union of realm landmasses (sized to hold every atlas place),
+  // roughened by noise and kept inside the canonical bounds.
+  var sd = -1e9;
+  for (var bi = 0; bi < LAND_BLOBS.length; bi++) { var L = LAND_BLOBS[bi]; var dx = (x - L[0]) / L[2], dy = (y - L[1]) / L[3]; var e = (1 - Math.sqrt(dx * dx + dy * dy)) * Math.min(L[2], L[3]); if (e > sd) sd = e; }
+  sd = Math.min(sd + n + big * 1.5, 1225 - Math.abs(x) + n, 846 - Math.abs(y) + n * 0.8);
   // The Silver Ocean washes Sylvanor's western shore; Sunscar runs on to the map's edge.
-  sd = Math.min(sd, (x + 1065) + n * 0.9 + (y < -60 ? 400 : y < 20 ? (20 - y) * 5 : 0));
-  // The Grey Sea: the cold northern reach of the Silver Ocean, reaching east to Port Valor.
-  var g = capsule(x, y, -1320, -10, -205, -113); sd = Math.min(sd, g.d - lerp(85, 13, g.t) + n * 0.6);
+  sd = Math.min(sd, (x + 1060) + n * 0.9 + fbm(y / 70, x / 70, 2) * 38 + (y < -60 ? 400 : y < 20 ? (20 - y) * 5 : 0));
+  // The Grey Sea: a broad bay of the Silver Ocean narrowing east to Port Valor.
+  var g = capsule(x, y, -1320, -10, -205, -113); sd = Math.min(sd, g.d - lerp(128, 13, Math.pow(g.t, 0.8)) + n * 0.7);
   // Sapphire Sea and the Velkaran (Southern) Ocean between Velkar, Stonehold's coast and the Umbral Reach.
-  var coastY = x < 470 ? -212 : x > 540 ? -336 : lerp(-212, -336, (x - 470) / 70);
-  sd = Math.min(sd, Math.max(y - coastY, -(x + 392)) + n * 0.8);
+  var coastY = (x < 470 ? -212 : x > 540 ? -336 : lerp(-212, -336, (x - 470) / 70)) + fbm(x / 80, 11.3, 2) * 30;
+  sd = Math.min(sd, Math.max(y - coastY, -(x + 392 + fbm(y / 75, 4.1, 2) * 30)) + n * 0.8);
   var bay = Math.hypot(x - 880, y + 305) - 26; sd = Math.min(sd, bay + n * 0.3); // Ashenport anchorage
-  sd = Math.min(sd, (y + 848) + n * 0.4); // the Southern Ocean below Sunscar's ridge
+  sd = Math.min(sd, (y + 848 + fbm(x / 90, 2.7, 2) * 26) + n * 0.4); // the Southern Ocean below Sunscar's ridge
   // The Frostsea between Sylvanor's and Drakmor's coasts.
-  sd = Math.min(sd, Math.max(540 - y, x + 432) + n * 0.8);
+  sd = Math.min(sd, Math.max(540 - y + fbm(x / 70, 8.2, 2) * 34, x + 432 + fbm(y / 70, 5.5, 2) * 34) + n * 0.8);
   // Lanternmere's lake.
   sd = Math.min(sd, Math.hypot(x + 138, y - 69) - 5.5 + fbm(x / 3, y / 3, 2) * 1.2);
+  // Inland settlements keep their hinterland: the coast never swallows them.
+  var ps = placesNear(x, y); for (var i = 0; i < ps.length; i++) { var p = ps[i]; if (ISLANDS[p.id] || PORTS[p.id]) continue; var keep = 30 - Math.hypot(x - p.x, y - p.y); if (keep > sd) sd = keep; }
   // Velkar's islands rise out of the sea.
-  for (var id in ISLANDS) { var p = PLACE_BY_ID[id]; if (!p) continue; var ir = ISLANDS[id]; var di = Math.hypot(x - p.x, y - p.y); if (di < ir * 2.2) { var isl = ir - di + fbm(x / 9 + ir, y / 9, 3) * ir * 0.45; if (id === "the-drowned-fleet") isl = Math.min(isl, -0.5); sd = Math.max(sd, isl); } }
+  for (var id in ISLANDS) { var pi = PLACE_BY_ID[id]; if (!pi) continue; var ir = ISLANDS[id]; var di = Math.hypot(x - pi.x, y - pi.y); if (di < ir * 2.2) { var isl = ir - di + fbm(x / 9 + ir, y / 9, 3) * ir * 0.45; if (id === "the-drowned-fleet") isl = Math.min(isl, -0.5); sd = Math.max(sd, isl); } }
   return sd;
 }
 export function landSD(x, y) {
@@ -239,7 +248,7 @@ export function heightAt(x, y) {
 
 // ------------------------------------------------------------------ realms & biomes
 export var REALM_COLORS = { "Aurelia": "#3e6aa8", "Stonehold": "#8a6d4a", "Sylvanor": "#3f8a4a", "Drakmor": "#9fb7c9", "Sunscar": "#c9963e", "Velkar": "#2f8f9a", "Umbral Reach": "#6b4a8a", "The Marches": "#8a8a7a" };
-function warp(x, y) { return [x + fbm(x / 90, y / 90, 3) * 30, y + fbm(x / 90 + 50, y / 90 - 20, 3) * 30]; }
+function warp(x, y) { return [x + fbm(x / 160, y / 160, 3) * 52 + fbm(x / 45, y / 45, 2) * 12, y + fbm(x / 160 + 50, y / 160 - 20, 3) * 52 + fbm(x / 45 - 9, y / 45 + 3, 2) * 12]; }
 export function realmAt(x0, y0) {
   var x = x0, y = y0;
   if (landSD(x, y) < 0) {
@@ -284,7 +293,8 @@ export function biomeAt(x, y, h) {
   if (h === undefined) h = heightAt(x, y);
   var realm = realmAt(x, y);
   if (h < 0.2) return "water";
-  if (h > 150 || (y > 770 && h > 60)) return "snow";
+  var wy = warp(x, y)[1]; // organic bands instead of ruled lines
+  if (h > 150 || (wy > 770 && h > 60)) return "snow";
   var mf = mountainAmp(x, y);
   if (mf > 60 && h > 55) return "rock";
   var wn = wildNameAt(x, y);
@@ -292,9 +302,9 @@ export function biomeAt(x, y, h) {
   if (wn === "the Ash Barrens" || realm === "Umbral Reach") return (x > 540 && x < 620 && y < -260) ? "marsh" : "ash";
   if (wn === "the Howling Wastes" || wn === "the Withered Wastes") return "waste";
   if (realm === "Sylvanor") return wn === "the Deep Wood" ? "deepforest" : "forest";
-  if (realm === "Drakmor") return y > 640 ? "tundra" : "taiga";
-  if (realm === "Sunscar") return (x < -1020 && y < -560) ? "glass" : (Math.hypot(x + 480, y + 280) < 12 || Math.hypot(x + 640, y + 410) < 8) ? "oasis" : "desert";
-  if (realm === "The Marches") return y > 200 ? "tundra" : "steppe";
+  if (realm === "Drakmor") return wy > 640 ? "tundra" : "taiga";
+  if (realm === "Sunscar") { var wg = warp(x, y); return (wg[0] < -1020 && wg[1] < -560) ? "glass" : (Math.hypot(x + 480, y + 280) < 12 || Math.hypot(x + 640, y + 410) < 8) ? "oasis" : "desert"; }
+  if (realm === "The Marches") return wy > 360 ? "tundra" : "steppe";
   if (realm === "Velkar") return "coast";
   if (Math.hypot(x - 140, y + 40) < 9 || Math.hypot(x - 118, y + 95) < 5) return "marsh";
   if (realm === "Stonehold") return h > 70 ? "rock" : "highland";
@@ -405,22 +415,30 @@ function titleWild(s) { return s.replace(/^the /, "The "); }
 
 // ------------------------------------------------------------------ 2D map painting
 // Paints a map region into an ImageData progressively. view = {cx, cy, mpp (miles per pixel), w, h}
-export function mapColor(x, y, out, style) {
+// Painted cartography (the look of the reference map): navy seas, realm-tinted land, strong relief.
+var PAINT = { plains: [96, 132, 54], forest: [56, 96, 42], deepforest: [34, 74, 36], darkforest: [38, 60, 34], taiga: [58, 84, 62], tundra: [156, 164, 158], snow: [224, 232, 242], rock: [122, 114, 104], highland: [108, 114, 74], desert: [210, 160, 84], glass: [218, 204, 166], oasis: [72, 124, 52], coast: [100, 134, 66], marsh: [72, 90, 54], steppe: [146, 140, 88], ash: [44, 34, 56], waste: [124, 122, 130] };
+export function mapColor(x, y, out, style, step) {
+  step = Math.max(0.8, step || 0.8); // shade at the pixel's own scale so coarse maps are not speckled
   var sd = landSD(x, y);
   if (sd < 0) {
-    var deep = smooth(0, 60, -sd);
-    if (style === "parchment") { out[0] = lerp(118, 70, deep); out[1] = lerp(140, 92, deep); out[2] = lerp(146, 112, deep); }
-    else { out[0] = lerp(46, 14, deep); out[1] = lerp(86, 38, deep); out[2] = lerp(104, 62, deep); }
+    var deep = smooth(0, 75, -sd), wave = noise2(x / 9, y / 9) * 5;
+    if (style === "parchment") { out[0] = lerp(118, 70, deep); out[1] = lerp(140, 92, deep); out[2] = lerp(146, 112, deep); return; }
+    out[0] = lerp(40, 9, deep) + wave; out[1] = lerp(104, 26, deep) + wave; out[2] = lerp(128, 50, deep) + wave * 1.4;
+    if (-sd < 1.6) { out[0] += 30; out[1] += 36; out[2] += 30; } // surf line
     return;
   }
   var h = heightAt(x, y), b = biomeAt(x, y, h);
-  var c = BIOME_COLOR[b] || BIOME_COLOR.plains;
-  var hx = heightAt(x + 0.6, y) - h, hy = heightAt(x, y + 0.6) - h;
-  var shade = clamp(1 + (-hx * 0.9 + hy * 0.9) * 0.05, 0.55, 1.35);
-  var r = c[0] * 255, g = c[1] * 255, bl = c[2] * 255;
-  if (h > 120) { var t = smooth(120, 200, h); r = lerp(r, 235, t); g = lerp(g, 235, t); bl = lerp(bl, 238, t); }
+  var c = PAINT[b] || PAINT.plains, r = c[0], g = c[1], bl = c[2];
+  var hx = heightAt(x + step, y) - h, hy = heightAt(x, y + step) - h;
+  var shade = clamp(1 + (-hx + hy) / step * 0.06, 0.42, 1.55);
+  var nn = fbm(x / (11 * step), y / (11 * step), 2) * 0.12 + 1; r *= nn; g *= nn; bl *= nn;
+  if (b === "ash" || b === "waste" && x > 600) { var vein = 1 - Math.abs(noise2(x / 38 + noise2(x / 90, y / 90) * 0.8, y / 38)); if (vein > 0.968) { var t = (vein - 0.968) / 0.032; r = lerp(r, 168, t); g = lerp(g, 96, t); bl = lerp(bl, 236, t); } }
+  var snowLine = y > 600 ? 45 : y > 400 ? 115 : 165;
+  if (h > 70 && b !== "snow") { var tr = smooth(70, 110, h); r = lerp(r, 120, tr * 0.7); g = lerp(g, 112, tr * 0.7); bl = lerp(bl, 104, tr * 0.7); }
+  if (h > snowLine) { var ts = smooth(snowLine, snowLine + 35, h); r = lerp(r, 230, ts); g = lerp(g, 236, ts); bl = lerp(bl, 244, ts); }
   if (style === "parchment") { r = lerp(r, 205, 0.38); g = lerp(g, 186, 0.38); bl = lerp(bl, 145, 0.38); }
-  var rv = riverAt(x, y); if (rv && rv.d < Math.max(rv.w * 1.5, 0.9) && !rv.river.dry) { r = 60; g = 104; bl = 128; }
+  var rv = riverAt(x, y); if (rv && rv.d < Math.max(rv.w * 1.5, 0.9) && !rv.river.dry) { r = 52; g = 112; bl = 140; shade = 1; }
+  if (sd < 1.4) shade *= 0.78; // dark coastline edge
   out[0] = r * shade; out[1] = g * shade; out[2] = bl * shade;
 }
 export function paintMap(ctx, view, style, onDone, rowsPerSlice) {
@@ -433,7 +451,7 @@ export function paintMap(ctx, view, style, onDone, rowsPerSlice) {
       var my = view.cy + (h / 2 - py) * view.mpp;
       for (var px = 0; px < w; px++) {
         var mx = view.cx + (px - w / 2) * view.mpp;
-        mapColor(mx, my, col, style); var i = (py * w + px) * 4; d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
+        mapColor(mx, my, col, style, view.mpp); var i = (py * w + px) * 4; d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
       }
     }
     y0 = end;

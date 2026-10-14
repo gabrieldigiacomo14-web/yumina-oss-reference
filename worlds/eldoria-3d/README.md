@@ -42,9 +42,13 @@ conditional BGM kept as-is, plus:
   weaknesses; calling resources (Tempo, Fury, Focus, Resonance, Devotion, Momentum). Known spells
   cast from the hotbar. Kills award XP and skill progress; corpses can be harvested for the loot
   their anatomy provides.
-- **Maps.** A rotating circular minimap (N/E/S/W ring) plus a world map at true equal scale. Fog
-  lifts as you explore. Known locations (including ones the GM teaches you) are pinned, and you can
-  travel by road to discovered places.
+- **Maps.** A rotating circular minimap (N/E/S/W ring) plus a world map at true equal scale, laid out
+  after the Eldoria reference map. It has painted terrain with mountain and forest glyphs, realm
+  banners with their heraldry, sea names, Velkar sea lanes, a compass rose, the Seven Kingdoms and
+  Adventurer Guilds legends, and a segmented scale. Fog of war hides the land until you explore it.
+  Realm banners and sea names are common knowledge and always show. Known locations (including ones
+  the GM teaches you) are pinned, and you can travel by road to discovered places. The map opens on
+  your surroundings.
 - **HUD** like the reference: portrait and bars, the I/K/P/T/L/C/J/Q/O/N/H/B/M menu, party frames,
   location, time, season, weather and moon, the quest tracker, a 10-slot hotbar, wallet and weight.
   The original sheet panels (attribute spending, equipment, skills, callings, banking, crafting,
@@ -104,6 +108,8 @@ dist/     eldoria-3d.json (import this; committed). bundle.js is a local build b
 ## Screenshots (from the headless test harness, software rendering)
 
 ![Creator](docs/creator.jpg)
+![World map, fully explored](docs/world-map.jpg)
+![World map for a new character](docs/world-map-fogged.jpg)
 ![Aurelia City, north gate](docs/aurelia-north-gate.jpg)
 ![Direwood, Game Master dialogue](docs/direwood-dialogue.jpg)
 ![Aurelia City from above](docs/aurelia-city-overview.jpg)

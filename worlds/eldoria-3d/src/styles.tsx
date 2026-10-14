@@ -223,6 +223,20 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .eLegend{margin-top:14px;display:flex;flex-direction:column;gap:5px;font-size:14px;color:#cfc8b8}.eLegend i{display:inline-block;width:10px;height:10px;margin-right:8px;border:1px solid #1a1208}
 .eChronWin .eWinBody{padding:0;display:flex;flex-direction:column}
 .eChron{display:flex;flex-direction:column;height:100%;min-height:0}.eChronList{flex:1;min-height:0;overflow:auto;padding:6px 10px;user-select:text;-webkit-user-select:text}
+.eMapTitle{position:absolute;left:18px;top:12px;pointer-events:none;display:flex;flex-direction:column;max-width:360px;text-shadow:0 2px 6px #000}
+.eMapTitle b{font:700 30px Cinzel,Georgia,serif;letter-spacing:.05em;background:linear-gradient(180deg,#fff2c0,#d8a640 55%,#8a5a18);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.8))}
+.eMapTitle.big b{font-size:clamp(40px,5vw,70px)}.eMapTitle small{font:600 11.5px Cinzel,Georgia,serif;letter-spacing:.1em;color:#efe2c0;margin-top:2px}.eMapTitle.big small{font-size:14px}
+.eMapTitle p{margin:10px 0 0;font-size:16px;line-height:1.3;color:#e6dcc6}
+.eBeyond{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(340px,60%);padding:10px 26px;text-align:center;pointer-events:none;background:linear-gradient(180deg,#e9d6a6,#cdb07a);color:#3a2610;border-radius:3px;box-shadow:0 6px 18px rgba(0,0,0,.6),inset 0 0 18px rgba(120,80,30,.45)}
+.eBeyond:before,.eBeyond:after{content:"";position:absolute;top:-4px;bottom:-4px;width:14px;border-radius:7px;background:linear-gradient(90deg,#9a7848,#e6d0a0,#9a7848)}.eBeyond:before{left:-8px}.eBeyond:after{right:-8px}
+.eBeyond b{display:block;font:700 15px Cinzel,Georgia,serif}.eBeyond span{font-size:14px;line-height:1.2}
+.eMapTabs{margin:0 0 10px;flex-wrap:wrap}
+.eHeraldry h4{margin:2px 0 8px;font:600 16px Cinzel,Georgia,serif;letter-spacing:.06em;color:#e6c97a}
+.eHeraldry button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:6px 4px!important;border-bottom:1px solid rgba(255,255,255,.06)!important}
+.eHeraldry button:hover{background:rgba(70,110,170,.18)!important}.eHeraldry img{width:40px;height:40px;flex:none}
+.eHeraldry b{display:block;font:600 14.5px Cinzel,Georgia,serif;color:#e6c97a}.eHeraldry small{display:block;font-size:13.5px;color:#cfc6b2;line-height:1.2}
+.eLegend i.lane{background:none!important;border:0!important;border-top:2px dashed #e6e0ce!important;height:0;width:14px}
+.eMapCanvas{background:#0a1626}
 /* touch */
 .eTouch{position:absolute;inset:auto 0 90px 0;height:0;z-index:6}
 .eStick{position:absolute;left:24px;bottom:30px;width:120px;height:120px;border-radius:50%;background:rgba(10,12,16,.45);border:1px solid rgba(200,200,220,.35);touch-action:none}
@@ -249,7 +263,7 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
  .eWallet{left:6px;right:auto;top:84px;bottom:auto;font-size:12.5px;gap:10px;padding:4px 8px}.eMenuToggle{top:120px!important}.eMenu{top:162px!important}
  .eTalkBtn{bottom:96px}.ePrompt{bottom:136px}.eNpcMenu{left:auto;right:8px;top:30%}
  .eTouch{bottom:96px}.eStick{left:12px;bottom:8px;width:104px;height:104px}.eKnob{left:30px;top:30px}.eActs{right:8px;bottom:12px;grid-template-columns:repeat(2,50px)}.eActs button{width:50px;height:50px}.eActs button:first-child{width:60px;height:60px}
- .eMap{flex-direction:column}.eMapSide{width:auto;max-height:34%;border-left:0;border-top:1px solid rgba(255,255,255,.08)}
+ .eMap{flex-direction:column}.eMapTitle p,.eBeyond{display:none}.eMapSide{width:auto;max-height:34%;border-left:0;border-top:1px solid rgba(255,255,255,.08)}
  .eTabs{margin-left:4px}.eTabs button{padding:4px 6px;font-size:12px}.eWinHead h2{font-size:17px}
 }
 `;
