@@ -1,8 +1,9 @@
 # Eldoria: From F-Rank to Legend — 3D edition
 
-A Yumina world that turns the Eldoria text RPG into a real-time 3D RPG. You walk
-the whole continent, fight its monster populations, harvest what you kill, and
-uncover a fog-of-war map. The AI Game Master still narrates everything social:
+A Yumina world that turns the Eldoria text RPG into a 3D RPG in the manner of
+Baldur's Gate 3: you explore the whole continent in real time, and every fight
+drops into turn-based rounds. You harvest what you kill and uncover a
+fog-of-war map. The AI Game Master still narrates everything social:
 dialogue, trade, quests, training, healing, interiors, and travel events.
 
 **Import this file:** `dist/eldoria-3d.json` (Yumina → Library → Import).
@@ -12,7 +13,7 @@ conditional BGM kept as-is, plus:
 
 | Added | What it does |
 |---|---|
-| New `rootComponent` (12 files in `src/`) | The 3D game and its interface |
+| New `rootComponent` (17 files in `src/`) | The 3D game and its interface |
 | Lore entry **3D Client Contract** (always sent) | Tells the GM what the 3D client already wrote to state, so nothing is applied twice |
 | Variable `player-avatar` (`aiAccess: none`) | Appearance chosen in the creator |
 | Variable `world3d-state` (`aiAccess: none`) | Fog of war (run-length encoded, 5-mile cells) and slain-population memory |
@@ -37,11 +38,36 @@ conditional BGM kept as-is, plus:
 - **Monsters** are persistent populations drawn from the regional Bestiary, with their fixed stat
   blocks. Danger rises with distance from settlements, apex threats live only near apex sites, and
   slain populations stay gone for days.
-- **Real-time combat** uses the world's own resolution: 3d6 + attribute mod + bounded skill bonus vs
-  Evasion; weapon dice + STR contribution − DR; criticals on a natural 18 with margin 5+; bestiary
-  weaknesses; calling resources (Tempo, Fury, Focus, Resonance, Devotion, Momentum). Known spells
-  cast from the hotbar. Kills award XP and skill progress; corpses can be harvested for the loot
-  their anatomy provides.
+- **Exploration is real time; combat is turn-based**, after Baldur's Gate 3. When a hostile notices
+  you, or you strike first, everyone nearby rolls initiative (3d6 + Agility for you, 3d6 + Threat for
+  monsters) and a turn-order bar appears. Striking first gives you the opening turn.
+  - On your turn you have an **Action**, a **Bonus Action**, a **Reaction** and **9 m of movement**.
+    A ring on the ground shows how far you can still move.
+  - Hover or tap an enemy to see your **hit chance** (from the 3d6 distribution), damage range and
+    whether you must close in first. Click or tap the ground to see the path (green within reach,
+    red beyond), then click or tap again to walk it.
+  - Attacks, spells, Dash and Dodge use the Action. Potions and quick techniques (Second Wind,
+    Cunning Motion, Mark Quarry…) use the Bonus Action.
+  - Leaving an enemy's reach provokes an **opportunity attack**, and they risk the same from you.
+    A shield spends your Reaction to block. Cunning Motion disengages.
+  - Monsters take their turns in order: they advance, strike, shoot or breathe, use multiattacks
+    at Threat 3+, and flee when their tactics say so. The camera follows whoever is acting.
+  - **Each round is six seconds of world time.** End your turn more than 30 m from every foe to slip
+    away.
+  - The rules are the world's own: 3d6 + attribute mod + bounded skill bonus vs Evasion; weapon dice
+    + STR contribution − DR; criticals on a natural 18 with margin 5+; bestiary weaknesses; calling
+    resources (Tempo, Fury, Focus, Resonance, Devotion, Momentum). Kills award XP and skill progress,
+    and corpses can be harvested for what their anatomy provides.
+- **Animation and effects.** Characters are skinned models (skeleton, smooth body, layered clothing,
+  painted faces, strand hair). Keyframed clips cover slashes, overhead smashes, thrusts, bow draws,
+  spellcasts, drinking, hit reactions, dodges, shield blocks and deaths, layered over a procedural
+  walk, run and combat-stance cycle. Damage lands on each clip's impact frame. Effects include weapon
+  trails, impact sparks, blood, spell bolts with particle trails, elemental bursts, heal motes, hit-stop
+  and camera shake.
+- **Creatures** are modelled by body plan: wolves, jackals, lions, boars, bears, rams, stags and
+  salamanders as jointed quadrupeds with hinged jaws; wyverns, drakes, griffons and rocs with folding
+  wings; serpents as undulating chains; scorpions, spiders and mantises with jointed legs, pincers and
+  stingers. Humanoid monsters use the character rig.
 - **Maps.** A rotating circular minimap (N/E/S/W ring) plus a world map at true equal scale, laid out
   after the Eldoria reference map. It has painted terrain with mountain and forest glyphs, realm
   banners with their heraldry, sea names, Velkar sea lanes, a compass rose, the Seven Kingdoms and
@@ -51,6 +77,11 @@ conditional BGM kept as-is, plus:
   your surroundings.
 - **HUD** like the reference: portrait and bars, the I/K/P/T/L/C/J/Q/O/N/H/B/M menu, party frames,
   location, time, season, weather and moon, the quest tracker, a 10-slot hotbar, wallet and weight.
+  Every block can be folded away and reopened (fold buttons, pills), and **U** hides the whole HUD.
+  Your choices are remembered separately for phones and larger screens.
+- **Desktop, phone portrait and phone landscape** each get their own layout. Phones get a joystick,
+  tap-to-move, tap-to-target, pinch zoom, a compact frame and a slide-up menu. In combat the touch
+  buttons become Attack, Next Target and End Turn. Crowds use a lighter level of detail.
   The original sheet panels (attribute spending, equipment, skills, callings, banking, crafting,
   markets, quest boards, party, codex) are reused verbatim from the original interface.
 - The original interface's **engine logic** is kept verbatim in `src/index.tsx`: XP → level,

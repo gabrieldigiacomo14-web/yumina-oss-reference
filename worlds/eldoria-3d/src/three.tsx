@@ -180,3 +180,20 @@ export function textSprite(text, opts) {
   var t = new THREE.CanvasTexture(c); if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
   var m = new THREE.SpriteMaterial({ map: t, depthWrite: false, transparent: true, depthTest: opts.depthTest !== false }); var s = new THREE.Sprite(m); var k = (opts.scale || 0.012); s.scale.set(c.width * k, c.height * k, 1); s.renderOrder = 10; return s;
 }
+
+// ------------------------------------------------------------------ image-based lighting
+// A soft sky/ground environment so metal, cloth and skin are lit from every side.
+var _pmrem = null, _envScene = null;
+export function makeEnvironment(renderer, top, horizon, ground) {
+  var THREE = T(); if (!_pmrem || _pmrem._r !== renderer) { _pmrem = new THREE.PMREMGenerator(renderer); _pmrem._r = renderer; }
+  if (!_envScene) {
+    _envScene = new THREE.Scene(); var g = new THREE.SphereGeometry(10, 32, 16); var cols = new Float32Array(g.attributes.position.count * 3); g.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+    _envScene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+    var sun = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); sun.position.set(4, 6, 5); sun.name = "sun"; _envScene.add(sun);
+  }
+  var mesh = _envScene.children[0], pos = mesh.geometry.attributes.position, col = mesh.geometry.attributes.color;
+  var t = new THREE.Color(top), h = new THREE.Color(horizon), gr = new THREE.Color(ground), c = new THREE.Color();
+  for (var i = 0; i < pos.count; i++) { var y = pos.getY(i) / 10; if (y >= 0) c.copy(h).lerp(t, Math.pow(y, 0.6)); else c.copy(h).lerp(gr, Math.min(1, -y * 3)); col.setXYZ(i, c.r, c.g, c.b); }
+  col.needsUpdate = true; _envScene.getObjectByName("sun").material.color.copy(h).multiplyScalar(2.2);
+  var rt = _pmrem.fromScene(_envScene, 0.035); return rt;
+}

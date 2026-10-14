@@ -10,7 +10,7 @@ import { CALLING_KIT, money } from "./rules";
 
 var MENU = [["inventory", "Inventory", "I", "Backpack"], ["equipment", "Equipment", "K", "Shirt"], ["skills", "Skills", "P", "Target"], ["techniques", "Techniques", "T", "Swords"], ["spells", "Known Spells", "L", "Sparkles"], ["callings", "Callings", "C", "Shield"], ["sep"], ["journal", "Journal", "J", "BookOpen"], ["quests", "Quests", "Q", "ScrollText"], ["party", "Party & Companions", "O", "Users"], ["codex", "Codex", "N", "Library"], ["crafting", "Crafting", "H", "Hammer"], ["bank", "Bank", "B", "Landmark"], ["map", "World Map", "M", "Map"]];
 var KEYMAP = { i: "inventory", k: "equipment", p: "skills", t: "techniques", l: "spells", c: "callings", j: "journal", q: "quests", o: "party", n: "codex", h: "crafting", b: "bank", m: "map" };
-var SLOT_ICON = { sword: ["Sword", "steel"], bow: ["Crosshair", "steel"], staff: ["Wand", "arcane"], dagger: ["Slice", "steel"], fist: ["Hand", "steel"], hammer: ["Hammer", "steel"], tech: ["Flame", "fire"], fire: ["Flame", "fire"], ice: ["Snowflake", "ice"], bolt: ["Zap", "ice"], magic: ["Sparkles", "arcane"], heal: ["HeartPulse", "holy"], "potion-red": ["FlaskConical", "red"], "potion-blue": ["FlaskRound", "blue"], herb: ["Leaf", "green"], dodge: ["Wind", "steel"], hand: ["Hand", "wood"] };
+var SLOT_ICON = { sword: ["Sword", "steel"], bow: ["Crosshair", "steel"], staff: ["Wand", "arcane"], dagger: ["Slice", "steel"], fist: ["Hand", "steel"], hammer: ["Hammer", "steel"], tech: ["Flame", "fire"], fire: ["Flame", "fire"], ice: ["Snowflake", "ice"], bolt: ["Zap", "ice"], magic: ["Sparkles", "arcane"], heal: ["HeartPulse", "holy"], "potion-red": ["FlaskConical", "red"], "potion-blue": ["FlaskRound", "blue"], herb: ["Leaf", "green"], dodge: ["Wind", "steel"], hand: ["Hand", "wood"], dash: ["ChevronsRight", "wood"], end: ["Hourglass", "holy"] };
 export var QUALITY = {
   low: { name: "Low", pixelRatio: 1, shadows: false, shadowMap: 1024, far: 900, radius: 3, particles: 0, aa: false, genBudget: 5, townRange: 450, crowd: 0.35 },
   medium: { name: "Medium", pixelRatio: 1.25, shadows: true, shadowMap: 1024, far: 1300, radius: 4, particles: 1400, aa: true, genBudget: 7, townRange: 650, crowd: 0.75 },
@@ -31,8 +31,8 @@ export function GameScreen(props) {
   var [inspect, setInspect] = R.useState(false);
   var [dialog, setDialog] = R.useState(null);
   var [draft, setDraft] = R.useState("");
-  var [questsOpen, setQuestsOpen] = R.useState(true);
-  var [sideOpen, setSideOpen] = R.useState(!isTouch());
+  var [hud, setHud] = R.useState(function () { return hudDefaults(); });
+  var [, setVw] = R.useState(0);
   var [qKey, setQKey] = R.useState(function () { return isTouch() ? "low" : "medium"; });
   var [portrait, setPortrait] = R.useState("");
   var [, force] = R.useState(0);
@@ -40,6 +40,10 @@ export function GameScreen(props) {
   var prefs = props.audioPrefs || {};
   var prefsRef = R.useRef(prefs); prefsRef.current = prefs;
 
+  // which HUD blocks are open survives sessions (per viewer, phone and wide screens kept apart)
+  R.useEffect(function () { try { Promise.resolve(api.storage && api.storage.get && api.storage.get(hudKey())).then(function (h) { if (h && typeof h === "object") setHud(Object.assign(hudDefaults(), h)); }); } catch (e) { } var onR = function () { setVw(window.innerWidth * 10000 + window.innerHeight); }; window.addEventListener("resize", onR); return function () { window.removeEventListener("resize", onR); }; }, []);
+  function tog(k, val) { setHud(function (h) { var n = Object.assign({}, h); n[k] = val === undefined ? (h[k] ? 0 : 1) : val; try { api.storage && api.storage.set && api.storage.set(hudKey(), n); } catch (e) { } return n; }); }
+  var togRef = R.useRef(tog); togRef.current = tog;
   // quality preference survives sessions (per viewer)
   R.useEffect(function () { try { Promise.resolve(api.storage && api.storage.get && api.storage.get("eldoria3d-quality")).then(function (q) { if (q && QUALITY[q]) setQKey(q); }); } catch (e) { } }, []);
 
@@ -79,6 +83,7 @@ export function GameScreen(props) {
             // while speaking to someone, letters belong to the reply box, not to hotkeys
             if (st.dialog && st.dialog.open && st.dialog.npc && k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { var ta = document.querySelector(".eDialog .eCompose textarea"); if (ta) { ta.focus(); return false; } }
             if (k === "enter") { setDialog(function (d) { return Object.assign({}, d || {}, { open: true, focus: Date.now() }); }); return true; }
+            if (k === "u" && !e.ctrlKey && !e.metaKey) { togRef.current("min"); return true; }
             if (KEYMAP[k] && !e.ctrlKey && !e.metaKey) { setPanel(function (p) { return p === KEYMAP[k] ? null : KEYMAP[k]; }); setTab(null); return true; }
             return false;
           }
@@ -143,47 +148,57 @@ export function GameScreen(props) {
     }
   }
 
-  var dlgOpen = dialog && dialog.open;
-  return <div className={"eGame" + (s.hurt ? " hurt" : "") + (s.down ? " down" : "") + (isTouch() ? " touch" : "")}>
+  var dlgOpen = dialog && dialog.open; var H = hud; var bt = s.battle; var touch = isTouch(); var g0 = gameRef.current;
+  var heading = (s.heading || Math.PI) - Math.PI;
+  return <div className={"eGame" + (s.hurt ? " hurt" : "") + (s.down ? " down" : "") + (touch ? " touch" : "") + (H.min ? " minimal" : "") + (bt ? " inBattle" : "")}>
     <div className="eView" ref={hostRef} />
     {status ? <div className="eLoading"><div className="eLogo big"><b>ELDORIA</b><small>FROM F-RANK TO LEGEND</small></div><p>{status}</p>{/could not/i.test(status) ? <button className="eBtn small" onClick={function () { setPanel("chronicle"); }}>Open the Chronicle</button> : <div className="eSpinner" />}</div> : null}
     {snap && snap.loading > 6 ? <div className="eStream">Charting the land… {snap.loading}</div> : null}
 
-    {/* player frame */}
-    <div className="eFrame ePlayer">
-      <div className="ePortrait">{portrait ? <img src={portrait} alt="" /> : <Icon n="User" s={40} />}</div>
+    {/* player frame: full, or compact (portrait + bars) */}
+    <div className={"eFrame ePlayer" + (H.player && !H.min ? "" : " compact")}>
+      <button className="ePortrait" onClick={function () { setPanel(panel === "character" ? null : "character"); setTab(null); }} aria-label="Character sheet">{portrait ? <img src={portrait} alt="" /> : <Icon n="User" s={40} />}</button>
       <div className="ePlayerInfo"><div className="ePName"><b>{v["player-name"] || "Adventurer"}</b><span>Lv. {v["player-level"] || 1}</span></div>
         <div className="eRank"><Icon n="Award" s={13} /> Guild Rank <b>{v["guild-rank"] || "Unregistered"}</b></div>
         <div className="eBars"><div><Icon n="Heart" s={13} c="ic-hp" /><Bar kind="hp" cur={s.hp} max={s.maxHp} /></div><div><Icon n="Droplet" s={13} c="ic-mp" /><Bar kind="mp" cur={s.mp} max={s.maxMp} /></div><div><Icon n="Zap" s={13} c="ic-sp" /><Bar kind="sp" cur={s.sp} max={s.maxSp} /></div></div>
       </div>
+      {!H.min ? <Fold onClick={function () { tog("player"); }} icon={H.player ? "ChevronsLeft" : "ChevronsRight"} title={H.player ? "Compact frame" : "Full frame"} /> : null}
     </div>
 
     {/* menu */}
-    <button className="eMenuToggle" onClick={function () { setSideOpen(!sideOpen); }} aria-label="Menu"><Icon n={sideOpen ? "PanelLeftClose" : "Menu"} s={20} /></button>
-    {sideOpen ? <div className="eFrame eMenu" role="navigation" aria-label="Game menu">{MENU.map(function (m, i) { if (m[0] === "sep") return <div key={i} className="eSep" />; return <button key={m[0]} className={panel === m[0] ? "on" : ""} onClick={function () { setPanel(panel === m[0] ? null : m[0]); setTab(null); if (isTouch()) setSideOpen(false); }}><Icon n={m[3]} s={18} /><span>{m[1]}</span><kbd>{m[2]}</kbd></button>; })}</div> : null}
+    {!H.min ? <button className={"eMenuToggle" + (H.menu ? " on" : "")} onClick={function () { tog("menu"); }} aria-label="Menu" title="Menu"><Icon n={H.menu ? "PanelLeftClose" : "Menu"} s={20} /></button> : null}
+    {H.menu && !H.min ? <div className="eFrame eMenu" role="navigation" aria-label="Game menu">{MENU.map(function (m, i) { if (m[0] === "sep") return <div key={i} className="eSep" />; return <button key={m[0]} className={panel === m[0] ? "on" : ""} onClick={function () { setPanel(panel === m[0] ? null : m[0]); setTab(null); if (phoneNow()) tog("menu", 0); }}><Icon n={m[3]} s={18} /><span>{m[1]}</span><kbd>{m[2]}</kbd></button>; })}</div> : null}
 
     {/* party */}
-    {partyList.length ? <div className="eParty">{partyList.slice(0, 4).map(function (p, i) { return <div key={i} className="eFrame eMate"><div className="eMateP"><Icon n="UserRound" s={26} /></div><div><b>{p.name}</b><small>{p.level || p.lv ? "Lv. " + (p.level || p.lv) : (p.class || p.calling || p.role || "")}</small>{p.hp != null ? <Bar kind="hp" cur={p.hp} max={p.maxHp || p.hp} label="" /> : null}{p.mana != null ? <Bar kind="mp" cur={p.mana} max={p.maxMana || p.mana} label="" /> : null}</div></div>; })}</div> : null}
+    {partyList.length && !H.min ? (H.party ? <div className="eParty"><Fold onClick={function () { tog("party"); }} icon="X" title="Hide party" />{partyList.slice(0, 4).map(function (p, i) { return <div key={i} className="eFrame eMate"><div className="eMateP"><Icon n="UserRound" s={26} /></div><div><b>{p.name}</b><small>{p.level || p.lv ? "Lv. " + (p.level || p.lv) : (p.class || p.calling || p.role || "")}</small>{p.hp != null ? <Bar kind="hp" cur={p.hp} max={p.maxHp || p.hp} label="" /> : null}{p.mana != null ? <Bar kind="mp" cur={p.mana} max={p.maxMana || p.mana} label="" /> : null}</div></div>; })}</div> : <Pill cls="ePartyPill" icon="Users" label={String(partyList.length)} title="Show party" onClick={function () { tog("party"); }} />) : null}
 
     {/* location + minimap */}
-    <div className="eFrame eWhere">
-      <div className="eWhereText"><h3>{s.location}</h3><small>{s.sub}</small>
+    {!H.min ? <div className={"eFrame eWhere" + (H.where ? "" : " noText") + (H.mini ? "" : " noMini")}>
+      {H.where ? <div className="eWhereText"><h3>{s.location}</h3><small>{s.sub}</small>
         <div className="eTime"><b>{s.time}</b><span>{s.date}</span></div>
         <div className="eWx"><span><Icon n={seasonIcon(v.season)} s={14} /> {v.season}</span><span><Icon n={weatherIcon(v.weather)} s={14} /> {v.weather}</span><span><Icon n="Moon" s={14} /> {v["moon-phase"]}</span></div>
-      </div>
-      <div className="eMini" onClick={function () { setPanel("map"); }} title="Open the world map (M)"><canvas ref={miniRef} width={190} height={190} /><div className="eMiniRing" />{[["N", 0, -1], ["E", 1, 0], ["S", 0, 1], ["W", -1, 0]].map(function (c) { return <span key={c[0]} className={"eCard " + c[0]} style={ring(c[1], c[2])}>{c[0]}</span>; })}</div>
-    </div>
+      </div> : null}
+      {H.mini ? <div className="eMini" onClick={function () { setPanel("map"); }} title="Open the world map (M)"><canvas ref={miniRef} width={190} height={190} /><div className="eMiniRing" />{[["N", 0, -1], ["E", 1, 0], ["S", 0, 1], ["W", -1, 0]].map(function (c) { return <span key={c[0]} className={"eCard " + c[0]} style={ring(c[1], c[2])}>{c[0]}</span>; })}</div>
+        : <button className="eCompass" onClick={function () { tog("mini"); }} title="Show minimap" aria-label="Show minimap"><span style={{ transform: "rotate(" + (-heading) + "rad)" }}><b>N</b><Icon n="Navigation2" s={18} /></span></button>}
+      <div className="eWhereTools"><Fold onClick={function () { tog("where"); }} icon={H.where ? "ChevronsRight" : "Info"} title={H.where ? "Hide location details" : "Show location details"} />{H.mini ? <Fold onClick={function () { tog("mini"); }} icon="Minus" title="Hide minimap" /> : null}</div>
+    </div> : null}
 
     {/* quests */}
-    <div className="eFrame eQuests"><button className="eQHead" onClick={function () { setQuestsOpen(!questsOpen); }}><Icon n="ScrollText" s={16} /><span>Current Quests</span><Icon n={questsOpen ? "ChevronUp" : "ChevronDown"} s={16} /></button>
-      {questsOpen ? (quests.length ? quests.map(function (q, i) { var obj = q.objective || q.objectives || q.currentStep || q.notes || q.description || q.summary || ""; var objs = Array.isArray(obj) ? obj : [obj]; return <div key={i} className="eQ"><b><Icon n="Diamond" s={12} /> {q.title || q.name || q.id}</b>{objs.filter(Boolean).slice(0, 2).map(function (o, k) { return <p key={k}><i />{typeof o === "string" ? o : (o.text || o.title || JSON.stringify(o))}</p>; })}{q.rank || q.deadline || q.reward ? <small>{q.rank ? "Rank " + q.rank : ""}{q.deadline ? " · due " + q.deadline : ""}{q.reward ? " · " + q.reward : ""}</small> : null}</div>; }) : <p className="eQEmpty">No active quests. Notice boards and townsfolk have work for those who ask.</p>) : null}
-    </div>
+    {!H.min ? (H.quests ? <div className="eFrame eQuests"><button className="eQHead" onClick={function () { tog("quests"); }}><Icon n="ScrollText" s={16} /><span>Current Quests</span><Icon n="ChevronUp" s={16} /></button>
+      {quests.length ? quests.map(function (q, i) { var obj = q.objective || q.objectives || q.currentStep || q.notes || q.description || q.summary || ""; var objs = Array.isArray(obj) ? obj : [obj]; return <div key={i} className="eQ"><b><Icon n="Diamond" s={12} /> {q.title || q.name || q.id}</b>{objs.filter(Boolean).slice(0, 2).map(function (o, k) { return <p key={k}><i />{typeof o === "string" ? o : (o.text || o.title || JSON.stringify(o))}</p>; })}{q.rank || q.deadline || q.reward ? <small>{q.rank ? "Rank " + q.rank : ""}{q.deadline ? " · due " + q.deadline : ""}{q.reward ? " · " + q.reward : ""}</small> : null}</div>; }) : <p className="eQEmpty">No active quests. Notice boards and townsfolk have work for those who ask.</p>}
+    </div> : <Pill cls="eQuestPill" icon="ScrollText" label={quests.length ? String(quests.length) : ""} title="Show quests" onClick={function () { tog("quests"); }} />) : <Pill cls="eShowHud" icon="Eye" label="HUD" title="Show the HUD (U)" onClick={function () { tog("min"); }} />}
+
+    {/* turn order, banners */}
+    {bt ? <Initiative b={bt} portrait={portrait} onPick={function (id) { var g = gameRef.current; if (g) { var m = g.monsters.find(function (x) { return x.id === id; }); if (m && !m.dead) g.target = m; } }} /> : null}
+    {bt && bt.banner ? <div key={bt.banner.text + ":" + bt.round} className={"eBanner" + (bt.banner.mine ? " mine" : bt.banner.foe ? " foe" : "")}><b>{bt.banner.text}</b>{bt.banner.sub ? <small>{bt.banner.sub}</small> : null}</div> : null}
+    {s.after ? <div key={"after" + s.after.text} className="eBanner after"><b>{s.after.text}</b></div> : null}
 
     {/* target */}
-    {s.target ? <div className="eFrame eTarget"><div><b>{s.target.name}</b><small>Threat {s.target.threat} · {s.target.region} · Evasion {s.target.evasion} · DR {s.target.dr}{s.target.weakness ? " · Weak: " + s.target.weakness : ""}</small></div><Bar kind="hp" cur={s.target.hp} max={s.target.maxHp} /></div> : null}
+    {s.target && !bt ? <div className="eFrame eTarget"><div><b>{s.target.name}</b><small>Threat {s.target.threat} · {s.target.region} · Evasion {s.target.evasion} · DR {s.target.dr}{s.target.weakness ? " · Weak: " + s.target.weakness : ""}</small></div><Bar kind="hp" cur={s.target.hp} max={s.target.maxHp} /></div> : null}
+    <HoverTip h={s.hover} battle={!!bt} />
 
     {/* combat log */}
-    {s.log && s.log.length ? <div className={"eLog" + (s.combat ? " on" : "")}>{s.log.slice(-5).map(function (l, i) { return <div key={l.t + "" + i} className={"eLogL " + l.kind}>{l.line}</div>; })}</div> : null}
+    {!H.min ? (H.log ? (s.log && s.log.length ? <div className={"eLog" + (s.combat ? " on" : "")}><Fold onClick={function () { tog("log"); }} icon="X" title="Hide the combat log" />{s.log.slice(-5).map(function (l, i) { return <div key={l.t + "" + i} className={"eLogL " + l.kind}>{l.line}</div>; })}</div> : null) : <Pill cls="eLogPill" icon="ScrollText" label="Log" title="Show the combat log" onClick={function () { tog("log"); }} />) : null}
 
     {/* interaction prompt */}
     {s.interact && !menu && !dlgOpen ? <button className="ePrompt" onClick={function () { gameRef.current && gameRef.current.doInteract(); }}><kbd>E</kbd>{s.interact}</button> : null}
@@ -197,28 +212,62 @@ export function GameScreen(props) {
 
     {/* dialogue / chronicle box */}
     {dlgOpen ? <div className="eFrame eDialog">
-      <div className="eDlgHead">{dialog.npc && dialog.npc.portrait ? <img src={dialog.npc.portrait} alt="" /> : <Icon n="Feather" s={22} />}<div><b>{dialog.npc ? dialog.npc.name : "The Chronicle"}</b><small>{dialog.npc ? dialog.npc.title : "Game Master"}</small></div><button className="eLink" onClick={function () { setPanel("chronicle"); }}><Icon n="ScrollText" s={15} /> Full chronicle</button><button className="eX" onClick={closeDialog} aria-label="Close"><Icon n="X" s={18} /></button></div>
+      <div className="eDlgHead">{dialog.npc && dialog.npc.portrait ? <img src={dialog.npc.portrait} alt="" /> : <Icon n="Feather" s={22} />}<div><b>{dialog.npc ? dialog.npc.name : "The Chronicle"}</b><small>{dialog.npc ? dialog.npc.title : "Game Master"}</small></div><button className="eLink" onClick={function () { setPanel("chronicle"); }}><Icon n="ScrollText" s={15} /> <span>Full chronicle</span></button><button className="eX" onClick={closeDialog} aria-label="Close"><Icon n="X" s={18} /></button></div>
       <div className="eDlgText" ref={function (el) { if (el) el.scrollTop = el.scrollHeight; }}>{api.isStreaming && !gmText ? <p className="muted">The Game Master considers…</p> : html ? <div dangerouslySetInnerHTML={{ __html: html }} /> : <p className="muted">{dialog.npc ? "What do you say to " + dialog.npc.name + "?" : "Tell the Game Master what you do."}</p>}{api.error ? <p className="eErr">{String(api.error)}</p> : null}</div>
       {safeArr(api.pendingChoices).length && !api.isStreaming ? <div className="eChips">{safeArr(api.pendingChoices).slice(0, 4).map(function (c, i) { return <button key={i} onClick={function () { api.clearPendingChoices && api.clearPendingChoices(); sendToGM(c, { npc: dialog.npc || null }); }}>{c}</button>; })}</div> : null}
       {dialog.npc && !html ? <div className="eChips">{["Greet them politely.", "Ask what news they've heard.", "Ask about the Adventurer's Guild."].map(function (c) { return <button key={c} onClick={function () { sendToGM("(Speaking to " + dialog.npc.name + ") " + c, { npc: dialog.npc }); }}>{c}</button>; })}</div> : null}
       <Composer draft={draft} setDraft={setDraft} onSend={submitDraft} busy={api.isStreaming} autoFocus={dialog.focus} placeholder={dialog.npc ? "Say something to " + dialog.npc.name + "…" : "What do you do?"} onStop={function () { api.stopGeneration && api.stopGeneration(); }} />
-    </div> : <button className="eTalkBtn" onClick={function () { setDialog({ open: true, npc: null, focus: Date.now() }); }} title="Speak or act (Enter)"><Icon n="Feather" s={18} /><span>Chronicle</span>{api.isStreaming ? <i className="eDot" /> : null}</button>}
+    </div> : (bt ? null : <button className="eTalkBtn" onClick={function () { setDialog({ open: true, npc: null, focus: Date.now() }); }} title="Speak or act (Enter)"><Icon n="Feather" s={18} /><span>Chronicle</span>{api.isStreaming ? <i className="eDot" /> : null}</button>)}
 
-    {/* hotbar */}
+    {/* hotbar, with the turn economy above it in combat */}
     <div className="eHotbar">
+      {bt ? <Economy b={bt} /> : null}
       {s.res ? <div className="eRes">{s.res.name}{Array.from({ length: s.res.max }).map(function (_, i) { return <i key={i} className={i < s.res.val ? "on" : ""} />; })}</div> : null}
-      <div className="eSlots">{(s.hotbar || []).map(function (sl, i) { var key = i === 9 ? "0" : String(i + 1); if (!sl) return <div key={i} className="eSlot empty"><kbd>{key}</kbd></div>; var ic = SLOT_ICON[sl.icon] || ["Circle", "steel"]; return <button key={i} className={"eSlot " + ic[1] + (sl.disabled ? " off" : "")} title={sl.label + (sl.desc ? " — " + sl.desc : "") + (sl.mp ? " (" + sl.mp + " MP)" : "")} onClick={function () { gameRef.current && gameRef.current.useSlot(i); }}><Icon n={ic[0]} s={26} />{sl.count != null ? <em>{sl.count}</em> : null}{sl.cd > 0 ? <div className="eCd" style={{ height: Math.min(100, sl.cd / 2 * 100) + "%" }} /> : null}<kbd>{key}</kbd></button>; })}</div>
+      <div className="eSlots">{(s.hotbar || []).map(function (sl, i) { var key = i === 9 ? "0" : String(i + 1); if (!sl) return <div key={i} className="eSlot empty"><kbd>{key}</kbd></div>; var ic = SLOT_ICON[sl.icon] || ["Circle", "steel"]; return <button key={i} className={"eSlot " + ic[1] + (sl.disabled ? " off" : "") + (sl.kind === "endturn" ? " end" : "")} title={sl.label + (sl.desc ? " — " + sl.desc : "") + (sl.mp ? " (" + sl.mp + " MP)" : "")} aria-label={sl.label} onClick={function () { gameRef.current && gameRef.current.useSlot(i); }}><Icon n={ic[0]} s={26} />{sl.cost ? <i className={"eCost " + sl.cost} /> : null}{sl.count != null ? <em>{sl.count}</em> : null}{sl.cd > 0 && !bt ? <div className="eCd" style={{ height: Math.min(100, sl.cd / 2 * 100) + "%" }} /> : null}<kbd>{key}</kbd></button>; })}</div>
     </div>
+    {bt ? <button className={"eEndTurn" + (bt.mine ? "" : " off")} onClick={function () { var g = gameRef.current; if (g) g.useSlot(9); }} title="End your turn (Space)" aria-label="End turn"><Icon n="Hourglass" s={24} /><span>End Turn</span></button> : null}
 
     {/* currency, weight, quick buttons */}
-    <div className="eFrame eWallet"><span><Icon n="Coins" s={16} c="ic-gold" /> <b>{cp.gp}</b>g <b>{cp.sp}</b>s <b>{cp.cp}</b>c</span><span><Icon n="Weight" s={16} /> {wt.toFixed(1)} / {cap}</span></div>
-    <div className="eQuick">{[["character", "UserRound", "Character"], ["guild", "Award", "Guild"], ["chronicle", "BookOpen", "Chronicle"], ["party", "Users", "Party"], ["quests", "ScrollText", "Quests"], ["map", "Compass", "World Map"], ["settings", "Settings", "Settings"]].map(function (b) { return <button key={b[0]} className={"eRound" + (panel === b[0] ? " on" : "")} title={b[2]} aria-label={b[2]} onClick={function () { setPanel(panel === b[0] ? null : b[0]); setTab(null); }}><Icon n={b[1]} s={22} /></button>; })}</div>
+    {!H.min ? (H.wallet ? <div className="eFrame eWallet"><span><Icon n="Coins" s={16} c="ic-gold" /> <b>{cp.gp}</b>g <b>{cp.sp}</b>s <b>{cp.cp}</b>c</span><span><Icon n="Weight" s={16} /> {wt.toFixed(1)} / {cap}</span><Fold onClick={function () { tog("wallet"); }} icon="X" title="Hide purse" /></div> : null) : null}
+    {!H.min ? <div className={"eQuick" + (H.quick ? "" : " folded")}>{H.quick ? [["character", "UserRound", "Character"], ["guild", "Award", "Guild"], ["chronicle", "BookOpen", "Chronicle"], ["party", "Users", "Party"], ["quests", "ScrollText", "Quests"], ["map", "Compass", "World Map"], ["settings", "Settings", "Settings"]].map(function (b) { return <button key={b[0]} className={"eRound" + (panel === b[0] ? " on" : "")} title={b[2]} aria-label={b[2]} onClick={function () { setPanel(panel === b[0] ? null : b[0]); setTab(null); }}><Icon n={b[1]} s={22} /></button>; }).concat(H.wallet ? [] : [<button key="wallet" className="eRound" title="Show purse" aria-label="Show purse" onClick={function () { tog("wallet"); }}><Icon n="Coins" s={20} /></button>]).concat([<button key="min" className="eRound" title="Hide the HUD (U)" aria-label="Hide the HUD" onClick={function () { tog("min"); }}><Icon n="EyeOff" s={20} /></button>, <button key="fold" className="eRound fold" title="Fold these buttons" aria-label="Fold buttons" onClick={function () { tog("quick"); }}><Icon n="ChevronsRight" s={20} /></button>])
+      : [<button key="map" className="eRound" title="World Map" aria-label="World Map" onClick={function () { setPanel(panel === "map" ? null : "map"); }}><Icon n="Compass" s={22} /></button>, <button key="unfold" className="eRound" title="More" aria-label="More buttons" onClick={function () { tog("quick"); }}><Icon n="LayoutGrid" s={20} /></button>]}</div> : null}
 
     {/* touch controls */}
-    {isTouch() ? <TouchControls game={gameRef} /> : null}
+    {touch ? <TouchControls game={gameRef} battle={bt} talk={function () { setDialog({ open: true, npc: null, focus: Date.now() }); }} streaming={api.isStreaming} /> : null}
     {s.down ? <div className="eDown"><h2>You have fallen</h2><p>The Game Master is resolving what happens next — consciousness, rescue or death — under the world's combat rules.</p></div> : null}
     {panelBody()}
   </div>;
+}
+
+var HUD_DEFAULT = { player: 1, menu: 1, where: 1, mini: 1, quests: 1, party: 1, log: 1, wallet: 1, quick: 1, min: 0 };
+function phoneNow() { return window.innerWidth <= 700 || window.innerHeight <= 500; }
+function hudKey() { return "eldoria3d-hud-" + (phoneNow() ? "phone" : "wide"); }
+function hudDefaults() { var h = Object.assign({}, HUD_DEFAULT); if (phoneNow()) Object.assign(h, { menu: 0, where: 0, quests: 0, party: 0, log: 0, wallet: 0, quick: 0 }); else if (window.innerWidth <= 1100 || window.innerHeight <= 700) Object.assign(h, { menu: 0, wallet: 0 }); if (isTouch() && !phoneNow()) h.menu = 0; return h; }
+function Fold(p) { return <button className="eFold" onClick={function (e) { e.stopPropagation(); p.onClick(); }} title={p.title} aria-label={p.title}><Icon n={p.icon || "Minus"} s={13} /></button>; }
+function Pill(p) { return <button className={"ePill " + (p.cls || "")} onClick={p.onClick} title={p.title} aria-label={p.title}><Icon n={p.icon} s={16} />{p.label ? <span>{p.label}</span> : null}</button>; }
+var ARCH_ICON = { canine: "Dog", beast: "PawPrint", winged: "Bird", serpent: "Waves", bug: "Bug", wisp: "Sparkles", humanoid: "Skull", brute: "Skull" };
+function Initiative(p) {
+  var b = p.b;
+  return <div className="eInit"><div className="eRoundNo"><small>Round</small><b>{b.round}</b></div><div className="eInitRow">{b.order.map(function (c) { var pct = c.maxHp ? Math.max(0, Math.min(100, c.hp / c.maxHp * 100)) : 0; return <button key={c.id} className={"eChip " + c.kind + (c.active ? " on" : "") + (c.dead ? " dead" : "") + (c.target ? " tgt" : "")} title={c.name + " — initiative " + c.init + " · " + c.hp + "/" + c.maxHp + " HP"} onClick={function () { if (c.kind !== "player") p.onPick(c.id); }}>
+    <div className="eChipP">{c.kind === "player" ? (p.portrait ? <img src={p.portrait} alt="" /> : <Icon n="User" s={22} />) : <Icon n={ARCH_ICON[c.arch] || "Skull"} s={22} />}{c.dead ? <div className="eChipX"><Icon n="X" s={26} /></div> : null}</div>
+    <div className="eChipHp"><i style={{ width: pct + "%" }} /></div><span>{c.kind === "player" ? "You" : c.name}</span></button>; })}</div></div>;
+}
+function Economy(p) {
+  var b = p.b, e = b.econ; var act = b.order.find(function (c) { return c.active; });
+  if (!b.myTurn) return <div className="eEcon wait"><Icon n="Hourglass" s={14} /><span>{act ? (act.kind === "player" ? "Your turn" : act.name + "'s turn") : "Next turn…"}</span></div>;
+  var pct = e.moveMax ? Math.max(0, Math.min(100, e.move / e.moveMax * 100)) : 0;
+  return <div className="eEcon"><span className={"ePip act" + (e.action ? " on" : "")} title="Action — attack, cast, Dash, Dodge"><i />Action</span><span className={"ePip bon" + (e.bonus ? " on" : "")} title="Bonus Action — potions and quick techniques"><i />Bonus</span><span className={"ePip rea" + (e.reaction ? " on" : "")} title="Reaction — opportunity attacks and shield blocks"><i />Reaction</span><span className="eMove" title="Movement left this turn"><Icon n="Footprints" s={14} /><span className="eMoveBar"><i style={{ width: pct + "%" }} /></span><b>{e.move.toFixed(1)} m</b></span></div>;
+}
+function HoverTip(p) {
+  var h = p.h; if (!h || h.sx < -100) return null; var W = window.innerWidth, Hh = window.innerHeight;
+  var st = { left: Math.max(6, Math.min(W - 236, h.sx + (h.touch ? -110 : 18))), top: Math.max(6, Math.min(Hh - 140, h.sy + (h.touch ? -118 : 12))) };
+  if (h.kind === "ground") return <div className="eTip small" style={st}><span className={h.ok ? "ok" : "bad"}>{h.ok ? "Move " + h.dist.toFixed(1) + " m" : "Too far — " + h.dist.toFixed(1) + " m (" + h.left.toFixed(1) + " m left)"}</span>{h.touch ? <small>Tap again to move{h.ok ? "" : " as far as you can"}</small> : null}</div>;
+  var cls = h.chance >= 65 ? "good" : h.chance >= 40 ? "mid" : "bad";
+  return <div className="eTip" style={st}><b>{h.name}</b><small>Threat {h.threat} · {h.hp}/{h.maxHp} HP</small>
+    <div className="eTipRow"><span className={"eHit " + cls}>{h.chance}%</span><span>to hit · {h.dice} <em>({h.lo}–{h.hi})</em></span></div>
+    {!h.ranged && h.approach > 0 ? <div className={"eTipNote" + (h.canReach ? "" : " bad")}>{h.canReach ? "Moves " + h.approach.toFixed(1) + " m, then attacks" : "Out of reach — " + h.approach.toFixed(1) + " m to close"}</div> : null}
+    {h.ranged && !h.inReach ? <div className="eTipNote bad">Out of range</div> : null}
+    <small className="eTipHint">{p.battle ? (h.my ? (h.touch ? "Tap again to attack" : "Click to attack") : "Not your turn") : (h.touch ? "Tap again to attack" : "Click again to attack")}</small></div>;
 }
 
 function Composer(p) {
@@ -246,18 +295,20 @@ function Settings(p) {
       <button className="eBtn small" onClick={function () { p.send("I find a safe place, make camp and rest for the night."); p.close(); }}><Icon n="Tent" s={14} /> Make camp & rest</button>
       <button className="eBtn small" onClick={function () { setTs(!ts); }}><Icon n="FastForward" s={14} /> Advance time…</button></div>
       {ts ? <div className="eBtnRow">{["1 week", "1 month", "1 year"].map(function (x) { return <button key={x} className="eBtn small" onClick={function () { api.sendMessage("[timeskip: " + x + "]"); p.close(); }}>{x}</button>; })}</div> : null}
-      <p className="muted">Resting, healing, shopping and anything social are narrated by the Game Master. Walking, fighting, harvesting and discovery happen here in real time.</p></section>
+      <p className="muted">Resting, healing, shopping and anything social are narrated by the Game Master. Exploring runs in real time; fights are turn-based — each round is six seconds of world time.</p></section>
     <section className="card"><div className="cardTitle"><b>Sound</b></div><AudioSettings prefs={p.prefs} onChange={p.onPref} /></section>
-    <section className="card"><div className="cardTitle"><b>Controls</b></div><div className="eKeys">{[["W A S D", "Move"], ["Shift", "Run (uses stamina)"], ["Space", "Jump"], ["Drag", "Turn the camera"], ["Wheel", "Zoom"], ["Click", "Target an enemy / talk to someone"], ["Tab", "Cycle targets"], ["1 – 0", "Hotbar"], ["E", "Interact / harvest / talk"], ["Enter", "Speak to the Game Master"], ["I K P T L C J Q O N H B M", "Menus"], ["Esc", "Close"]].map(function (k) { return <div key={k[0]}><kbd>{k[0]}</kbd><span>{k[1]}</span></div>; })}</div></section>
+    <section className="card"><div className="cardTitle"><b>Controls</b></div><div className="eKeys">{[["W A S D", "Move"], ["Click ground", "Walk there (in combat: within your movement)"], ["Click enemy", "Select; click again to attack (in combat: attack)"], ["Shift", "Run (uses stamina)"], ["Space", "Jump · End Turn in combat"], ["Drag / pinch", "Turn / zoom the camera"], ["Tab", "Cycle targets"], ["1 – 0", "Hotbar"], ["E", "Interact / harvest / talk"], ["Enter", "Speak to the Game Master"], ["I K P T L C J Q O N H B M", "Menus"], ["U", "Hide or show the HUD"], ["Esc", "Close"]].map(function (k) { return <div key={k[0]}><kbd>{k[0]}</kbd><span>{k[1]}</span></div>; })}</div></section>
   </div>;
 }
 
 function TouchControls(p) {
-  var R = React; var base = R.useRef(null); var [knob, setKnob] = R.useState({ x: 0, y: 0 }); var act = R.useRef(null);
+  var R = React; var base = R.useRef(null); var [knob, setKnob] = R.useState({ x: 0, y: 0 }); var act = R.useRef(null); var bt = p.battle;
   function upd(e) { var b = base.current.getBoundingClientRect(); var cx = b.left + b.width / 2, cy = b.top + b.height / 2; var dx = (e.clientX - cx) / (b.width / 2), dy = (e.clientY - cy) / (b.height / 2); var l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } setKnob({ x: dx, y: dy }); var g = p.game.current; if (g) { g.setMove(dx, -dy); g.move.run = l > 0.95; } }
   function end() { setKnob({ x: 0, y: 0 }); var g = p.game.current; if (g) g.setMove(0, 0); act.current = null; }
+  function G() { return p.game.current; }
   return <div className="eTouch">
     <div className="eStick" ref={base} onPointerDown={function (e) { act.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); upd(e); }} onPointerMove={function (e) { if (act.current === e.pointerId) upd(e); }} onPointerUp={end} onPointerCancel={end}><div className="eKnob" style={{ transform: "translate(" + knob.x * 34 + "px," + knob.y * 34 + "px)" }} /></div>
-    <div className="eActs"><button onClick={function () { p.game.current && p.game.current.useSlot(0); }} aria-label="Attack"><Icon n="Sword" s={26} /></button><button onClick={function () { p.game.current && p.game.current.doInteract(); }} aria-label="Interact"><Icon n="Hand" s={22} /></button><button onClick={function () { p.game.current && p.game.current.jump(); }} aria-label="Jump"><Icon n="ArrowUp" s={22} /></button><button onClick={function () { p.game.current && p.game.current.dodge(); }} aria-label="Dodge"><Icon n="Wind" s={22} /></button></div>
+    {bt ? <div className="eActs battle"><button onClick={function () { G() && G().useSlot(0); }} aria-label="Attack"><Icon n="Sword" s={26} /></button><button onClick={function () { G() && G().cycleTarget(); }} aria-label="Next target"><Icon n="Crosshair" s={22} /></button><button className={"end" + (bt.mine ? "" : " off")} onClick={function () { G() && G().useSlot(9); }} aria-label="End turn"><Icon n="Hourglass" s={22} /></button></div>
+      : <div className="eActs"><button onClick={function () { G() && G().useSlot(0); }} aria-label="Attack"><Icon n="Sword" s={26} /></button><button onClick={function () { G() && G().doInteract(); }} aria-label="Interact"><Icon n="Hand" s={22} /></button><button onClick={function () { G() && G().jump(); }} aria-label="Jump"><Icon n="ArrowUp" s={22} /></button><button onClick={function () { G() && G().dodge(); }} aria-label="Dodge"><Icon n="Wind" s={22} /></button><button className="talk" onClick={p.talk} aria-label="Speak to the Game Master"><Icon n="Feather" s={20} />{p.streaming ? <i className="eDot" /> : null}</button></div>}
   </div>;
 }

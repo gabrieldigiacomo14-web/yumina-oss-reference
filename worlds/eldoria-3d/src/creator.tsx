@@ -1,8 +1,9 @@
 // @ts-nocheck
 // Three-step character creator (Identity · Calling · Realm) with a live 3D preview.
 // Writes exactly the state the original creator wrote, plus the 3D avatar.
-import { T, GeoBuilder, prim, M, hex, runeCircleTex, bannerTex, glowTex } from "./three";
-import { makeHumanoid, animateHumanoid, renderPortrait, SKIN_TONES, HAIR_COLORS, HAIR_STYLES, BUILDS, FACE_COUNT, CALLING_LOOK } from "./models";
+import { T, GeoBuilder, prim, M, hex, runeCircleTex, bannerTex, glowTex, makeEnvironment } from "./three";
+import { animateHumanoid, playAction } from "./anim";
+import { makeHumanoid, renderPortrait, SKIN_TONES, HAIR_COLORS, HAIR_STYLES, BUILDS, FACE_COUNT, CALLING_LOOK } from "./models";
 import { buildSettlement } from "./settlements";
 import { paintMap, PLACE_BY_ID, MILE } from "./worldgen";
 import { REALM_STARTS, BACKGROUND_OPTIONS, BACKGROUND_INFO, CLASS_INFO, SPECIES, SPECIES_INFO, titleCase, skillFamily, money, canonicalSettlement, embeddedSublocation } from "./panels";
@@ -29,10 +30,10 @@ function Stage(container) {
   var THREE = T(); this.container = container; var w = container.clientWidth || 600, h = container.clientHeight || 600;
   var r = new THREE.WebGLRenderer({ antialias: true, alpha: false }); r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.setSize(w, h); if (THREE.sRGBEncoding) r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(r.domElement); r.domElement.style.display = "block"; r.domElement.style.touchAction = "none";
-  this.r = r; var scene = this.scene = new THREE.Scene(); scene.background = new THREE.Color(0x7d93aa); scene.fog = new THREE.Fog(0x8fa2b6, 120, 900); r.toneMappingExposure = 0.92;
+  this.r = r; var scene = this.scene = new THREE.Scene(); scene.background = new THREE.Color(0x7d93aa); scene.fog = new THREE.Fog(0x8fa2b6, 120, 900); r.toneMappingExposure = 0.85;
   this.cam = new THREE.PerspectiveCamera(34, w / h, 0.1, 1200); this.yaw = 0.25; this.dist = 7.4; this.pitch = 0.08;
-  scene.add(new THREE.HemisphereLight(0xb8cce8, 0x2a241c, 0.32));
-  var sun = new THREE.DirectionalLight(0xffe6c4, 1.2); sun.position.set(-9, 12, 9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); var sc = sun.shadow.camera; sc.left = -8; sc.right = 8; sc.top = 8; sc.bottom = -8; scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xb8cce8, 0x2a241c, 0.12)); try { scene.environment = makeEnvironment(r, 0x2c3e58, 0x6a7686, 0x262018).texture; } catch (e) { }
+  var sun = new THREE.DirectionalLight(0xffe6c4, 1.0); sun.position.set(-9, 12, 9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); var sc = sun.shadow.camera; sc.left = -8; sc.right = 8; sc.top = 8; sc.bottom = -8; scene.add(sun);
   var rim = new THREE.DirectionalLight(0x9ab8ff, 0.55); rim.position.set(6, 6, -8); scene.add(rim);
   // dais
   var dais = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.7, 0.5, 48), [new THREE.MeshStandardMaterial({ color: 0x4a4846, roughness: 0.9 }), new THREE.MeshStandardMaterial({ map: runeCircleTex(), roughness: 0.75 }), new THREE.MeshStandardMaterial({ color: 0x3a3836 })]);
@@ -95,7 +96,7 @@ export function Creator(props) {
   function set(k, v) { setF(function (x) { var n = Object.assign({}, x); n[k] = v; return n; }); }
   function cyc(k, n, d) { setF(function (x) { var o = Object.assign({}, x); o[k] = ((x[k] + d) % n + n) % n; return o; }); }
   var look = lookFromForm(f);
-  R.useEffect(function () { if (!stageEl.current) return; try { stage.current = new Stage(stageEl.current); } catch (e) { console.error(e); } return function () { stage.current && stage.current.dispose(); stage.current = null; }; }, []);
+  R.useEffect(function () { if (!stageEl.current) return; try { stage.current = new Stage(stageEl.current); window.__eldoriaStage = stage.current; } catch (e) { console.error(e); } return function () { stage.current && stage.current.dispose(); stage.current = null; }; }, []);
   R.useEffect(function () { try { stage.current && stage.current.setLook(look); } catch (e) { console.error(e); } }, [JSON.stringify(look)]);
   R.useEffect(function () { try { stage.current && stage.current.setRealm(f.realm); } catch (e) { console.error(e); } }, [f.realm]);
   // portraits: species heads, face presets, calling cards (debounced as the look changes)

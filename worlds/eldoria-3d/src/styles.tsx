@@ -245,26 +245,117 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .eActs button{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 50% 35%,#3a4250,#101318)!important;border:1px solid #7a8290!important;touch-action:manipulation}
 .eActs button:first-child{width:70px;height:70px;grid-row:span 2;align-self:center;background:radial-gradient(circle at 50% 35%,#5a6270,#14171c)!important}
 
-@media (max-width:1500px){.eDialog{width:min(640px,calc(100vw - 560px));min-width:400px}.eLog{display:none}}
+/* fold buttons and reopen pills: every HUD block can be put away and brought back */
+.eFold{position:absolute;top:3px;right:3px;width:20px;height:20px;display:grid;place-items:center;padding:0!important;border:1px solid rgba(255,255,255,.12)!important;background:rgba(0,0,0,.45)!important;color:#bdb5a2!important;z-index:3;opacity:.55;transition:opacity .2s}
+.eFold:hover,.touch .eFold{opacity:1}
+.ePill{position:absolute;z-index:5;display:flex;align-items:center;gap:6px;height:34px;padding:0 12px!important;border:1px solid #59616c!important;background:rgba(8,10,14,.82)!important;color:#ddd5c3!important;font:600 13px Cinzel,Georgia,serif;letter-spacing:.05em;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+.ePill:hover{border-color:#8fbaf0!important}
+.eQuestPill{top:236px;right:12px}.ePartyPill{left:12px;bottom:16px}.eLogPill{left:12px;bottom:96px}.eShowHud{top:12px;right:12px}
+.ePortrait{padding:0!important;border:0!important;background:none!important;cursor:pointer}
+.ePlayer .eFold{top:4px;right:4px}
+.ePlayer.compact{width:auto;padding:5px 26px 5px 5px;gap:8px}.ePlayer.compact .ePortrait{width:58px;height:58px}.ePlayer.compact .ePName,.ePlayer.compact .eRank{display:none}.ePlayer.compact .ePlayerInfo{width:138px;justify-content:center}.ePlayer.compact .eBar{height:11px}.ePlayer.compact .eBar span{font-size:9.5px;line-height:11px}
+.eWhere{padding-right:30px}.eWhereTools{position:absolute;top:3px;right:3px;display:flex;flex-direction:column;gap:3px}.eWhereTools .eFold{position:static}
+.eWhere.noText{padding:8px 30px 8px 8px}.eWhere.noMini.noText{padding:6px 30px 6px 6px}
+.eCompass{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;padding:0!important;border:1px solid #7d8590!important;background:radial-gradient(circle at 50% 35%,#2a313b,#0b0d11)!important;color:#e6dcc4!important}
+.eCompass span{display:flex;flex-direction:column;align-items:center;line-height:1}.eCompass b{font:700 11px Cinzel,serif;color:#e0b050}
+.eQuick.folded{gap:6px}.eQuick .eRound.fold{width:34px;border-radius:17px}
+.eParty .eFold{top:-24px;right:auto;left:0}.eLog .eFold{position:relative;top:auto;right:auto;align-self:flex-start;pointer-events:auto;margin-bottom:2px}.eLog{pointer-events:none}.eLog .eFold{pointer-events:auto}
+.eWallet{padding-right:30px}
+
+/* turn-based combat */
+.eInit{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:7;display:flex;align-items:stretch;gap:6px;max-width:calc(100vw - 820px);min-width:220px}
+.eRoundNo{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 10px;background:rgba(8,10,14,.85);border:1px solid #6a5a34;color:#e6cf8e;font-family:Cinzel,serif}.eRoundNo small{font-size:10px;letter-spacing:.14em;color:#b9a77a}.eRoundNo b{font-size:22px;line-height:1}
+.eInitRow{display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;padding:2px;scrollbar-width:none}.eInitRow::-webkit-scrollbar{display:none}
+.eChip{position:relative;flex:none;width:62px;display:flex!important;flex-direction:column;align-items:center;gap:3px;padding:4px 3px 3px!important;background:linear-gradient(180deg,rgba(24,27,34,.92),rgba(8,9,12,.92))!important;border:1px solid #4a515c!important;color:#d8d0c0!important;transition:transform .2s}
+.eChip.monster{border-color:#6a3a34!important}.eChip.player{border-color:#4a6a9a!important}
+.eChip.on{transform:translateY(3px) scale(1.08);border-color:#f0c040!important;box-shadow:0 0 14px rgba(240,192,64,.55)}
+.eChip.tgt:not(.on){border-color:#e05040!important}.eChip.dead{opacity:.4;filter:grayscale(1)}
+.eChipP{position:relative;width:40px;height:40px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:radial-gradient(circle at 50% 35%,#3a2a28,#100a0a);border:1px solid rgba(255,255,255,.18)}
+.eChip.player .eChipP{background:radial-gradient(circle at 50% 35%,#2a3a50,#0a0e16)}.eChipP img{width:100%;height:100%;object-fit:cover}
+.eChipX{position:absolute;inset:0;display:grid;place-items:center;color:#e05040;background:rgba(0,0,0,.4)}
+.eChipHp{width:100%;height:4px;background:#2a0c0a;border:1px solid #000}.eChipHp i{display:block;height:100%;background:linear-gradient(90deg,#a02818,#e04a30)}.eChip.player .eChipHp i{background:linear-gradient(90deg,#2a8a3a,#5ad06a)}
+.eChip span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:11px Georgia,serif}
+.eBanner{position:absolute;left:50%;top:26%;transform:translateX(-50%);z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;animation:eBanner 1.5s ease forwards;text-align:center;white-space:nowrap}
+.eBanner b{font:700 46px Cinzel,Georgia,serif;letter-spacing:.08em;color:#efe6d0;text-shadow:0 2px 0 #000,0 0 26px rgba(0,0,0,.9)}.eBanner small{font:16px Georgia,serif;color:#d6ccb6;text-shadow:0 1px 3px #000;margin-top:2px}
+.eBanner.mine b{color:#f2d27a}.eBanner.foe b{color:#ef8a78;font-size:36px}.eBanner.after b{color:#f2d27a;font-size:58px}.eBanner.after{animation-duration:2s}
+@keyframes eBanner{0%{opacity:0;transform:translate(-50%,10px) scale(.92)}12%{opacity:1;transform:translate(-50%,0) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-8px)}}
+.eEcon{display:flex;align-items:center;gap:10px;padding:4px 12px;background:rgba(8,10,14,.86);border:1px solid #4a515c;font:13px Georgia,serif;color:#d8d0c0;white-space:nowrap}
+.eEcon.wait{color:#c9b98a}
+.ePip{display:flex;align-items:center;gap:5px;opacity:.35}.ePip.on{opacity:1}
+.ePip i{display:inline-block;width:12px;height:12px}.ePip.act i{border-radius:50%;background:#4ac060;box-shadow:0 0 6px #4ac060}.ePip.bon i{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #e8962a;filter:drop-shadow(0 0 4px #e8962a)}.ePip.rea i{transform:rotate(45deg) scale(.8);background:#a46ae0;box-shadow:0 0 6px #a46ae0}
+.eMove{display:flex;align-items:center;gap:6px;color:#e8d070}.eMoveBar{display:inline-block;width:90px;height:7px;background:#2a2410;border:1px solid #000}.eMoveBar i{display:block;height:100%;background:linear-gradient(90deg,#b08a20,#f0d060)}.eMove b{font-weight:600;min-width:44px}
+.eCost{position:absolute;top:3px;left:3px;width:9px;height:9px;pointer-events:none}.eCost.action{border-radius:50%;background:#4ac060;box-shadow:0 0 4px #4ac060}.eCost.bonus{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:9px solid #e8962a}
+.eSlot.end{background:radial-gradient(circle at 50% 35%,#a08030,#2a1e08)!important}
+.eEndTurn{position:absolute;bottom:78px;right:16px;z-index:6;width:86px;height:86px;border-radius:50%;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0!important;border:2px solid #c9a85a!important;background:radial-gradient(circle at 50% 35%,#6a5520,#1a1408)!important;color:#f6e6b6!important;font:700 11px Cinzel,serif;letter-spacing:.06em;box-shadow:0 0 0 2px #000,0 0 22px rgba(201,168,90,.45)}
+.eEndTurn.off{filter:grayscale(.9) brightness(.6);box-shadow:0 0 0 2px #000}
+.eTip{position:fixed;z-index:12;pointer-events:none;width:230px;padding:7px 10px;background:linear-gradient(180deg,rgba(22,25,31,.96),rgba(8,9,12,.96));border:1px solid #6a717c;box-shadow:0 6px 20px rgba(0,0,0,.6);font:13px Georgia,serif;color:#e0d8c6;display:flex;flex-direction:column;gap:3px}
+.eTip b{font:600 15px Cinzel,Georgia,serif}.eTip small{color:#a8a08e;font-size:12px}.eTip em{color:#a8a08e;font-style:normal}
+.eTip.small{width:auto;max-width:240px;flex-direction:column}.eTip .ok{color:#9fe07a}.eTip .bad,.eTipNote.bad{color:#f08a7a}
+.eTipRow{display:flex;align-items:center;gap:8px}.eHit{font:700 20px Georgia,serif}.eHit.good{color:#8fe07a}.eHit.mid{color:#f0d060}.eHit.bad{color:#f08a7a}
+.eTipNote{color:#e8d070;font-size:12.5px}.eTipHint{color:#8a9ab0!important;font-style:italic}
+.inBattle .eTarget{display:none}.inBattle .eLog{opacity:1;bottom:136px}.inBattle .eLogPill{bottom:136px}.inBattle .eWallet{display:none}
+
+@media (max-width:1500px){.eDialog{width:min(640px,calc(100vw - 560px));min-width:400px}.eInit{max-width:calc(100vw - 700px)}}
 @media (max-width:1100px),(max-height:700px){
  .ePlayer{width:290px;padding:6px}.ePortrait{width:72px;height:72px}.ePName b{font-size:18px}
- .eMenuToggle{display:grid!important;top:100px}.eMenu{top:144px;width:220px}.eMenu button{font-size:14px;padding:5px 8px}
- .eWhereText{display:none}.eMini{width:130px;height:130px}.eQuests{top:166px;width:250px;font-size:14px}
+ .eMenuToggle{display:grid!important;top:100px}.eMenu{top:144px;width:220px;max-height:calc(100vh - 260px);overflow:auto}.eMenu button{font-size:14px;padding:5px 8px}
+ .eMini{width:130px;height:130px}.eWhereText{width:150px}.eWhereText h3{font-size:16px}.eQuests{top:166px;width:250px;font-size:14px}.eQuestPill{top:166px}
  .eSlot{width:44px;height:44px}.eSlot svg{width:20px;height:20px}
  .eDialog{left:8px;right:8px;transform:none;width:auto;min-width:0;bottom:80px;max-height:50vh}
  .eQuick .eRound{width:42px;height:42px}.eWallet{bottom:62px}
- .eParty{display:none}
+ .eInit{top:auto;bottom:128px;max-width:calc(100vw - 24px)}.eEndTurn{bottom:62px;width:70px;height:70px}.eLog{left:12px;bottom:140px;width:min(420px,60vw)}.eLogPill{bottom:140px}
+}
+/* phones: portrait and landscape share the compact pieces */
+@media (max-width:700px),(max-height:500px){
+ .eMenuToggle{display:grid!important;width:40px;height:40px}
+ .eMenu{position:absolute;inset:auto 6px 6px 6px!important;top:auto!important;width:auto!important;max-height:60vh;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px;z-index:15;overflow:auto;padding:8px}
+ .eMenu .eSep{display:none}.eMenu button{font-size:14px;padding:9px 8px;border:1px solid rgba(255,255,255,.06)!important}
+ .eWinBack{place-items:stretch}.eWin,.eWinBack.wide .eWin{width:100vw!important;height:100%!important;max-height:100%!important}.eWinHead{padding:6px 8px;gap:8px;flex-wrap:wrap}
+ .eWinHead h2{font-size:17px}.eTabs{order:3;width:100%;overflow-x:auto;display:flex;margin-left:0}.eTabs button{padding:4px 8px;font-size:12px;white-space:nowrap}
+ .eDialog{left:6px;right:6px;bottom:auto;top:auto;max-height:52vh}.eDlgHead .eLink span{display:none}
+ .eNpcMenu{left:auto;right:8px;top:22%}
+ .eTalkBtn{display:none}
+ .ePrompt{font-size:14px;padding:6px 12px!important}
+ .eEndTurn{display:none!important}
+ .eTip{width:200px;font-size:12px}.eHit{font-size:17px}
+ .eBanner b{font-size:32px}.eBanner.foe b{font-size:24px}.eBanner.after b{font-size:40px}.eBanner small{font-size:13px}
+ .eQuick .eRound{width:38px;height:38px}
+ .eTouch .eActs button.talk{position:absolute;right:0;top:-58px;width:44px;height:44px}
+ .eActs.battle button.end{background:radial-gradient(circle at 50% 35%,#6a5520,#1a1408)!important;border-color:#c9a85a!important;color:#f6e6b6!important}.eActs.battle button.end.off{filter:grayscale(.9) brightness(.6)}
 }
 @media (max-width:700px){
- .ePlayer{width:calc(100vw - 166px);top:6px;left:6px}.ePortrait{width:54px;height:54px}.eRank{display:none}
- .eWhere{top:6px;right:6px;padding:6px}.eMini{width:116px;height:116px}
- .eQuests{display:none}.eQuick{right:6px;bottom:6px;gap:4px}.eQuick .eRound{width:38px;height:38px}
- .eHotbar{bottom:52px}.eSlot{width:32px;height:32px}.eSlot svg{width:16px;height:16px}.eSlots{gap:2px;padding:3px}
- .eWallet{left:6px;right:auto;top:84px;bottom:auto;font-size:12.5px;gap:10px;padding:4px 8px}.eMenuToggle{top:120px!important}.eMenu{top:162px!important}
- .eTalkBtn{bottom:96px}.ePrompt{bottom:136px}.eNpcMenu{left:auto;right:8px;top:30%}
- .eTouch{bottom:96px}.eStick{left:12px;bottom:8px;width:104px;height:104px}.eKnob{left:30px;top:30px}.eActs{right:8px;bottom:12px;grid-template-columns:repeat(2,50px)}.eActs button{width:50px;height:50px}.eActs button:first-child{width:60px;height:60px}
+ .ePlayer,.ePlayer.compact{top:6px;left:6px;width:auto;padding:4px 24px 4px 4px;gap:6px}.ePlayer .ePortrait{width:48px;height:48px}.ePName,.eRank{display:none}.ePlayerInfo{width:118px;justify-content:center}.eBar{height:11px}.eBar span{font-size:9px;line-height:11px}.eBars{gap:2px}
+ .eMenuToggle{top:66px!important;left:6px}
+ .eWhere{top:6px;right:6px;padding:4px 26px 4px 4px}.eWhere .eWhereText{display:none}.eWhereTools .eFold:first-child{display:none}.eMini{width:96px;height:96px}.eCard{font-size:10px}
+ .eQuests{top:112px;right:6px;width:min(250px,64vw);font-size:13px}.eQuestPill{top:112px;right:6px}.ePartyPill{left:6px;top:112px;bottom:auto}.eLogPill{left:6px;top:152px;bottom:auto}
+ .eParty{display:none}
+ .eLog{left:6px;right:6px;width:auto;bottom:200px}.eLogL{font-size:11.5px}
+ .eHotbar{bottom:6px;left:6px;right:6px;transform:none}.eSlots{gap:2px;padding:3px;justify-content:center}.eSlot{width:calc((100vw - 34px) / 10);height:calc((100vw - 34px) / 10);max-width:44px;max-height:44px}.eSlot svg{width:16px;height:16px}.eSlot kbd{display:none}.eRes{font-size:12px}
+ .eEcon{gap:6px;padding:3px 8px;font-size:11.5px;flex-wrap:wrap;justify-content:center}.eMoveBar{width:54px}
+ .eWallet{display:none}
+ .eQuick{right:6px;bottom:auto;top:112px;flex-direction:column}.eQuick.folded{top:auto;bottom:auto;top:108px}
+ .eQuestPill,.eQuests{right:52px}
+ .eInit{top:62px;bottom:auto;left:6px;right:6px;transform:none;max-width:none;min-width:0}.eChip{width:50px}.eChipP{width:32px;height:32px}.eRoundNo{padding:2px 6px}.eRoundNo b{font-size:18px}
+ .inBattle .eMenuToggle,.inBattle .eQuests,.inBattle .eQuestPill,.inBattle .ePartyPill{display:none!important}
+ .eTouch{bottom:62px}.eStick{left:10px;bottom:14px;width:104px;height:104px}.eKnob{left:30px;top:30px}.eActs{right:8px;bottom:14px;grid-template-columns:repeat(2,50px);gap:8px}.eActs button{width:50px;height:50px}.eActs button:first-child{width:60px;height:60px}
+ .ePrompt{bottom:190px}.eDialog{bottom:64px}
  .eMap{flex-direction:column}.eMapTitle p,.eBeyond{display:none}.eMapSide{width:auto;max-height:34%;border-left:0;border-top:1px solid rgba(255,255,255,.08)}
- .eTabs{margin-left:4px}.eTabs button{padding:4px 6px;font-size:12px}.eWinHead h2{font-size:17px}
+}
+@media (max-height:500px) and (min-width:701px){
+ .ePlayer,.ePlayer.compact{top:6px;left:6px;padding:4px 24px 4px 4px;width:auto}.ePlayer .ePortrait{width:46px;height:46px}.ePName,.eRank{display:none}.ePlayerInfo{width:130px;justify-content:center}.eBar{height:11px}.eBar span{font-size:9px;line-height:11px}
+ .eMenuToggle{top:6px!important;left:206px}
+ .eWhere{top:6px;right:6px;padding:4px 26px 4px 4px}.eWhereText{width:150px}.eMini{width:92px;height:92px}
+ .eQuests{top:6px;right:auto;left:256px;width:250px;max-height:50vh;overflow:auto;font-size:13px}.eQuestPill{top:6px;right:auto;left:256px}.ePartyPill{top:6px;left:320px;bottom:auto}.eLogPill{top:6px;left:384px;bottom:auto}
+ .eParty{display:none}
+ .eLog{left:150px;bottom:62px;width:min(380px,40vw)}
+ .eHotbar{bottom:4px}.eSlot{width:36px;height:36px}.eSlot svg{width:17px;height:17px}.eSlot kbd{display:none}.eSlots{gap:2px;padding:3px}
+ .eEcon{padding:2px 8px;font-size:11.5px}.eMoveBar{width:54px}
+ .eWallet{display:none}
+ .eQuick{right:6px;bottom:auto;top:110px;flex-direction:column}.eQuick .eRound{width:36px;height:36px}
+ .eInit{top:6px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 600px)}.eChip{width:48px}.eChipP{width:30px;height:30px}.eChip span{display:none}
+ .eTouch{bottom:58px}.eStick{left:12px;bottom:0;width:100px;height:100px}.eKnob{left:28px;top:28px}.eActs{right:56px;bottom:0;grid-template-columns:repeat(2,48px);gap:8px}.eActs button{width:48px;height:48px}.eActs button:first-child{width:56px;height:56px}
+ .ePrompt{bottom:66px}.eDialog{bottom:52px;left:140px;right:140px;max-height:70vh}
+ .eBanner{top:20%}
 }
 `;
 export var CSS = ORIGINAL_CSS + THEME;

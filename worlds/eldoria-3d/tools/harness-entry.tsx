@@ -16,7 +16,7 @@ async function main() {
   const state: any = { vars, messages: [], isStreaming: false, streamingContent: "", pendingChoices: [], toasts: [], audio: [], sent: [] };
   window.__state = state;
   const emit = () => listeners.forEach((f) => f());
-  const store: Record<string, string> = {};
+  const store: Record<string, any> = (() => { try { return JSON.parse(localStorage.getItem("harnessStore") || "{}"); } catch { return {}; } })();
   function useYumina() {
     const [, setN] = React.useState(0);
     React.useEffect(() => { const f = () => setN((n) => n + 1); listeners.add(f); return () => { listeners.delete(f); }; }, []);

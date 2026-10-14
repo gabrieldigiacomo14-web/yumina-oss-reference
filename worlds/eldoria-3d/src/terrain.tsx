@@ -253,7 +253,7 @@ Environment.prototype.update = function (dt, center, minutes, weather, region, b
   this.sun.position.set(center.x + lightDir.x * 300, center.y + lightDir.y * 300, center.z + lightDir.z * 300); this.sun.target.position.set(center.x, center.y, center.z);
   this.sun.intensity = elev > -0.08 ? (0.25 + day * 1.55) * (1 - overcast * 0.55) : 0.22; this.sun.color.setRGB(1, 0.8 + day * 0.15, 0.62 + day * 0.32);
   if (elev <= -0.08) this.sun.color.setRGB(0.55, 0.65, 0.95);
-  this.hemi.intensity = 0.28 + day * 0.5; this.hemi.color.copy(U.horizon.value).lerp(new THREE.Color(0xffffff), 0.4); this.hemi.groundColor.setRGB(0.25 + day * 0.1, 0.22 + day * 0.08, 0.18);
+  this.hemi.intensity = 0.12 + day * 0.22; this.hemi.color.copy(U.horizon.value).lerp(new THREE.Color(0xffffff), 0.4); this.hemi.groundColor.setRGB(0.25 + day * 0.1, 0.22 + day * 0.08, 0.18);
   this.sky.position.copy(center); this.stars.position.copy(center); this.stars.material.opacity = Math.max(0, 1 - day * 1.6) * (1 - overcast);
   this.moon.position.set(center.x - lightDir.x * 1500, center.y + Math.max(200, -elev * 900 + 300), center.z - lightDir.z * 1500); this.moon.material.opacity = Math.max(0, 1 - day * 1.4);
   this.clouds.position.set(center.x, 0, center.z); this.clouds.rotation.y += dt * 0.002; this.clouds.children.forEach(function (c) { c.material.opacity = (0.35 + overcast * 0.55) * (0.3 + day * 0.7); c.material.color.copy(U.horizon.value).lerp(new THREE.Color(0xffffff), 0.5 * day); });

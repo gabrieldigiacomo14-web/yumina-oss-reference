@@ -100,6 +100,12 @@ export function monsterAttack(mon, v, opts) {
   var final = Math.max(0, raw - dr - (opts.block || 0));
   return { hit: true, damage: final, line: line + " — hit. " + raw + " damage" + (dr ? " − " + dr + " DR" : "") + (opts.block ? " − " + opts.block + " blocked" : "") + " = " + final + ")", atk: atk };
 }
+// Odds of 3d6 meeting a target number (for hover previews), and the fixed parts of each roll.
+var SUM3D6 = [1, 3, 6, 10, 15, 21, 25, 27, 27, 25, 21, 15, 10, 6, 3, 1];
+export function chance3d6(need) { if (need <= 3) return 1; if (need > 18) return 0; var n = 0; for (var t = need; t <= 18; t++) n += SUM3D6[t - 3]; return n / 216; }
+export function attackBonus(v) { var a = obj(v.attributes); var w = weaponProfile(v); var attr = w.ranged || w.finesse ? "agility" : "strength"; return attrMod(a[attr]) + skillBonus(skillLevel(v, w.skill)) + w.accuracy; }
+export function spellBonus(v, spell) { var a = obj(v.attributes); var school = slug(spell.school || "arcane"); return attrMod(a.arcana) + skillBonus(Math.max(skillLevel(v, school + "-magic"), skillLevel(v, "arcana"), skillLevel(v, school))); }
+export function damageText(v, mon) { var a = obj(v.attributes); var w = weaponProfile(v); var strMod = attrMod(a.strength); var strC = w.ranged ? 0 : w.finesse ? Math.max(0, Math.floor(strMod / 2)) : w.heavy ? Math.floor(strMod * 1.5) : strMod; var flat = w.dice[2] + strC; var lo = Math.max(0, w.dice[0] + flat - (mon ? mon.dr : 0)), hi = Math.max(0, w.dice[0] * w.dice[1] + flat - (mon ? mon.dr : 0)); return { dice: w.dice[0] + "d" + w.dice[1] + (flat ? (flat > 0 ? "+" : "−") + Math.abs(flat) : ""), lo: lo, hi: hi }; }
 function signed(n, label) { if (!n) return ""; return (n > 0 ? " +" : " −") + Math.abs(n) + " " + label; }
 
 // ------------------------------------------------------------------ rewards
