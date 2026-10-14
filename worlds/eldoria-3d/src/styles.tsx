@@ -299,7 +299,7 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 @media (max-width:1100px),(max-height:700px){
  .ePlayer{width:290px;padding:6px}.ePortrait{width:72px;height:72px}.ePName b{font-size:18px}
  .eMenuToggle{display:grid!important;top:100px}.eMenu{top:144px;width:220px;max-height:calc(100vh - 260px);overflow:auto}.eMenu button{font-size:14px;padding:5px 8px}
- .eMini{width:130px;height:130px}.eWhereText{width:150px}.eWhereText h3{font-size:16px}.eQuests{top:166px;width:250px;font-size:14px}.eQuestPill{top:166px}
+ .eMini{width:130px;height:130px}.eWhereText{width:150px}.eWhereText h3{font-size:16px}.eQuests{top:236px;width:250px;font-size:14px}.eQuestPill{top:236px}
  .eSlot{width:44px;height:44px}.eSlot svg{width:20px;height:20px}
  .eDialog{left:8px;right:8px;transform:none;width:auto;min-width:0;bottom:80px;max-height:50vh}
  .eQuick .eRound{width:42px;height:42px}.eWallet{bottom:62px}
