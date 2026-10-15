@@ -310,10 +310,10 @@ Game.prototype.pace = function (raw) {
   if (Math.abs(next - cur) > 0.001) { this.renderScale = next; r.setPixelRatio(next); r.setSize(this.container.clientWidth, this.container.clientHeight); }
   else this.renderScale = cur;
 };
-// Camera collision against the buildings of nearby settlements, through a bounding volume hierarchy (three-mesh-bvh) built
+// Camera collision against the buildings of nearby settlements (exploration only: the tactical battle camera keeps its view), through a bounding volume hierarchy (three-mesh-bvh) built
 // for each settlement's merged shell, one at a time when the player comes within reach. The camera pulls in quickly when a
 // wall comes between it and the player and eases back out.
-Game.prototype.camCollide = function (head, want) {
+Game.prototype.camCollide = function (head, want, dt) {
   var THREE = T(); var self = this, px = this.pos.x, pz = this.pos.z; if (!this._cray) { this._cray = new THREE.Ray(); this._cdir = new THREE.Vector3(); }
   var dir = this._cdir.set(Math.sin(this.camYaw) * Math.cos(this.camPitch), Math.sin(this.camPitch), Math.cos(this.camYaw) * Math.cos(this.camPitch));
   var free = want, built = false;
@@ -321,7 +321,7 @@ Game.prototype.camCollide = function (head, want) {
     if (!s.bvh) { if (built || s.bvhFailed) continue; built = true; try { s.bvh = new (bvhLib().MeshBVH)(s.solid, { maxLeafTris: 12 }); } catch (e) { s.bvhFailed = true; console.error(e); } continue; }
     this._cray.origin.set(head.x, head.y + 0.2, head.z); this._cray.direction.copy(dir); var hit = s.bvh.raycastFirst(this._cray, THREE.DoubleSide); if (hit && hit.distance < free) free = hit.distance; }
   var target = free < want ? Math.max(0.9, free - 0.35) : want; var cur = this.camColD == null ? want : this.camColD;
-  cur = target < cur ? target : cur + (target - cur) * 0.08; this.camColD = Math.min(cur, want); return this.camColD;
+  cur = target < cur ? target : cur + (target - cur) * (1 - Math.exp(-(dt || 0.016) * 4)); this.camColD = Math.min(cur, want); return this.camColD;
 };
 function lerpAngle(a, b, t) { var d = Math.atan2(Math.sin(b - a), Math.cos(b - a)); return a + d * Math.min(1, t); }
 
@@ -929,7 +929,7 @@ Game.prototype.frame = function (dt) {
   if (b) { fy = this.pos.y + 1.4; var act = b.active && b.active.m && !b.active.m.dead ? b.active.m : null; if (act) { fx = act.x * 0.6 + this.pos.x * 0.4; fy = act.y * 0.6 + this.pos.y * 0.4 + 1.3; fz = act.z * 0.6 + this.pos.z * 0.4; } }
   if (!this.camF) this.camF = new THREE.Vector3(fx, fy, fz); var kf = 1 - Math.exp(-dt * (b ? 3.2 : 14)); this.camF.x += (fx - this.camF.x) * kf; this.camF.y += (fy - this.camF.y) * kf; this.camF.z += (fz - this.camF.z) * kf;
   var head = this.camF;
-  var cd = this.camCollide(head, this.camDist); var cx = head.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * cd, cz = head.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * cd, cy = head.y + Math.sin(this.camPitch) * cd;
+  var cd = b ? this.camDist : this.camCollide(head, this.camDist, dt); /* the tactical battle view keeps its height and distance */ var cx = head.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * cd, cz = head.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * cd, cy = head.y + Math.sin(this.camPitch) * cd;
   var cg = this.terrain.groundAt(cx, cz) + 0.6; if (cy < cg) cy = cg;
   var side = b ? 0 : 0.55; cx += Math.cos(this.camYaw) * side; cz -= Math.sin(this.camYaw) * side;
   this.camera.position.set(cx, cy, cz); this.camera.lookAt(head.x + Math.cos(this.camYaw) * side, head.y + (b ? 0 : 0.35), head.z - Math.sin(this.camYaw) * side);
