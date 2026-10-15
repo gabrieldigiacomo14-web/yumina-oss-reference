@@ -318,11 +318,16 @@ function Settings(p) {
 
 // Action buttons fire on touch-down, not on click: a browser does not synthesise a click for a tap made while another finger is
 // already down (the stick), so onClick alone makes buttons dead while moving. The click that follows a single touch is ignored.
-var tapEl = null, tapAt = 0;
+var tapAt = 0;
+function swallowGhostClick() {
+  // the click a touch produces lands wherever the finger is when it lifts - possibly on something the tap just opened
+  var h = function (ev) { ev.stopPropagation(); ev.preventDefault(); window.removeEventListener("click", h, true); };
+  window.addEventListener("click", h, true); setTimeout(function () { window.removeEventListener("click", h, true); }, 700);
+}
 function tapOn(fn) {
   return {
-    onPointerDown: function (e) { if (e.pointerType === "touch" || e.pointerType === "pen") { tapEl = e.currentTarget; tapAt = Date.now(); fn(e); } },
-    onClick: function (e) { if (tapEl === e.currentTarget && Date.now() - tapAt < 900) { tapEl = null; return; } fn(e); }
+    onPointerDown: function (e) { if (e.pointerType === "touch" || e.pointerType === "pen") { tapAt = Date.now(); swallowGhostClick(); fn(e); } },
+    onClick: function (e) { if (Date.now() - tapAt < 800) return; /* the click that follows a touch we already handled */ fn(e); }
   };
 }
 function TouchControls(p) {

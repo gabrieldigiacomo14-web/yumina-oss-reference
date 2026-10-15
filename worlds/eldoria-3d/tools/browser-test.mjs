@@ -20,6 +20,7 @@ window.T = {
   results: [],
   check(name, ok, detail) { T.results.push({ name, ok: !!ok, detail: detail === undefined ? "" : String(detail) }); },
   mon(name) { return [].concat(...Object.values(T.X().R.BESTIARY_BY_REGION)).find((m) => m.name === name); },
+  field() { const g = T.g(); const sp = T.X().WG.safeSpawn(3000, -2200); g.pos.x = sp.x; g.pos.z = sp.z; g.terrain.warm(sp.x, sp.z, 1); g.loadSettlements(true); g.pos.y = g.terrain.groundAt(sp.x, sp.z); g.camF = null; g.vy = 0; g.autoMove = null; (g.allies || []).forEach((a) => { a.x = sp.x + 2; a.z = sp.z + 2; }); },
   clear() { const g = T.g(); g.monsters.forEach((m) => g.scene.remove(m.c.root)); g.monsters = []; g.spawnMonsters = function () {}; },
   spawn(name, dx, dz, o) { const g = T.g(); const m = g.addMonster(T.mon(name), g.pos.x + dx, g.pos.z + dz, "t" + Math.random().toString(36).slice(2)); m.passive = true; m.t = 1e9; if (o) Object.assign(m, o); return m; },
   stable() { const g = T.g(); const b = g.battle; return !!b && !b.script && !b.queue.length; },
@@ -39,7 +40,7 @@ window.T = {
 // ---------------------------------------------------------------- scenarios (run inside the page)
 export const SCENARIOS = {
   movement: { fx: () => fixture(), fn: `
-    const g = T.g(); T.noRender(); T.clear(); g.inCombat = false; await T.sleep(1500);
+    const g = T.g(); T.noRender(); T.clear(); g.inCombat = false; T.field(); await T.sleep(1500);
     // camera-relative movement: displacement projected on the camera's own right/forward axes (camera looks from +(sin,cos)*d toward the player)
     async function push(yaw, mx, my, how) {
       g.camYaw = yaw; g.camF = null; await T.sleep(200); const x0 = g.pos.x, z0 = g.pos.z;
@@ -170,7 +171,7 @@ export const SCENARIOS = {
     const mm = await rect(".eWhere"); const yawA = await q("T.g().camYaw"); await ev("touchStart", [{ x: mm.x, y: mm.y, id: 1 }]); for (let i = 1; i <= 5; i++) await ev("touchMove", [{ x: mm.x - i * 20, y: mm.y + i * 5, id: 1 }]); await ev("touchEnd", []);
     check("dragging across the HUD does not turn the camera", Math.abs((await q("T.g().camYaw")) - yawA) < 0.02, yawA + " -> " + (await q("T.g().camYaw")));
   } },
-  "ui-shots": { fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
+  "ui-shots": { manual: true, fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
     const { page } = ctx; const q = (js) => page.evaluate(js); const sizes = (process.env.UI_SIZES || "844x390,667x375,932x430,844x340").split(",").map((z) => z.split("x").map(Number));
     await q("T.noRender(); T.clear(); T.g().spawnMonsters = function () {}; 1"); if (process.env.UI_INSETS) await page.addStyleTag({ content: ".eGame{--sl:47px!important;--sr:47px!important;--sb:21px!important;--st:0px!important}" });
     for (const [w, h] of sizes) {
@@ -188,7 +189,7 @@ export const SCENARIOS = {
       await page.keyboard.press("Escape"); await q("T.X().C.finish(T.g(), 'won'); 1"); await page.waitForTimeout(400);
     }
   } },
-  "shot-world": { fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
+  "shot-world": { manual: true, fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
     const { page } = ctx; await page.waitForTimeout(800);
     const shots = [];
     async function look(name, setup) { await page.evaluate(setup); await page.waitForTimeout(2500); await page.screenshot({ path: path.join(ctx.shots || "/tmp", name + ".png") }); }
@@ -345,6 +346,7 @@ export const SCENARIOS = {
   ` },
   party: { fx: () => fixture({ companions: COMPANIONS, party: ["mira", "tarn"], equipment: {} }), fn: `
     const g = T.g(); T.noRender(); T.clear(); const B = T.X().B;
+    await T.until(() => g.allies.length === 2, 8000, "allies spawn"); T.field(); await T.sleep(300);
     await T.until(() => g.allies.length === 2, 8000, "allies spawn"); T.check("two companions are in the world from the party variable", g.allies.length === 2 && g.allies.map((a) => a.name).join() === "Mira Vale,Tarn Holt");
     const mira = g.allies[0], tarn = g.allies[1]; T.check("their stats come from the companion records", mira.maxHp === 26 && tarn.sheet.attributes.strength === 14 && T.X().R.weaponProfile(tarn.sheet).kind === "sword");
     const d0 = Math.hypot(tarn.x - g.pos.x, tarn.z - g.pos.z); T.check("they follow the player", d0 < 12, d0.toFixed(1));
@@ -613,7 +615,7 @@ async function desktopFlow(ctx) {
 const browser = await chromium.launch({ executablePath: process.env.CHROME || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 let failed = 0, total = 0;
 for (const [name, sc] of Object.entries(SCENARIOS)) {
-  if (only.length && !only.includes(name)) continue;
+  if (only.length ? !only.includes(name) : sc.manual) continue;
   const vp = sc.viewport || { width: 480, height: 270 }; const page = await browser.newPage({ viewport: vp, hasTouch: !!sc.touch, isMobile: !!sc.touch }); const errors = [];
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message + " " + (e.stack || "").split("\n").slice(0, 3).join(" | "))); page.on("console", (m) => { if (m.type() === "error" && !/404/.test(m.text())) errors.push(m.text().slice(0, 300)); });
   await page.addInitScript(PRE);
