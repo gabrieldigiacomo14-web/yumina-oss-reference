@@ -1,27 +1,26 @@
 // @ts-nocheck
 // Turn-based encounters in the manner of Baldur's Gate 3. Exploration runs in real time;
 // the moment a hostile notices you, or you strike first, the world drops into rounds.
-// Everyone rolls initiative (3d6 + Agility for you, 3d6 + Threat for monsters). On your
-// turn you have an Action, a Bonus Action, a Reaction and 9 m (30 ft) of movement. Each
-// round is six seconds of world time. Monsters take their turns through small scripted
-// sequences (generators) so movement, swings, impacts and reactions play out in order.
+// Everyone rolls initiative (3d6 + Agility for you and your companions, 3d6 + Threat for
+// monsters, per the Combat entry). On your turn you have an Action, a Bonus Action, a
+// Reaction and 9 m (30 ft) of movement. Each round is six seconds of world time. Monsters
+// and companions take their turns through scripts (ai.tsx) so movement, swings, impacts and
+// reactions play out in order. The whole encounter is saved so a reload resumes it exactly.
 import { T } from "./three";
-import { MILE, landSD } from "./worldgen";
 import { playAction, attackClip, CLIPS } from "./anim";
 import * as R from "./rules";
+import * as B from "./cbase";
+import * as AI from "./ai";
+import * as SC from "./spellcast";
 
-export var MOVE_M = 9;
-export var ROUND_SEC = 6;
+export var MOVE_M = AI.MOVE_M;
+export var ROUND_SEC = B.ROUND_SEC;
 var JOIN_R = 24, ESCAPE_R = 30;
-
-function dist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
-function lerpAngle(a, b, t) { var d = Math.atan2(Math.sin(b - a), Math.cos(b - a)); return a + d * Math.min(1, t); }
-
-// ------------------------------------------------------------------ geometry of a fight
-export function radius(m) { var a = m.c.arch, s = m.c.size || 1; return a === "humanoid" ? 0.42 : a === "brute" ? 0.62 : a === "winged" ? 0.5 + s * 0.45 : a === "serpent" ? 0.4 + s * 0.35 : a === "wisp" ? 0.45 : 0.3 + s * 0.33; }
-export function monsterReach(m) { return radius(m) + 0.4 + 1.5; }
-export function playerReach(g, m, w) { w = w || R.weaponProfile(g.v); return radius(m) + 0.4 + (w.ranged ? 30 : w.kind === "spear" ? 2.4 : 1.6); }
-export function moveOf(m) { var a = m.c.arch; return a === "canine" || a === "winged" ? 12 : a === "brute" ? 7.5 : a === "bug" ? 10 : a === "serpent" ? 8 : 9; }
+export var dist = B.dist;
+export var radius = B.radius;
+export function monsterReach(m) { return AI.meleeReach(m, { kind: "player" }); }
+export function playerReach(g, m, w) { w = w || R.weaponProfile(g.v); return AI.weaponReach(w, m); }
+export var moveOf = AI.moveOf;
 function encumbrance(g) { var e = g.v.encumbrance; return e === "Overloaded" ? 0.5 : e === "Heavily Encumbered" ? 0.7 : 1; }
 
 // ------------------------------------------------------------------ state queries
@@ -40,14 +39,14 @@ export function spend(g, cost) { if (g.battle && cost) g.battle.econ[cost] = 0; 
 // ------------------------------------------------------------------ scripts
 export function run(g, gen, front) { var b = g.battle; if (!b) { drain(gen); return; } if (!b.script) { b.script = gen; b.sw = 0; } else if (front) b.queue.unshift(gen); else b.queue.push(gen); }
 // outside a battle a script just runs instantly (no waits), so callers need not care
-function drain(gen) { try { var r; var n = 0; do { r = gen.next(); } while (!r.done && n++ < 400); } catch (e) { console.error(e); } }
+export function drain(gen) { try { var r; var n = 0; do { r = gen.next(); } while (!r.done && n++ < 400); } catch (e) { console.error(e); } }
 function tick(g, dt) {
   var b = g.battle; var guard = 0;
   while (b && b.script && guard++ < 20) {
     if (typeof b.sw === "function") { if (!b.sw()) return; b.sw = 0; }
     else if (b.sw > 0) { b.sw -= dt; if (b.sw > 0) return; b.sw = 0; }
     var r; try { r = b.script.next(); } catch (e) { console.error(e); r = { done: true }; }
-    if (r.done) { b.script = b.queue.length ? b.queue.shift() : null; b.sw = 0; if (checkEnd(g)) return; b = g.battle; continue; }
+    if (r.done) { b.script = b.queue.length ? b.queue.shift() : null; b.sw = 0; b.dirtySave = true; if (checkEnd(g)) return; b = g.battle; continue; }
     b.sw = r.value || 0; return;
   }
 }
@@ -58,13 +57,14 @@ export function engage(g, m, opts) {
   if (g.battle) { if (!m.inBattle) join(g, m, false); return; }
   startBattle(g, m, opts || {});
 }
+function newBattle(g, opts) { return { round: 1, order: [], idx: -1, active: null, script: null, queue: [], sw: 0, next: null, wait: 0, econ: { action: 0, bonus: 0, move: 0, moveMax: MOVE_M }, reaction: 1, banner: { text: "Combat", sub: "Roll for initiative", t: 0 }, pending: (opts && opts.pending) || null, t: 0, zones: [], zid: 0, startCount: {}, saveT: 0, dirtySave: true }; }
 export function startBattle(g, opener, opts) {
-  opts = opts || {};
-  g.endTalk && g.endTalk(); g.autoMove = null;
-  var b = g.battle = { round: 1, order: [], idx: -1, active: null, script: null, queue: [], sw: 0, next: null, wait: 0, econ: { action: 0, bonus: 0, move: 0, moveMax: MOVE_M }, reaction: 1, banner: { text: "Combat", sub: "Roll for initiative", t: 0 }, pending: opts.pending || null, t: 0 };
+  opts = opts || {}; g.endTalk && g.endTalk(); g.autoMove = null; g.tgt = null;
+  var b = g.battle = newBattle(g, opts); g.pe.st = []; g.pe.dodging = false;
   g.beginEncounter(opener);
   var ag = R.attrMod((g.v.attributes || {}).agility); var pr = R.roll3d6();
-  b.order.push({ kind: "player", id: "player", name: g.v["player-name"] || "You", roll: pr.total + ag, init: pr.total + ag + (opts.playerFirst ? 100 : 0), surprise: !!opts.playerFirst });
+  b.order.push({ kind: "player", id: "player", e: g.pe, name: g.v["player-name"] || "You", roll: pr.total + ag, init: pr.total + ag + (opts.playerFirst ? 100 : 0), surprise: !!opts.playerFirst });
+  (g.allies || []).forEach(function (a) { if (a.dead || a.gone || dist(a, g.pos) > 60) return; joinAlly(g, a, true); });
   g.monsters.forEach(function (m) {
     if (m.dead || m.inBattle || m.fled) return;
     var near = m === opener || (!m.passive && !(m.calmUntil > g.time) && (dist(m, g.pos) < JOIN_R || (opener && m.mon.id === opener.mon.id && dist(m, opener) < 14)));
@@ -73,36 +73,45 @@ export function startBattle(g, opener, opts) {
   b.order.sort(function (x, y) { return y.init - x.init || (x.kind === "player" ? -1 : 1); });
   g.prevCam = { dist: g.camDist, pitch: g.camPitch }; g.camDist = Math.max(g.camDist, 12); g.camPitch = Math.max(g.camPitch, 0.78);
   g.pushLog("Combat! Initiative — " + b.order.map(function (c) { return c.name + " " + c.roll; }).join(", ") + (opts.playerFirst ? ". You strike first." : "."), "info");
-  b.next = "turn"; b.wait = 1.0;
+  b.next = "turn"; b.wait = 1.0; g.writeCombatState && g.writeCombatState(true);
 }
-function join(g, m, quiet) {
-  var b = g.battle; if (!b || m.inBattle) return; m.inBattle = true; m.aggro = true; m.autoT = 0;
+function joinAlly(g, a, quiet) {
+  var b = g.battle; if (!b || a.inBattle) return; a.inBattle = true; a.reaction = 1; var ag = R.attrMod((a.sheet.attributes || {}).agility); var r = R.roll3d6(); var init = r.total + ag;
+  var c = { kind: "ally", id: a.id, e: a, name: a.name, roll: init, init: init };
+  if (b.idx < 0) b.order.push(c); else { var at = b.order.findIndex(function (x) { return x.init < init; }); if (at < 0) at = b.order.length; if (at <= b.idx) b.idx++; b.order.splice(at, 0, c); }
+}
+export function join(g, m, quiet) {
+  var b = g.battle; if (!b || m.inBattle) return; m.inBattle = true; m.aggro = true; m.autoT = 0; m.reaction = 1; if (m.st) m.st = m.st.filter(function (s) { return s.id === "controlled"; }); else m.st = [];
   var r = R.roll3d6(); var init = r.total + Math.min(4, m.mon.threat) + (m.c.arch === "canine" ? 2 : 0);
-  var same = b.order.filter(function (c) { return c.m && c.m.mon.name === m.mon.name; }).length; m.tag = same ? " " + String.fromCharCode(65 + same) : "";
-  if (same === 1) { var first = b.order.find(function (c) { return c.m && c.m.mon.name === m.mon.name; }); if (first && !first.m.tag) { first.m.tag = " A"; first.name = first.m.mon.name + " A"; } m.tag = " B"; }
-  var c = { kind: "monster", id: m.id, m: m, name: m.mon.name + (m.tag || ""), roll: init, init: init, reaction: 1 };
+  var same = b.order.filter(function (c) { return c.e && c.e.mon && c.e.mon.name === m.mon.name; }).length; m.tag = same ? " " + String.fromCharCode(65 + same) : "";
+  if (same === 1) { var first = b.order.find(function (c) { return c.e && c.e.mon && c.e.mon.name === m.mon.name; }); if (first && !first.e.tag) { first.e.tag = " A"; first.name = first.e.mon.name + " A"; } m.tag = " B"; }
+  var c = { kind: "monster", id: m.id, m: m, e: m, name: m.mon.name + (m.tag || ""), roll: init, init: init, reaction: 1 };
+  b.startCount[m.mon.id] = (b.startCount[m.mon.id] || 0) + 1;
   if (b.idx < 0) b.order.push(c);
   else { var at = b.order.findIndex(function (x) { return x.init < init; }); if (at < 0) at = b.order.length; if (at <= b.idx) b.idx++; b.order.splice(at, 0, c); }
   g.noteFoe(m); if (!g.target || g.target.dead) g.target = m;
   if (!quiet) g.pushLog(c.name + " joins the fight (initiative " + init + ").", "hurt");
 }
+function alive(c) { var e = c.e; if (c.kind === "player") return true; if (e.mon) return !e.dead && !e.fled; return !e.dead && !e.gone; }
 function checkEnd(g) {
   var b = g.battle; if (!b) return true;
   if (g.down) { finish(g, "fell"); return true; }
-  var foes = b.order.filter(function (c) { return c.m && !c.m.dead && !c.m.fled; });
+  var foes = g.monsters.filter(function (m) { return m.inBattle && !m.dead && !m.fled && B.sideOf(m) === "foe"; });
   if (!foes.length) { finish(g, "won"); return true; }
   return false;
 }
 export function finish(g, why) {
-  var b = g.battle; if (!b) return; g.battle = null;
-  b.order.forEach(function (c) { if (!c.m) return; c.m.inBattle = false; c.m.gait = 0; if (!c.m.dead) { c.m.aggro = false; c.m.state = "return"; c.m.calmUntil = g.time + 25; } });
+  var b = g.battle; if (!b) return; g.battle = null; g.tgt = null;
+  g.monsters.forEach(function (m) { if (!m.inBattle) return; m.inBattle = false; m.gait = 0; m.st = []; if (m.summoned) { m.dead = true; m.gone = true; g.scene.remove(m.c.root); return; } if (!m.dead) { m.aggro = false; m.state = "return"; m.calmUntil = g.time + 25; m.airT = 0; } });
+  (g.allies || []).forEach(function (a) { a.inBattle = false; a.st = []; a.gait = 0; });
+  g.pe.st = []; g.pe.dodging = false;
   if (g.prevCam) { g.camDist = g.prevCam.dist; g.camPitch = g.prevCam.pitch; g.prevCam = null; }
-  g.autoMove = null; g.dodging = false; g.disengaged = false; g.buffs.blessing = 0;
+  g.autoMove = null; g.disengaged = false; g.buffs.blessing = 0; g.overchannel = false;
   if (g.combatSummary) g.combatSummary.rounds = b.round;
   g.after = { text: why === "won" ? "Victory" : why === "escaped" ? "Escaped" : why === "fell" ? "Defeat" : "Combat Ends", t: 0 };
   if (why === "escaped") g.pushLog("You slip away from the fight.", "info");
   if (why === "won") g.bridge.sfx && g.bridge.sfx("sfx-victory-medieval");
-  g.closeCombat(true);
+  g.closeCombat(true); g.writeCombatState && g.writeCombatState(false); g.dirty3d && g.dirty3d();
 }
 
 // ------------------------------------------------------------------ turns
@@ -110,106 +119,46 @@ export function update(g, dt) {
   var b = g.battle; if (!b) { if (g.after) { g.after.t += dt; if (g.after.t > 2) g.after = null; } return; }
   dt = Math.min(0.25, Math.max(dt, g.wall || 0)); /* scripts follow the wall clock, so slow devices do not stretch turns */
   g.dtc = dt; b.t += dt; if (b.banner) { b.banner.t += dt; if (b.banner.t > 1.5) b.banner = null; }
+  B.zoneVisuals(g, dt);
   if (b.script || b.queue.length) { if (!b.script) { b.script = b.queue.shift(); b.sw = 0; } tick(g, dt); return; }
+  b.saveT += dt; if (b.dirtySave && b.saveT > 0.2) { b.saveT = 0; b.dirtySave = false; g.saveBattle && g.saveBattle(); }
   if (b.next === "turn") { b.wait -= dt; if (b.wait <= 0) { b.next = null; nextTurn(g); } }
-  // hostiles that wander close during the fight join it at once
   b.joinT = (b.joinT || 0) + dt; if (b.joinT > 0.5) { b.joinT = 0; g.monsters.forEach(function (m) { if (!m.dead && !m.inBattle && !m.passive && !m.fled && !(m.calmUntil > g.time) && dist(m, g.pos) < 13 + m.mon.threat * 3) join(g, m, false); }); }
 }
 function nextTurn(g) {
   var b = g.battle; if (!b || checkEnd(g)) return;
-  for (var guard = 0; guard < 60; guard++) {
+  for (var guard = 0; guard < 80; guard++) {
     b.idx++;
     if (b.idx >= b.order.length) { b.idx = 0; newRound(g); if (!g.battle) return; }
-    var c = b.order[b.idx]; if (c.kind === "player" || (c.m && !c.m.dead && !c.m.fled)) break;
+    var c = b.order[b.idx]; if (alive(c)) break;
   }
-  var c = b.order[b.idx]; b.active = c;
-  if (c.kind === "player") playerTurn(g); else run(g, monsterTurn(g, c));
+  var c = b.order[b.idx]; b.active = c; b.dirtySave = true;
+  if (c.kind === "player") playerTurn(g); else if (c.kind === "ally") run(g, AI.allyTurn(g, c)); else run(g, AI.monsterTurn(g, c));
 }
 function newRound(g) {
-  var b = g.battle; b.round++; g.clock += ROUND_SEC / 60;
-  b.order = b.order.filter(function (c) { return c.kind === "player" || (c.m && !c.m.dead && !c.m.fled); });
-  g.pushLog("— Round " + b.round + " —", "info");
+  var b = g.battle; b.round++; g.clock += ROUND_SEC / 60; B.zonesRoundEnd(g);
+  b.order = b.order.filter(function (c) { return alive(c); });
+  g.pushLog("— Round " + b.round + " —", "info"); g.writeCombatState && g.writeCombatState(true);
 }
 function playerTurn(g) {
-  var b = g.battle; var mv = Math.round(MOVE_M * encumbrance(g) * 10) / 10;
-  b.econ = { action: 1, bonus: 1, move: mv, moveMax: mv }; b.reaction = 1; b.sneak = 0; g.dodging = false; g.disengaged = false;
-  b.banner = { text: "Your Turn", sub: b.round === 1 && b.order[0].surprise ? "Surprise — you strike first" : "Action · Bonus Action · " + mv + " m", t: 0, mine: true };
+  var b = g.battle; var mv = Math.round(MOVE_M * encumbrance(g) * 10) / 10; var pe = g.pe;
+  b.econ = { action: 1, bonus: 1, move: mv, moveMax: mv }; b.reaction = 1; b.sneak = 0; pe.dodging = false; g.disengaged = false;
+  var info = AI.turnStart(g, pe);
+  if (info.slow) { b.econ.move = Math.round(mv * 5) / 10; b.econ.moveMax = b.econ.move; } if (info.rooted) { b.econ.move = 0; }
+  b.banner = { text: "Your Turn", sub: b.round === 1 && b.order[0].surprise ? "Surprise — you strike first" : "Action · Bonus Action · " + b.econ.move + " m", t: 0, mine: true };
   if (g.down) { endTurn(g); return; }
+  if (info.skip) { g.pushLog("You cannot act (" + info.why + ").", "hurt"); b.econ.action = 0; b.econ.bonus = 0; b.econ.move = 0; setTimeout(function () { if (g.battle === b && myTurn(g)) endTurn(g); }, 900); return; }
   if (b.pending) { var p = b.pending; b.pending = null; setTimeout(function () { if (g.battle === b && myTurn(g)) p(); }, 350); }
 }
 export function endTurn(g) {
   var b = g.battle; if (!b) return;
   if (b.active && b.active.kind === "player") {
-    if (busy(g)) return;
-    var foes = b.order.filter(function (c) { return c.m && !c.m.dead && !c.m.fled; });
-    if (foes.length && foes.every(function (c) { return dist(c.m, g.pos) > ESCAPE_R; })) { finish(g, "escaped"); return; }
+    if (busy(g)) return; g.tgt = null;
+    var foes = g.monsters.filter(function (m) { return m.inBattle && !m.dead && !m.fled && B.sideOf(m) === "foe"; });
+    if (foes.length && foes.every(function (m) { return dist(m, g.pos) > ESCAPE_R; })) { finish(g, "escaped"); return; }
+    B.ageStatuses(g, g.pe);
   }
-  g.autoMove = null; b.active = null; b.next = "turn"; b.wait = 0.3;
-}
-
-// ------------------------------------------------------------------ monsters
-function* monsterTurn(g, c) {
-  var b = g.battle, m = c.m; c.reaction = 1;
-  b.banner = { text: c.name, sub: "Threat " + m.mon.threat, t: 0, foe: true };
-  yield 0.55;
-  if (m.dead || g.down) { endTurn(g); return; }
-  var mv = moveOf(m), reach = monsterReach(m), d = dist(m, g.pos);
-  if (m.flees && m.hp < m.maxHp * 0.3) {
-    var ax = m.x - g.pos.x, az = m.z - g.pos.z, l = Math.hypot(ax, az) || 1;
-    yield* walk(g, m, m.x + ax / l * mv * 2, m.z + az / l * mv * 2, mv * 2, 0);
-    if (dist(m, g.pos) > 12) { m.fled = true; m.inBattle = false; m.aggro = false; m.state = "return"; m.calmUntil = g.time + 90; g.combatNote("fled", m); g.pushLog(c.name + " flees the fight!", "info"); }
-    yield 0.2; endTurn(g); return;
-  }
-  var useRanged = m.ranged && d > reach + 0.5 && d < 24;
-  if (!useRanged) {
-    var stop = radius(m) + 0.4 + 0.95;
-    if (d > reach - 0.15) { yield* walk(g, m, g.pos.x, g.pos.z, mv, stop); d = dist(m, g.pos); }
-    if (d <= reach && !m.dead) {
-      yield* strike(g, m, false);
-      if (m.mon.threat >= 3 && (m.mon.attacks || []).length >= 2 && !g.down && !m.dead) { yield 0.2; yield* strike(g, m, false); }
-    } else if (m.ranged && d < 24 && !m.dead) yield* strike(g, m, true);
-    else if (!m.dead && d > reach) { b.banner = { text: c.name, sub: "Dashes", t: 0, foe: true }; yield* walk(g, m, g.pos.x, g.pos.z, mv, stop); }
-  } else yield* strike(g, m, true);
-  yield 0.35; endTurn(g);
-}
-function* walk(g, m, tx, tz, maxD, stop) {
-  var moved = 0, pr = playerReach(g, m), wasIn = dist(m, g.pos) <= pr, stuck = 0;
-  while (moved < maxD - 0.02 && !m.dead) {
-    var dx = tx - m.x, dz = tz - m.z, d = Math.hypot(dx, dz); var left = Math.min(d - stop, maxD - moved); if (left <= 0.03) break;
-    var sp = Math.min(9, m.speed * 0.8), step = Math.min(left, sp * (g.dtc || 0.016));
-    var nx = m.x + dx / d * step, nz = m.z + dz / d * step;
-    if (landSD(nx / MILE, -nz / MILE) <= 0.02 || g.terrain.groundAt(nx, nz) < -1.3) break;
-    var p = g.collide(nx, nz, radius(m) * 0.6); p = separate(g, m, p.x, p.z);
-    var adv = Math.hypot(p.x - m.x, p.z - m.z); if (adv < step * 0.25) { if (++stuck > 8) break; } else stuck = 0;
-    m.x = p.x; m.z = p.z; moved += Math.max(adv, step * 0.25); m.yaw = lerpAngle(m.yaw, Math.atan2(dx, dz), (g.dtc || 0.016) * 12); m.gait = sp;
-    var inNow = dist(m, g.pos) <= pr;
-    if (wasIn && !inNow && g.battle && g.battle.reaction && !g.down && !R.weaponProfile(g.v).ranged) { g.battle.reaction = 0; m.gait = 0; g.pushLog("Reaction — opportunity attack on " + m.mon.name + (m.tag || "") + ".", "info"); yield* playerSwing(g, m, { free: true }); if (m.dead) break; }
-    wasIn = inNow;
-    yield 0;
-  }
-  m.gait = 0;
-}
-// keep bodies from overlapping
-function separate(g, m, x, z) {
-  var rm = radius(m); var b = g.battle;
-  var pd = Math.hypot(x - g.pos.x, z - g.pos.z), pm = rm + 0.45; if (pd < pm && pd > 1e-4) { x = g.pos.x + (x - g.pos.x) / pd * pm; z = g.pos.z + (z - g.pos.z) / pd * pm; }
-  if (b) b.order.forEach(function (c) { var o = c.m; if (!o || o === m || o.dead) return; var d = Math.hypot(x - o.x, z - o.z), mm = rm + radius(o) * 0.9; if (d < mm && d > 1e-4) { x = o.x + (x - o.x) / d * mm; z = o.z + (z - o.z) / d * mm; } });
-  return { x: x, z: z };
-}
-function* strike(g, m, ranged, tag) {
-  if (m.dead || g.down) return;
-  m.yaw = Math.atan2(g.pos.x - m.x, g.pos.z - m.z);
-  var h = m.c.parts.h; var fired = false, t0 = g.time;
-  if (h) { playAction(h, ranged ? "bow" : attackClip(h.weaponKind), function (ev) { if (ev === "hit" || ev === "release") fired = true; }); }
-  else { m.attackT = 0.62; m.attackDur = 0.62; }
-  if (!ranged || !h) g.bridge.sfx && g.bridge.sfx(h ? "sfx-sword-swing" : /wolf|hound|jackal/i.test(m.mon.name) ? "sfx-wolf-growl" : "sfx-monster-growl");
-  yield function () { return fired || (!h && g.time - t0 > 0.3) || g.time - t0 > 1.4; };
-  if (ranged) {
-    var done = false; var elem = /spit|breath|bolt|spells/.test(m.ranged ? m.ranged.name : "") ? (/fire|flame|breath/.test(m.ranged.name) ? "fire" : /frost|ice/.test(m.ranged.name) ? "cold" : "umbral") : null;
-    g.projectile({ x: g.pos.x, z: g.pos.z, y: g.pos.y, c: { height: 1.6 } }, elem ? "bolt" : "arrow", function () { g.monsterHit(m, true, tag); done = true; }, m, elem);
-    yield function () { return done || g.time - t0 > 3; };
-  } else g.monsterHit(m, false, tag);
-  yield 0.4;
+  g.autoMove = null; b.active = null; b.next = "turn"; b.wait = 0.3; b.dirtySave = true;
 }
 
 // ------------------------------------------------------------------ the player's actions
@@ -217,7 +166,8 @@ function* strike(g, m, ranged, tag) {
 export function attack(g, m, opts) {
   opts = opts || {}; var b = g.battle; var w = R.weaponProfile(g.v);
   if (!b) { engage(g, m, { playerFirst: true, pending: function () { attack(g, m, opts); } }); return true; }
-  if (!canAct(g, opts.cost === undefined ? "action" : opts.cost)) return false;
+  var cost = opts.cost === undefined ? "action" : opts.cost;
+  if (!canAct(g, cost)) return false;
   if (!m.inBattle) join(g, m, false);
   var reach = playerReach(g, m, w), d = dist(m, g.pos);
   if (d > reach) {
@@ -227,24 +177,14 @@ export function attack(g, m, opts) {
   }
   run(g, (function* () {
     if (dist(m, g.pos) > reach) { g.autoMove = { x: m.x, z: m.z, stop: reach - 0.35, script: true }; yield function () { return !g.autoMove; }; if (g.down || m.dead || dist(m, g.pos) > reach + 0.05) return; }
-    spend(g, opts.cost === undefined ? "action" : opts.cost);
-    yield* playerSwing(g, m, opts);
-    if (opts.twice && !m.dead && !g.down) { yield 0.1; yield* playerSwing(g, m, opts); }
+    spend(g, cost);
+    yield* AI.swingGen(g, g.pe, m, opts);
+    if (opts.twice && !m.dead && !g.down) { yield 0.1; yield* AI.swingGen(g, g.pe, m, opts); }
   })());
   return true;
 }
-export function* playerSwing(g, m, opts) {
-  opts = opts || {}; var w = R.weaponProfile(g.v); g.faceTarget(m);
-  var clip = w.ranged ? "bow" : attackClip(w.kind); var fired = false, t0 = g.time;
-  playAction(g.player, clip, function (e) { if (e === "hit" || e === "release") fired = true; });
-  if (!w.ranged) g.bridge.sfx && g.bridge.sfx("sfx-sword-swing");
-  yield function () { return fired || g.time - t0 > 1.5; };
-  var res = g.rollAttack(m, opts);
-  if (w.ranged) { var done = false; g.projectile(m, "arrow", function () { g.applyAttack(m, res, w.skill, opts); done = true; }); yield function () { return done || g.time - t0 > 3; }; }
-  else g.applyAttack(m, res, w.skill, opts);
-  yield 0.38;
-}
-// Generic animated action (spells, potions, techniques): play a clip, fire at its event.
+export var playerSwing = function (g, m, o) { return AI.swingGen(g, g.pe, m, o); };
+// Generic animated action (potions, techniques): play a clip, fire at its event.
 export function act(g, clip, cost, onFire, opts) {
   opts = opts || {}; if (g.battle && !canAct(g, cost)) return false; spend(g, cost);
   var quick = !(CLIPS[clip] && CLIPS[clip].ev); var go = function* () { var fired = false, t0 = g.time; playAction(g.player, clip, function (e) { if (e === "release" || e === "use" || e === "hit") fired = true; }); yield function () { return fired || g.time - t0 > (quick ? 0.35 : 1.2); }; var w = onFire(); if (w && typeof w.next === "function") yield* w; yield opts.after == null ? 0.35 : opts.after; };
@@ -252,22 +192,22 @@ export function act(g, clip, cost, onFire, opts) {
   return true;
 }
 export function dash(g) { if (!canAct(g, "action")) return; spend(g, "action"); var b = g.battle; b.econ.move += b.econ.moveMax; b.econ.moveMax += b.econ.moveMax; g.pushLog("(Dash — movement doubled this turn)", "info"); g.fx && g.fx.dust(g.pos.x, g.pos.y + 0.2, g.pos.z); }
-export function dodgeAction(g) { if (!canAct(g, "action")) return; spend(g, "action"); g.dodging = true; playAction(g.player, "block"); g.pushLog("(Dodge — +3 Evasion until your next turn)", "info"); }
+export function dodgeAction(g) { if (!canAct(g, "action")) return; spend(g, "action"); g.pe.dodging = true; playAction(g.player, "block"); g.pushLog("(Dodge — +3 Evasion until your next turn)", "info"); }
 // Called by the movement code after every step the player takes during their turn.
 export function afterPlayerStep(g, ox, oz, d) {
-  var b = g.battle; if (!b) return; b.econ.move = Math.max(0, b.econ.move - d);
+  var b = g.battle; if (!b) return; b.econ.move = Math.max(0, b.econ.move - d); b.dirtySave = true; B.zonesOnStep(g, g.pe, ox, oz, g.pos.x, g.pos.z);
   if (g.disengaged) return;
-  var hits = b.order.filter(function (c) { if (!c.m || c.m.dead || !c.reaction) return false; var r = monsterReach(c.m); return Math.hypot(ox - c.m.x, oz - c.m.z) <= r && dist(c.m, g.pos) > r; });
+  var hits = g.monsters.filter(function (m) { if (!m.inBattle || m.dead || m.fled || B.sideOf(m) !== "foe" || !B.hasReaction(g, m) || B.hasSt(m, "unconscious") || B.hasSt(m, "commanded")) return false; var r = AI.meleeReach(m, g.pe); return Math.hypot(ox - m.x, oz - m.z) <= r && dist(m, g.pos) > r; });
   if (!hits.length) return;
   g.autoMove = null; g.move.x = g.move.y = 0;
-  hits.forEach(function (c) { c.reaction = 0; g.pushLog(c.name + " takes an opportunity attack as you leave its reach.", "hurt"); run(g, strike(g, c.m, false, "opportunity"), true); });
+  hits.forEach(function (m) { B.spendReaction(g, m); g.pushLog(B.nameOf(m) + " takes an opportunity attack as you leave its reach.", "hurt"); run(g, AI.strikeGen(g, m, g.pe, { tag: "opportunity", ranged: false }), true); });
 }
 
 // ------------------------------------------------------------------ previews & markers
 export function preview(g, m) {
-  var w = R.weaponProfile(g.v); var bonus = R.attackBonus(g.v) + g.situational(m) + g.conditionPenalty(); var p = R.chance3d6(m.mon.evasion - bonus); var dm = R.damageText(g.v, m.mon);
+  var w = R.weaponProfile(g.v); var air = B.airborne(m) && !w.ranged ? -3 : 0; var bonus = R.attackBonus(g.v) + g.situational(m) + g.conditionPenalty() + B.stSum(g.pe, "atk") + air; var p = R.chance3d6(B.evasionOf(g, m) - bonus); var dm = R.damageText(g.v, m.mon);
   var reach = playerReach(g, m, w), d = dist(m, g.pos), b = g.battle; var need = Math.max(0, d - (reach - 0.3));
-  return { chance: Math.round(p * 100), dice: dm.dice, lo: dm.lo, hi: dm.hi, dist: d, inReach: d <= reach, ranged: w.ranged, approach: !w.ranged && d > reach ? need : 0, canReach: w.ranged ? d <= reach : !b || need <= b.econ.move + 0.05 };
+  return { chance: Math.round(p * 100), dice: dm.dice, lo: dm.lo, hi: dm.hi, dist: d, inReach: d <= reach, ranged: w.ranged, approach: !w.ranged && d > reach ? need : 0, canReach: w.ranged ? d <= reach : !b || need <= b.econ.move + 0.05, air: air < 0, st: B.conditionsText(m) };
 }
 function drape(geo, pts, w, g) {
   var P = geo.attributes.position.array; var n = Math.min(pts.length, P.length / 6);
@@ -281,23 +221,24 @@ function strip(N, color, opacity) {
 }
 function disc(color, r0, r1) { var THREE = T(); var geo = new THREE.RingGeometry(r0, r1, 48); geo.rotateX(-Math.PI / 2); var m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide })); m.renderOrder = 18; return m; }
 function ensure(g) {
-  if (g.mk) return g.mk; var THREE = T();
-  var mk = g.mk = { ring: strip(97, "#e8c860", 0.75), pathIn: strip(80, "#7ae07a", 0.85), pathOut: strip(80, "#e05a4a", 0.7), end: disc("#e8e0c0", 0.22, 0.34), target: disc("#e05040", 0.9, 1.0), hover: disc("#f0f0f0", 0.9, 1.0), active: disc("#f0c040", 0.95, 1.08), dest: disc("#e8e0c0", 0.16, 0.3) };
+  if (g.mk) return g.mk;
+  var mk = g.mk = { ring: strip(97, "#e8c860", 0.75), pathIn: strip(80, "#7ae07a", 0.85), pathOut: strip(80, "#e05a4a", 0.7), end: disc("#e8e0c0", 0.22, 0.34), target: disc("#e05040", 0.9, 1.0), hover: disc("#f0f0f0", 0.9, 1.0), active: disc("#f0c040", 0.95, 1.08), dest: disc("#e8e0c0", 0.16, 0.3), spellRange: strip(97, "#8ab8ff", 0.55), spellArea: strip(97, "#ffd070", 0.9), spellBad: strip(97, "#e05a4a", 0.9), allyRing: disc("#6ad0ff", 0.9, 1.0) };
   Object.keys(mk).forEach(function (k) { mk[k].visible = false; g.scene.add(mk[k]); });
   return mk;
 }
 function place(g, o, x, z, s) { o.visible = true; o.position.set(x, g.terrain.groundAt(x, z) + 0.08, z); o.scale.setScalar(s || 1); }
+function circlePts(cx, cz, r) { var pts = []; for (var i = 0; i <= 96; i++) { var a = i / 96 * Math.PI * 2; pts.push({ x: cx + Math.sin(a) * r, z: cz + Math.cos(a) * r }); } return pts; }
 export function drawMarkers(g) {
   var mk = ensure(g); var b = g.battle; Object.keys(mk).forEach(function (k) { mk[k].visible = false; });
   var t = g.time;
   if (g.target && !g.target.dead) place(g, mk.target, g.target.x, g.target.z, radius(g.target) * (1 + Math.sin(t * 4) * 0.03));
   var hv = g.hover && g.hover.m && !g.hover.m.dead ? g.hover.m : null; if (hv && hv !== g.target) place(g, mk.hover, hv.x, hv.z, radius(hv));
-  if (!b) { if (g.autoMove && !g.autoMove.script) place(g, mk.dest, g.autoMove.x, g.autoMove.z, 1 + Math.sin(t * 6) * 0.1); return; }
-  if (b.active && b.active.m && !b.active.m.dead) place(g, mk.active, b.active.m.x, b.active.m.z, radius(b.active.m));
-  if (!ready(g)) return;
-  // movement left, as a ring
-  var r = b.econ.move; if (r > 0.15) { var pts = []; for (var i = 0; i <= 96; i++) { var a = i / 96 * Math.PI * 2; pts.push({ x: g.pos.x + Math.sin(a) * r, z: g.pos.z + Math.cos(a) * r }); } drape(mk.ring.geometry, pts, 0.05, g); mk.ring.visible = true; }
-  // path preview to the hovered ground point (or to striking range of a hovered foe)
+  if (!b) { if (g.autoMove && !g.autoMove.script) place(g, mk.dest, g.autoMove.x, g.autoMove.z, 1 + Math.sin(t * 6) * 0.1); drawSpellMarkers(g, mk); return; }
+  if (b.active && b.active.e && !b.active.e.dead && b.active.kind !== "player") place(g, mk.active, b.active.e.x, b.active.e.z, radius(b.active.e));
+  (g.allies || []).forEach(function (a, i) { if (!a.dead && !a.gone && i === 0 && b) place(g, mk.allyRing, a.x, a.z, radius(a) * 0.9); });
+  if (!ready(g)) { drawSpellMarkers(g, mk); return; }
+  if (g.tgt) { drawSpellMarkers(g, mk); return; }
+  var r = b.econ.move; if (r > 0.15) { drape(mk.ring.geometry, circlePts(g.pos.x, g.pos.z, r), 0.05, g); mk.ring.visible = true; }
   var goal = null; if (g.hover && g.hover.ground) goal = { x: g.hover.ground.x, z: g.hover.ground.z, stop: 0 };
   else if (hv) { var w = R.weaponProfile(g.v); if (!w.ranged) goal = { x: hv.x, z: hv.z, stop: playerReach(g, hv, w) - 0.35 }; }
   if (goal) {
@@ -310,8 +251,53 @@ export function drawMarkers(g) {
     }
   }
 }
+// range ring, area outline and highlighted targets while aiming a spell
+function drawSpellMarkers(g, mk) {
+  var t = g.tgt; if (!t) return; var e = g.pe; var d = t.d; if (d.maxR > 2.2) { drape(mk.spellRange.geometry, circlePts(e.x, e.z, d.maxR), 0.05, g); mk.spellRange.visible = true; }
+  if (!t.aim) return; var p = SC.plan(g, e, t.sp, t.aim); var pts = SC.outline(g, p); var tgtMesh = p.ok ? mk.spellArea : mk.spellBad;
+  if (pts) { drape(tgtMesh.geometry, pts, 0.07, g); tgtMesh.visible = true; }
+  else if (t.aim.e) { place(g, p.ok ? mk.target : mk.hover, t.aim.e.x, t.aim.e.z, radius(t.aim.e)); }
+  p.hits.forEach(function (h) { if (h !== t.aim.e && h.kind !== "player") { /* targets inside an area get the red ring */ } });
+}
 export function snapshot(g) {
   var b = g.battle; if (!b) return null;
-  return { round: b.round, mine: ready(g), myTurn: myTurn(g), busy: busy(g), banner: b.banner, econ: { action: b.econ.action, bonus: b.econ.bonus, reaction: b.reaction, move: Math.round(b.econ.move * 10) / 10, moveMax: b.econ.moveMax },
-    order: b.order.filter(function (c) { return c.kind === "player" || (c.m && !c.m.fled); }).map(function (c) { return { id: c.id, name: c.name, kind: c.kind, hp: c.m ? Math.max(0, Math.round(c.m.hp)) : Math.round(g.stats.hp), maxHp: c.m ? c.m.maxHp : g.stats.maxHp, active: b.active === c, dead: c.m ? c.m.dead : g.down, threat: c.m ? c.m.mon.threat : 0, arch: c.m ? c.m.c.arch : "player", init: c.roll, target: c.m && g.target === c.m }; }) };
+  return { round: b.round, mine: ready(g), myTurn: myTurn(g), busy: busy(g), banner: b.banner, econ: { action: b.econ.action, bonus: b.econ.bonus, reaction: b.reaction, move: Math.round(b.econ.move * 10) / 10, moveMax: b.econ.moveMax }, autoReact: g.autoReact !== false,
+    order: b.order.filter(function (c) { return c.kind === "player" || (c.e && !c.e.fled); }).map(function (c) { var e = c.e; return { id: c.id, name: c.name, kind: c.kind === "monster" && B.sideOf(e) === "party" ? "ally" : c.kind, hp: Math.max(0, Math.round(e.hp)), maxHp: e.maxHp, active: b.active === c, dead: c.kind === "player" ? g.down : !!e.dead, threat: e.mon ? e.mon.threat : 0, arch: e.mon ? e.c.arch : "player", init: c.roll, target: !!(e.mon && g.target === e), st: B.conditionsText(e) }; }) };
+}
+
+// ------------------------------------------------------------------ persistence
+function stCopy(l) { return (l || []).map(function (s) { var o = Object.assign({}, s); return o; }); }
+export function serialize(g) {
+  var b = g.battle; if (!b) return null; var pe = g.pe;
+  return { v: 1, round: b.round, idx: b.idx, active: b.active ? b.active.id : null, next: b.next ? 1 : 0, startCount: b.startCount, zid: b.zid, sneak: b.sneak || 0,
+    order: b.order.map(function (c) { return { kind: c.kind, id: c.id, name: c.name, roll: c.roll, init: c.init, surprise: !!c.surprise }; }),
+    player: { x: g.pos.x, z: g.pos.z, yaw: g.yaw, econ: Object.assign({}, b.econ), reaction: b.reaction, st: stCopy(pe.st), dodging: !!pe.dodging, disengaged: !!g.disengaged },
+    allies: (g.allies || []).filter(function (a) { return a.inBattle; }).map(function (a) { return { id: a.id, x: a.x, z: a.z, yaw: a.yaw, hp: a.hp, mp: a.mp, sp: a.sp, econ: a.econ ? Object.assign({}, a.econ) : null, reaction: a.reaction, st: stCopy(a.st), dead: !!a.dead, usedSW: !!a.usedSW }; }),
+    monsters: g.monsters.filter(function (m) { return m.inBattle && !m.dead; }).map(function (m) { return { mid: m.mon.id, id: m.id, tag: m.tag || "", cell: m.cell, x: m.x, z: m.z, yaw: m.yaw, hp: m.hp, reaction: m.reaction, st: stCopy(m.st), air: m.air || 0, breathCD: m.breathCD || 0, moraleChecked: !!m.moraleChecked, summoned: !!m.summoned, home: m.home, passive: !!m.passive, lastTarget: m.lastTarget || null }; }),
+    zones: (b.zones || []).map(function (z) { var o = Object.assign({}, z); if (o.follow) { o.followId = o.follow.id; delete o.follow; } return o; }),
+    target: g.target && g.target.inBattle ? g.target.id : null, quarry: g.quarry ? g.quarry.id : null, read: g.read || null, nextBonus: g.nextBonus || 0, overchannel: !!g.overchannel,
+    cam: g.prevCam || null };
+}
+function findMon(id) { var all = []; Object.keys(R.BESTIARY_BY_REGION).forEach(function (k) { R.BESTIARY_BY_REGION[k].forEach(function (m) { all.push(m); }); }); var f = all.find(function (m) { return m.id === id; }); return f || (id === "spirit-guardian" ? R.GUARDIAN : null); }
+export function restore(g, data) {
+  if (!data || data.v !== 1 || g.battle) return false;
+  var b = g.battle = newBattle(g, {}); b.round = data.round; b.zid = data.zid || 0; b.startCount = data.startCount || {}; b.sneak = data.sneak || 0; b.idx = data.idx; b.dirtySave = false;
+  var pe = g.pe; pe.st = stCopy(data.player.st); pe.dodging = !!data.player.dodging; g.disengaged = !!data.player.disengaged; b.econ = Object.assign({}, data.player.econ); b.reaction = data.player.reaction;
+  g.pos.x = data.player.x; g.pos.z = data.player.z; g.yaw = data.player.yaw; g.pos.y = g.terrain.groundAt(g.pos.x, g.pos.z); g.terrain.warm(g.pos.x, g.pos.z, 1);
+  g.beginEncounter(null); g.inCombat = true;
+  var byId = {}; byId.player = { kind: "player", e: pe };
+  (data.allies || []).forEach(function (s) { var a = g.allyById(s.id); if (!a) return; a.x = s.x; a.z = s.z; a.yaw = s.yaw; a.hp = s.hp; a.mp = s.mp; a.sp = s.sp; a.econ = s.econ; a.reaction = s.reaction; a.st = stCopy(s.st); a.dead = !!s.dead; a.usedSW = !!s.usedSW; a.inBattle = true; a.y = g.terrain.groundAt(a.x, a.z); byId[a.id] = { kind: "ally", e: a }; });
+  (data.monsters || []).forEach(function (s) {
+    var mon = findMon(s.mid); if (!mon) return; var m = g.addMonster(mon, s.x, s.z, s.cell); if (!m) return; m.id = s.id; m.tag = s.tag; m.yaw = s.yaw; m.hp = s.hp; m.reaction = s.reaction; m.st = stCopy(s.st); m.air = s.air; m.airT = s.air; m.breathCD = s.breathCD; m.moraleChecked = s.moraleChecked; m.summoned = s.summoned; m.inBattle = true; m.aggro = true; m.home = s.home || m.home; m.passive = false; m.lastTarget = s.lastTarget;
+    g.spawnedCells[s.cell] = 1; m.c.root.position.set(m.x, m.y, m.z); byId[m.id] = { kind: "monster", e: m, m: m }; g.noteFoe && g.noteFoe(m);
+  });
+  b.order = data.order.filter(function (o) { return byId[o.id]; }).map(function (o) { var r = byId[o.id]; var c = { kind: o.kind, id: o.id, name: o.name, roll: o.roll, init: o.init, surprise: o.surprise, e: r.e }; if (r.m) c.m = r.m; return c; });
+  b.active = data.active ? b.order.find(function (c) { return c.id === data.active; }) || null : null; b.idx = b.order.indexOf(b.active);
+  (data.zones || []).forEach(function (z) { var o = Object.assign({}, z); if (o.followId) { var fe = byId[o.followId]; o.follow = fe ? fe.e : pe; delete o.followId; } b.zones.push(o); });
+  g.target = data.target && byId[data.target] ? byId[data.target].e : null; g.quarry = data.quarry && byId[data.quarry] ? byId[data.quarry].e : null; g.read = data.read; g.nextBonus = data.nextBonus || 0; g.overchannel = !!data.overchannel; g.prevCam = data.cam || { dist: g.camDist, pitch: g.camPitch };
+  g.camDist = Math.max(g.camDist, 12); g.camPitch = Math.max(g.camPitch, 0.78);
+  b.banner = { text: "Combat resumed", sub: "Round " + b.round, t: 0 };
+  if (!b.active) { b.next = "turn"; b.wait = 0.5; b.idx = data.idx; }
+  else if (b.active.kind === "ally") run(g, AI.allyTurn(g, b.active)); else if (b.active.kind === "monster") run(g, AI.monsterTurn(g, b.active));
+  g.pushLog("Combat resumed — round " + b.round + ".", "info"); return true;
 }

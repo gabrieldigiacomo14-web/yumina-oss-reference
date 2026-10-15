@@ -32,11 +32,12 @@ export function GameScreen(props) {
   var [dialog, setDialog] = R.useState(null);
   var [draft, setDraft] = R.useState("");
   var [hud, setHud] = R.useState(function () { return hudDefaults(); });
+  var [tray, setTray] = R.useState(null);
   var [, setVw] = R.useState(0);
   var [qKey, setQKey] = R.useState(function () { return isTouch() ? "low" : "medium"; });
   var [portrait, setPortrait] = R.useState("");
   var [, force] = R.useState(0);
-  var stateRef = R.useRef({}); stateRef.current = { panel: panel, menu: menu, dialog: dialog };
+  var stateRef = R.useRef({}); stateRef.current = { panel: panel, menu: menu, dialog: dialog, tray: tray };
   var prefs = props.audioPrefs || {};
   var prefsRef = R.useRef(prefs); prefsRef.current = prefs;
 
@@ -78,12 +79,13 @@ export function GameScreen(props) {
           onFall: function (name) { setTimeout(function () { sendToGM("Everything goes dark as the " + name + " brings me down.", { npc: null }); }, 400); },
           hotkey: function (k, e) {
             var st = stateRef.current;
-            if (k === "escape") { if (st.menu) { setMenu(null); return true; } if (st.panel) { setPanel(null); return true; } if (st.dialog && st.dialog.open) { closeDialog(); return true; } return false; }
+            if (k === "escape") { if (st.tray) { setTray(null); return true; } if (st.menu) { setMenu(null); return true; } if (st.panel) { setPanel(null); return true; } if (st.dialog && st.dialog.open) { closeDialog(); return true; } return false; }
             if (st.menu && (k === "e" || k === "f")) { menuAct("talk", st.menu); return true; }
             // while speaking to someone, letters belong to the reply box, not to hotkeys
             if (st.dialog && st.dialog.open && st.dialog.npc && k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { var ta = document.querySelector(".eDialog .eCompose textarea"); if (ta) { ta.focus(); return false; } }
             if (k === "enter") { setDialog(function (d) { return Object.assign({}, d || {}, { open: true, focus: Date.now() }); }); return true; }
             if (k === "u" && !e.ctrlKey && !e.metaKey) { togRef.current("min"); return true; }
+            if ((k === "r" || k === "v") && !e.ctrlKey && !e.metaKey && !(st.dialog && st.dialog.open)) { var want = k === "r" ? "spells" : "items"; setTray(function (t) { return t === want ? null : want; }); return true; }
             if (KEYMAP[k] && !e.ctrlKey && !e.metaKey) { setPanel(function (p) { return p === KEYMAP[k] ? null : KEYMAP[k]; }); setTab(null); return true; }
             return false;
           }
@@ -161,6 +163,7 @@ export function GameScreen(props) {
       <div className="ePlayerInfo"><div className="ePName"><b>{v["player-name"] || "Adventurer"}</b><span>Lv. {v["player-level"] || 1}</span></div>
         <div className="eRank"><Icon n="Award" s={13} /> Guild Rank <b>{v["guild-rank"] || "Unregistered"}</b></div>
         <div className="eBars"><div><Icon n="Heart" s={13} c="ic-hp" /><Bar kind="hp" cur={s.hp} max={s.maxHp} /></div><div><Icon n="Droplet" s={13} c="ic-mp" /><Bar kind="mp" cur={s.mp} max={s.maxMp} /></div><div><Icon n="Zap" s={13} c="ic-sp" /><Bar kind="sp" cur={s.sp} max={s.maxSp} /></div></div>
+        {s.pst && s.pst.length ? <div className="eConds">{s.pst.map(function (c, i) { return <span key={i}>{c}</span>; })}</div> : null}
       </div>
       {!H.min ? <Fold onClick={function () { tog("player"); }} icon={H.player ? "ChevronsLeft" : "ChevronsRight"} title={H.player ? "Compact frame" : "Full frame"} /> : null}
     </div>
@@ -170,7 +173,7 @@ export function GameScreen(props) {
     {H.menu && !H.min ? <div className="eFrame eMenu" role="navigation" aria-label="Game menu">{MENU.map(function (m, i) { if (m[0] === "sep") return <div key={i} className="eSep" />; return <button key={m[0]} className={panel === m[0] ? "on" : ""} onClick={function () { setPanel(panel === m[0] ? null : m[0]); setTab(null); if (phoneNow()) tog("menu", 0); }}><Icon n={m[3]} s={18} /><span>{m[1]}</span><kbd>{m[2]}</kbd></button>; })}</div> : null}
 
     {/* party */}
-    {partyList.length && !H.min ? (H.party ? <div className="eParty"><Fold onClick={function () { tog("party"); }} icon="X" title="Hide party" />{partyList.slice(0, 4).map(function (p, i) { return <div key={i} className="eFrame eMate"><div className="eMateP"><Icon n="UserRound" s={26} /></div><div><b>{p.name}</b><small>{p.level || p.lv ? "Lv. " + (p.level || p.lv) : (p.class || p.calling || p.role || "")}</small>{p.hp != null ? <Bar kind="hp" cur={p.hp} max={p.maxHp || p.hp} label="" /> : null}{p.mana != null ? <Bar kind="mp" cur={p.mana} max={p.maxMana || p.mana} label="" /> : null}</div></div>; })}</div> : <Pill cls="ePartyPill" icon="Users" label={String(partyList.length)} title="Show party" onClick={function () { tog("party"); }} />) : null}
+    {(s.allies && s.allies.length) && !H.min ? (H.party ? <div className="eParty"><Fold onClick={function () { tog("party"); }} icon="X" title="Hide party" />{s.allies.slice(0, 4).map(function (p, i) { return <div key={i} className={"eFrame eMate" + (p.dead ? " dead" : "")}><div className="eMateP"><Icon n={p.dead ? "Skull" : "UserRound"} s={26} /></div><div><b>{p.name}</b><small>{p.dead ? "Fallen" : (p.cls || "") + (p.conds && p.conds.length ? " · " + p.conds.join(", ") : "")}</small><Bar kind="hp" cur={p.hp} max={p.maxHp} label="" />{p.maxMp > 0 ? <Bar kind="mp" cur={p.mp} max={p.maxMp} label="" /> : null}</div></div>; })}</div> : <Pill cls="ePartyPill" icon="Users" label={String(s.allies.length)} title="Show party" onClick={function () { tog("party"); }} />) : (partyList.length && !H.min ? (H.party ? <div className="eParty"><Fold onClick={function () { tog("party"); }} icon="X" title="Hide party" />{partyList.slice(0, 4).map(function (p, i) { return <div key={i} className="eFrame eMate"><div className="eMateP"><Icon n="UserRound" s={26} /></div><div><b>{p.name}</b><small>{p.level || p.lv ? "Lv. " + (p.level || p.lv) : (p.class || p.calling || p.role || "")}</small>{p.hp != null ? <Bar kind="hp" cur={p.hp} max={p.maxHp || p.hp} label="" /> : null}{p.mana != null ? <Bar kind="mp" cur={p.mana} max={p.maxMana || p.mana} label="" /> : null}</div></div>; })}</div> : <Pill cls="ePartyPill" icon="Users" label={String(partyList.length)} title="Show party" onClick={function () { tog("party"); }} />) : null)}
 
     {/* location + minimap */}
     {!H.min ? <div className={"eFrame eWhere" + (H.where ? "" : " noText") + (H.mini ? "" : " noMini")}>
@@ -219,12 +222,17 @@ export function GameScreen(props) {
       <Composer draft={draft} setDraft={setDraft} onSend={submitDraft} busy={api.isStreaming} autoFocus={dialog.focus} placeholder={dialog.npc ? "Say something to " + dialog.npc.name + "…" : "What do you do?"} onStop={function () { api.stopGeneration && api.stopGeneration(); }} />
     </div> : (bt ? null : <button className="eTalkBtn" onClick={function () { setDialog({ open: true, npc: null, focus: Date.now() }); }} title="Speak or act (Enter)"><Icon n="Feather" s={18} /><span>Chronicle</span>{api.isStreaming ? <i className="eDot" /> : null}</button>)}
 
+    {/* aiming a spell */}
+    {s.tgt ? <TargetBar t={s.tgt} g={gameRef} battle={!!bt} /> : null}
+    {tray ? <Tray kind={tray} g={gameRef} close={function () { setTray(null); }} refresh={snap} /> : null}
+
     {/* hotbar, with the turn economy above it in combat */}
     <div className="eHotbar">
-      {bt ? <Economy b={bt} /> : null}
+      {bt ? <Economy b={bt} g={gameRef} /> : null}
       {s.res ? <div className="eRes">{s.res.name}{Array.from({ length: s.res.max }).map(function (_, i) { return <i key={i} className={i < s.res.val ? "on" : ""} />; })}</div> : null}
       <div className="eSlots">{(s.hotbar || []).map(function (sl, i) { var key = i === 9 ? "0" : String(i + 1); if (!sl) return <div key={i} className="eSlot empty"><kbd>{key}</kbd></div>; var ic = SLOT_ICON[sl.icon] || ["Circle", "steel"]; return <button key={i} className={"eSlot " + ic[1] + (sl.disabled ? " off" : "") + (sl.kind === "endturn" ? " end" : "")} title={sl.label + (sl.desc ? " — " + sl.desc : "") + (sl.mp ? " (" + sl.mp + " MP)" : "")} aria-label={sl.label} onClick={function () { gameRef.current && gameRef.current.useSlot(i); }}><Icon n={ic[0]} s={26} />{sl.cost ? <i className={"eCost " + sl.cost} /> : null}{sl.count != null ? <em>{sl.count}</em> : null}{sl.cd > 0 && !bt ? <div className="eCd" style={{ height: Math.min(100, sl.cd / 2 * 100) + "%" }} /> : null}<kbd>{key}</kbd></button>; })}</div>
     </div>
+    <div className="eTrayBtns"><button className={"eRound" + (tray === "spells" ? " on" : "")} title="Spellbook (R)" aria-label="Spellbook" onClick={function () { setTray(tray === "spells" ? null : "spells"); }}><Icon n="BookMarked" s={20} /></button><button className={"eRound" + (tray === "items" ? " on" : "")} title="Items (V)" aria-label="Items" onClick={function () { setTray(tray === "items" ? null : "items"); }}><Icon n="FlaskConical" s={20} /></button></div>
     {bt ? <button className={"eEndTurn" + (bt.mine ? "" : " off")} onClick={function () { var g = gameRef.current; if (g) g.useSlot(9); }} title="End your turn (Space)" aria-label="End turn"><Icon n="Hourglass" s={24} /><span>End Turn</span></button> : null}
 
     {/* currency, weight, quick buttons */}
@@ -233,7 +241,7 @@ export function GameScreen(props) {
       : [<button key="map" className="eRound" title="World Map" aria-label="World Map" onClick={function () { setPanel(panel === "map" ? null : "map"); }}><Icon n="Compass" s={22} /></button>, <button key="unfold" className="eRound" title="More" aria-label="More buttons" onClick={function () { tog("quick"); }}><Icon n="LayoutGrid" s={20} /></button>]}</div> : null}
 
     {/* touch controls */}
-    {touch ? <TouchControls game={gameRef} battle={bt} talk={function () { setDialog({ open: true, npc: null, focus: Date.now() }); }} streaming={api.isStreaming} /> : null}
+    {touch ? <TouchControls game={gameRef} battle={bt} tray={tray} openTray={function (k) { setTray(tray === k ? null : k); }} talk={function () { setDialog({ open: true, npc: null, focus: Date.now() }); }} streaming={api.isStreaming} /> : null}
     {s.down ? <div className="eDown"><h2>You have fallen</h2><p>The Game Master is resolving what happens next — consciousness, rescue or death — under the world's combat rules.</p></div> : null}
     {panelBody()}
   </div>;
@@ -256,7 +264,7 @@ function Economy(p) {
   var b = p.b, e = b.econ; var act = b.order.find(function (c) { return c.active; });
   if (!b.myTurn) return <div className="eEcon wait"><Icon n="Hourglass" s={14} /><span>{act ? (act.kind === "player" ? "Your turn" : act.name + "'s turn") : "Next turn…"}</span></div>;
   var pct = e.moveMax ? Math.max(0, Math.min(100, e.move / e.moveMax * 100)) : 0;
-  return <div className="eEcon"><span className={"ePip act" + (e.action ? " on" : "")} title="Action — attack, cast, Dash, Dodge"><i />Action</span><span className={"ePip bon" + (e.bonus ? " on" : "")} title="Bonus Action — potions and quick techniques"><i />Bonus</span><span className={"ePip rea" + (e.reaction ? " on" : "")} title="Reaction — opportunity attacks and shield blocks"><i />Reaction</span><span className="eMove" title="Movement left this turn"><Icon n="Footprints" s={14} /><span className="eMoveBar"><i style={{ width: pct + "%" }} /></span><b>{e.move.toFixed(1)} m</b></span></div>;
+  return <div className="eEcon"><span className={"ePip act" + (e.action ? " on" : "")} title="Action — attack, cast, Dash, Dodge"><i />Action</span><span className={"ePip bon" + (e.bonus ? " on" : "")} title="Bonus Action — potions and quick techniques"><i />Bonus</span><span className={"ePip rea" + (e.reaction ? " on" : "")} title="Reaction — opportunity attacks and shield blocks"><i />Reaction</span><button className={"eAuto" + (b.autoReact ? " on" : "")} title="Spend Reactions automatically (block, Mage Ward, Mana Shield)" onClick={function () { var g = p.g.current; if (g) g.autoReact = !g.autoReact; }}>Auto-react</button><span className="eMove" title="Movement left this turn"><Icon n="Footprints" s={14} /><span className="eMoveBar"><i style={{ width: pct + "%" }} /></span><b>{e.move.toFixed(1)} m</b></span></div>;
 }
 function HoverTip(p) {
   var h = p.h; if (!h || h.sx < -100) return null; var W = window.innerWidth, Hh = window.innerHeight;
@@ -265,7 +273,7 @@ function HoverTip(p) {
   var cls = h.chance >= 65 ? "good" : h.chance >= 40 ? "mid" : "bad";
   return <div className="eTip" style={st}><b>{h.name}</b><small>Threat {h.threat} · {h.hp}/{h.maxHp} HP</small>
     <div className="eTipRow"><span className={"eHit " + cls}>{h.chance}%</span><span>to hit · {h.dice} <em>({h.lo}–{h.hi})</em></span></div>
-    {!h.ranged && h.approach > 0 ? <div className={"eTipNote" + (h.canReach ? "" : " bad")}>{h.canReach ? "Moves " + h.approach.toFixed(1) + " m, then attacks" : "Out of reach — " + h.approach.toFixed(1) + " m to close"}</div> : null}
+    {h.air ? <div className="eTipNote bad">Airborne: −3 to melee attacks</div> : null}{h.st && h.st.length ? <div className="eTipNote">{h.st.join(" · ")}</div> : null}{!h.ranged && h.approach > 0 ? <div className={"eTipNote" + (h.canReach ? "" : " bad")}>{h.canReach ? "Moves " + h.approach.toFixed(1) + " m, then attacks" : "Out of reach — " + h.approach.toFixed(1) + " m to close"}</div> : null}
     {h.ranged && !h.inReach ? <div className="eTipNote bad">Out of range</div> : null}
     <small className="eTipHint">{p.battle ? (h.my ? (h.touch ? "Tap again to attack" : "Click to attack") : "Not your turn") : (h.touch ? "Tap again to attack" : "Click again to attack")}</small></div>;
 }
@@ -308,7 +316,24 @@ function TouchControls(p) {
   function G() { return p.game.current; }
   return <div className="eTouch">
     <div className="eStick" ref={base} onPointerDown={function (e) { act.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); upd(e); }} onPointerMove={function (e) { if (act.current === e.pointerId) upd(e); }} onPointerUp={end} onPointerCancel={end}><div className="eKnob" style={{ transform: "translate(" + knob.x * 34 + "px," + knob.y * 34 + "px)" }} /></div>
-    {bt ? <div className="eActs battle"><button onClick={function () { G() && G().useSlot(0); }} aria-label="Attack"><Icon n="Sword" s={26} /></button><button onClick={function () { G() && G().cycleTarget(); }} aria-label="Next target"><Icon n="Crosshair" s={22} /></button><button className={"end" + (bt.mine ? "" : " off")} onClick={function () { G() && G().useSlot(9); }} aria-label="End turn"><Icon n="Hourglass" s={22} /></button></div>
-      : <div className="eActs"><button onClick={function () { G() && G().useSlot(0); }} aria-label="Attack"><Icon n="Sword" s={26} /></button><button onClick={function () { G() && G().doInteract(); }} aria-label="Interact"><Icon n="Hand" s={22} /></button><button onClick={function () { G() && G().jump(); }} aria-label="Jump"><Icon n="ArrowUp" s={22} /></button><button onClick={function () { G() && G().dodge(); }} aria-label="Dodge"><Icon n="Wind" s={22} /></button><button className="talk" onClick={p.talk} aria-label="Speak to the Game Master"><Icon n="Feather" s={20} />{p.streaming ? <i className="eDot" /> : null}</button></div>}
+    {bt ? <div className="eActs battle"><button onClick={function () { G() && G().useSlot(0); }} aria-label="Attack"><Icon n="Sword" s={26} /></button><button onClick={function () { G() && G().cycleTarget(); }} aria-label="Next target"><Icon n="Crosshair" s={22} /></button><button className={p.tray === "spells" ? "on" : ""} onClick={function () { p.openTray("spells"); }} aria-label="Spellbook"><Icon n="BookMarked" s={22} /></button><button className={p.tray === "items" ? "on" : ""} onClick={function () { p.openTray("items"); }} aria-label="Items"><Icon n="FlaskConical" s={22} /></button><button className={"end" + (bt.mine ? "" : " off")} onClick={function () { G() && G().useSlot(9); }} aria-label="End turn"><Icon n="Hourglass" s={22} /></button></div>
+      : <div className="eActs"><button onClick={function () { G() && G().useSlot(0); }} aria-label="Attack"><Icon n="Sword" s={26} /></button><button onClick={function () { G() && G().doInteract(); }} aria-label="Interact"><Icon n="Hand" s={22} /></button><button onClick={function () { G() && G().jump(); }} aria-label="Jump"><Icon n="ArrowUp" s={22} /></button><button onClick={function () { G() && G().dodge(); }} aria-label="Dodge"><Icon n="Wind" s={22} /></button><button onClick={function () { p.openTray("spells"); }} aria-label="Spellbook"><Icon n="BookMarked" s={22} /></button><button className="talk" onClick={p.talk} aria-label="Speak to the Game Master"><Icon n="Feather" s={20} />{p.streaming ? <i className="eDot" /> : null}</button></div>}
   </div>;
+}
+
+function TargetBar(p) {
+  var t = p.t; var g = p.g;
+  var tip = t.sx > -100 && t.list && t.list.length ? <div className="eTip spell" style={{ left: Math.max(6, Math.min(window.innerWidth - 246, t.sx + (t.touch ? -110 : 16))), top: Math.max(6, Math.min(window.innerHeight - 180, t.sy + (t.touch ? -130 : 10))) }}>{t.list.slice(0, 6).map(function (o, i) { return <div key={i} className={"eTipRow2 " + o.side}><b>{o.name}</b><span>{o.heal ? "heals " + o.heal : o.chance != null ? (o.resist ? o.chance + "% to take hold" : o.chance + "% · " + o.dice + (o.brace ? " (half if it braces)" : "")) : ""}</span></div>; })}{t.list.length > 6 ? <small>+{t.list.length - 6} more</small> : null}{!t.ok && t.why ? <div className="eTipNote bad">{t.why}</div> : null}</div> : null;
+  return <div><div className="eFrame eTargetBar"><div className="eTBHead"><Icon n="Sparkles" s={16} /><b>{t.name}</b><span>{t.mp} MP · {t.label}{t.range ? " · " + t.range + " m" : ""}{t.area ? " · area " + t.area + " m" : ""}</span></div>
+    <p>{t.ok || !t.why ? (t.tgt === "foe" ? "Choose an enemy." : t.tgt === "touch" ? "Choose yourself or an ally." : t.tgt === "dir" ? "Choose a direction." : t.tgt === "point" ? "Choose a place." : "Confirm.") : t.why}{t.touch && t.ok ? " Tap again to cast." : ""}</p>
+    {t.choose ? <div className="eChoose">{t.choose.map(function (c) { return <button key={c} className={t.choice === c ? "on" : ""} onClick={function () { var G = g.current; if (G && G.tgt) G.tgt.choice = c; }}>{c}</button>; })}</div> : null}
+    <div className="eBtnRow">{t.touch || t.tgt === "self" || t.tgt === "touch" ? <button className="eBtn small" onClick={function () { var G = g.current; if (!G) return; if (G.tgt && (t.tgt === "touch" || t.tgt === "self") && !G.tgt.aim) G.tgt.aim = { e: G.pe }; SC_confirm(G); }}><Icon n={t.tgt === "touch" ? "User" : "Check"} s={14} /> {t.tgt === "touch" && !t.touch ? "Self" : "Cast"}</button> : null}<button className="eBtn small alt" onClick={function () { var G = g.current; if (G) G.cancelTarget(); }}><Icon n="X" s={14} /> Cancel</button></div></div>{tip}</div>;
+}
+function SC_confirm(G) { if (G.confirmTarget) G.confirmTarget(); }
+function Tray(p) {
+  var G = p.g.current; if (!G) return null; var spells = p.kind === "spells"; var rows = spells ? G.listSpells() : G.listItems(); var groups = {};
+  return <div className="eFrame eTray" role="dialog" aria-label={spells ? "Spellbook" : "Items"}><div className="eTrayHead"><Icon n={spells ? "BookMarked" : "FlaskConical"} s={18} /><b>{spells ? "Spellbook" : "Items"}</b><small>{spells ? "Only spells you have learned appear here" : "Potions, food, thrown flasks and weapons in your pack"}</small><button className="eX" onClick={p.close} aria-label="Close"><Icon n="X" s={18} /></button></div>
+    <div className="eTrayList">{rows.length ? rows.map(function (r) { return <button key={r.id} className={"eTrayRow" + (r.ok ? "" : " off")} title={r.ok ? "" : r.why} onClick={function () { if (!r.ok) { G.toast(r.why || "Cannot use that now.", "info"); return; } if (spells) G.useSpellById(r.id); else G.useItemById(r.id); p.close(); }}>
+      <div className="eTrayMain"><b>{r.name}</b>{spells ? <small>{r.school} · Tier {r.tier}{r.dice ? " · " + r.dice + (r.element ? " " + r.element : "") : ""}</small> : <small>{r.desc}</small>}</div>
+      <div className="eTrayMeta">{spells ? <span className="mp">{r.mp} MP</span> : (r.qty > 1 ? <span>×{r.qty}</span> : null)}<span className={"cost " + (spells ? (/Reaction/.test(r.label) ? "reaction" : /Action \+/.test(r.label) || /Whole/.test(r.label) ? "action" : /Out of/.test(r.label) ? "none" : "action") : r.cost)}>{spells ? r.label : r.label + " · " + (r.cost === "action" ? "Action" : "Bonus")}</span>{spells && r.range ? <span>{r.range} m</span> : null}{r.why && !r.ok ? <em>{r.why}</em> : null}</div></button>; }) : <p className="muted">{spells ? "You have not learned any spells yet." : "Nothing in your pack can be used in a fight."}</p>}</div></div>;
 }

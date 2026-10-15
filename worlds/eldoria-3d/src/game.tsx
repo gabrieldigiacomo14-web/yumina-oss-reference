@@ -11,6 +11,10 @@ import { makeHumanoid, makeCreature, animateCreature, CALLING_LOOK, SKIN_TONES, 
 import { AURELIA_PEOPLE, TRAINERS } from "./data";
 import * as R from "./rules";
 import * as C from "./combat";
+import * as B from "./cbase";
+import * as SC from "./spellcast";
+import * as S from "./spells";
+import * as I from "./items";
 import { Fx } from "./vfx";
 
 // ------------------------------------------------------------------ calendar (Concord Reckoning, mirrors the original sheet)
@@ -54,11 +58,11 @@ export function Game(container, bridge, quality) {
   this.fog = new Uint8Array(FOG_W * FOG_H); this.fogVersion = 0; this.slain = {}; this.spawnedCells = {};
   this.target = null; this.cooldowns = {}; this.res = 0; this.buffs = {}; this.down = false; this.dodgeT = 0; this.encounterUsed = {};
   this.clock = 0; this.lastClockWrite = 0; this.lastFlush = 0; this.hudT = 0; this.place = null; this.lastPlace = null; this.walked = 0; this.walkFrom = null;
-  this.interact = null; this.talking = null; this.inCombat = false; this.combatSummary = null; this.time = 0; this.disposed = false; this.v = {};
+  this.allies = []; this.tgt = null; this.autoReact = true; this.pe = B.playerEntity(this); this.interact = null; this.talking = null; this.inCombat = false; this.combatSummary = null; this.time = 0; this.disposed = false; this.v = {};
 }
 
 Game.prototype.start = function (v) {
-  var THREE = T(); var self = this; this.v = v || {}; window.__eldoriaRules = R; /* debugging hook for the test harness */
+  var THREE = T(); var self = this; this.v = v || {}; window.__eldoriaRules = R; window.__eldoria = { R: R, B: B, SC: SC, S: S, I: I, C: C }; /* debugging hooks for the test harness */
   var r = new THREE.WebGLRenderer({ antialias: this.q.aa, powerPreference: "high-performance" });
   r.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.q.pixelRatio)); r.setSize(this.container.clientWidth, this.container.clientHeight);
   if (THREE.sRGBEncoding) r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
@@ -73,10 +77,12 @@ Game.prototype.start = function (v) {
   this.terrain.warm(this.pos.x, this.pos.z, 1);
   this.pos.y = this.terrain.groundAt(this.pos.x, this.pos.z);
   this.loadSettlements(true);
+  this.syncAllies(true);
   this.bindInput();
   this.onResize = function () { if (!self.renderer) return; var w = self.container.clientWidth, h = self.container.clientHeight; self.renderer.setSize(w, h); self.camera.aspect = w / h; self.camera.updateProjectionMatrix(); };
   window.addEventListener("resize", this.onResize);
   this.ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(this.onResize) : null; if (this.ro) this.ro.observe(this.container);
+  var w3b = (v["world3d-state"] || {}).battle; if (w3b) { try { C.restore(this, w3b); } catch (e) { console.error(e); this.battle = null; this.inCombat = false; } }
   this.last = performance.now();
   var loop = function () { if (self.disposed) return; self.raf = requestAnimationFrame(loop); var now = performance.now(); var raw = (now - self.last) / 1000; var dt = Math.min(0.1, raw); self.last = now; self.wall = Math.min(1, raw); try { self.frame(dt); } catch (e) { if (!self.errShown) { self.errShown = true; console.error(e); self.bridge.toast && self.bridge.toast("3D error: " + e.message, "error"); } } };
   loop();
@@ -112,6 +118,8 @@ Game.prototype.adoptState = function (v, initial) {
 // Called whenever Yumina's variables change. Distinguishes the GM's writes from our own echoes.
 Game.prototype.setVars = function (v) {
   var self = this; this.v = v || {}; if (!this.renderer) return; var now = performance.now();
+  var ov = null; for (var pid in this.pendingAt) if (now - this.pendingAt[pid] < 4000 && this.lastSynced[pid] !== undefined) { ov = ov || Object.assign({}, v); ov[pid] = this.lastSynced[pid]; }
+  var vFresh = v; if (ov) this.v = ov;
   function external(id, val, eq) {
     var last = self.lastSynced[id]; if (eq ? eq(val, last) : val === last) return false;
     // any value we held or wrote in the last few seconds is our own write still travelling, not the GM's
@@ -130,14 +138,14 @@ Game.prototype.setVars = function (v) {
   this.stats.maxHp = num(v["player-max-hp"], this.stats.maxHp); this.stats.maxMp = num(v["player-max-mana"], this.stats.maxMp); this.stats.maxSp = num(v["player-max-stamina"], this.stats.maxSp);
   if (this.down && this.stats.hp > 0) { this.down = false; this.toast("You are back on your feet.", "info"); }
   // re-dress the avatar when the calling, species or weapon changes
-  var look = Object.assign({}, v["player-avatar"] || {}); look.calling = look.calling || v["starting-calling"] || "Fighter"; var wp = R.weaponProfile(v); look.weapon = wp.kind; if (R.hasShield(v)) look.shield = true; look.species = v["player-species"] || look.species; look.gender = v["player-gender"] || look.gender;
-  if (JSON.stringify(look) !== this.playerLookKey) { var p0 = this.player.root.position.clone(), rot = this.player.root.rotation.y; this.buildPlayer(v); this.player.root.position.copy(p0); this.player.root.rotation.y = rot; }
+  var look = Object.assign({}, v["player-avatar"] || {}); look.calling = look.calling || v["starting-calling"] || "Fighter"; var wp = R.weaponProfile(this.v); look.weapon = wp.kind; if (R.hasShield(this.v)) look.shield = true; look.species = v["player-species"] || look.species; look.gender = v["player-gender"] || look.gender;
+  if (JSON.stringify(look) !== this.playerLookKey) { var p0 = this.player.root.position.clone(), rot = this.player.root.rotation.y; this.buildPlayer(this.v); this.player.root.position.copy(p0); this.player.root.rotation.y = rot; }
   function near(a, b) { return Math.abs(a - b) < 0.6; }
 };
 // Our latest value for a variable while our write is still in flight, else the shared state.
 Game.prototype.cur = function (id) { if (this.pendingAt[id] && performance.now() - this.pendingAt[id] < 8000 && this.lastSynced[id] !== undefined) return this.lastSynced[id]; return this.v[id]; };
 Game.prototype.remember = function (id, oldVal) { var now = performance.now(); var h = (this.echo[id] = (this.echo[id] || []).filter(function (e) { return now - e.t < 9000; })); h.push({ v: oldVal, t: now }); if (h.length > 40) h.shift(); };
-Game.prototype.write = function (id, value) { this.remember(id, this.lastSynced[id]); this.prevSynced[id] = this.lastSynced[id]; this.lastSynced[id] = value; this.pendingAt[id] = performance.now(); this.dirty[id] = value; };
+Game.prototype.write = function (id, value) { this.remember(id, this.lastSynced[id]); this.prevSynced[id] = this.lastSynced[id]; this.lastSynced[id] = value; this.pendingAt[id] = performance.now(); this.dirty[id] = value; if (this.v[id] !== value) { this.v = Object.assign({}, this.v); this.v[id] = value; } /* rules read this.v, so our own writes are visible at once */ };
 // Persist everything pending; resolves when the server confirmed (or immediately on old hosts).
 Game.prototype.flush = function () {
   var patch = this.dirty; this.dirty = {}; var keys = Object.keys(patch); this.lastFlush = performance.now(); if (!keys.length) return Promise.resolve();
@@ -164,10 +172,19 @@ Game.prototype.writePosition = function (force) {
   this.dirty["map-last-position"] = { x: x, y: y };
 };
 Game.prototype.writeStats = function () {
-  var s = this.stats; var hp = Math.max(0, Math.round(s.hp)), mp = Math.max(0, Math.round(s.mp)), sp = Math.max(0, Math.round(s.sp));
+  if (this.battle) this.flushSoon(); var s = this.stats; var hp = Math.max(0, Math.round(s.hp)), mp = Math.max(0, Math.round(s.mp)), sp = Math.max(0, Math.round(s.sp));
   if (hp !== this.lastSynced["player-hp"]) this.write("player-hp", hp); if (mp !== this.lastSynced["player-mana"]) this.write("player-mana", mp); if (sp !== this.lastSynced["player-stamina"]) this.write("player-stamina", sp);
 };
-Game.prototype.write3d = function () { this.dirty["world3d-state"] = { v: 1, fog: fogEncode(this.fog), slain: this.pruneSlain() }; };
+Game.prototype.write3d = function () { if (!this.fogEnc) this.fogEnc = fogEncode(this.fog); this.dirty["world3d-state"] = { v: 1, fog: this.fogEnc, slain: this.pruneSlain(), battle: C.serialize(this) }; };
+Game.prototype.dirty3d = function () { this.write3d(); this.flushSoon(); };
+Game.prototype.saveBattle = function () { this.write3d(); this.flushSoon(); };
+// what the Game Master sees while a fight is on: the in-combat flag and a live combat block
+Game.prototype.writeCombatState = function (on) {
+  if (!on) { this.write("in-combat", false); this.write("combat-state", { round: 0, combatants: [], terrain: "", notes: "" }); this.flushSoon(); return; }
+  var b = this.battle; if (!b) return; var self = this;
+  var list = b.order.filter(function (c) { return c.kind === "player" || (c.e && !c.e.fled); }).map(function (c) { var e = c.e; return { name: c.name, side: c.kind === "monster" && B.sideOf(e) === "foe" ? "enemy" : "party", hp: Math.max(0, Math.round(e.hp)), maxHp: e.maxHp, conditions: B.conditionsText(e), distanceM: Math.round(B.dist(e, self.pos)), initiative: c.roll, active: b.active === c }; });
+  this.write("in-combat", true); this.write("combat-state", { round: b.round, terrain: describe(this.pos.x / MILE, -this.pos.z / MILE).region || "", notes: "Turn-based 3D client encounter. A round is six seconds. Positions are tracked by the client; rolls use 3d6 per the Combat entries. Each combatant's HP below is current.", combatants: list }); this.flushSoon();
+};
 Game.prototype.pruneSlain = function () { var day = Math.floor(this.clock / 1440), out = {}; for (var k in this.slain) if (day - this.slain[k] < 6) out[k] = this.slain[k]; this.slain = out; return out; };
 
 // ------------------------------------------------------------------ the GM report: everything that happened in real time since the last chat message
@@ -286,8 +303,8 @@ Game.prototype.addMonster = function (mon, x, z, cell) {
   var c = makeCreature(mon); var y = this.terrain.groundAt(x, z); c.root.position.set(x, y, z); this.scene.add(c.root);
   var tac = String(mon.tactics || "").toLowerCase(); var passive = /not predatory|avoids combat|may not be hostile|defensive unless|negotiable/.test(tac + " " + String(mon.weakness || "").toLowerCase());
   var ranged = (mon.attacks || []).find(function (a) { return /bow|javelin|hurl|spit|breath|bolt|volley|boulder|dart|spells/.test(a.name); });
-  var m = { mon: mon, c: c, hp: mon.hp, maxHp: mon.hp, x: x, z: z, y: y, yaw: Math.random() * 6.28, home: { x: x, z: z }, cell: cell, state: "idle", t: Math.random() * 4, atkCD: 1 + Math.random(), passive: passive, flees: /flee|retreat/.test(tac), ranged: ranged, aggro: false, dead: false, speed: c.arch === "canine" ? 9.5 : c.arch === "brute" ? 5.2 : c.arch === "wisp" ? 6 : 7, reach: 1.6 + c.size * 0.55, id: Math.random().toString(36).slice(2) };
-  this.monsters.push(m);
+  var m = { kind: "monster", st: [], fly: c.arch === "winged", air: 0, airT: c.arch === "winged" ? 0.4 : 0, mon: mon, c: c, hp: mon.hp, maxHp: mon.hp, x: x, z: z, y: y, yaw: Math.random() * 6.28, home: { x: x, z: z }, cell: cell, state: "idle", t: Math.random() * 4, atkCD: 1 + Math.random(), passive: passive, flees: /flee|retreat/.test(tac), ranged: ranged, aggro: false, dead: false, speed: c.arch === "canine" ? 9.5 : c.arch === "brute" ? 5.2 : c.arch === "wisp" ? 6 : 7, reach: 1.6 + c.size * 0.55, id: Math.random().toString(36).slice(2) };
+  this.monsters.push(m); return m;
 };
 Game.prototype.updateMonsters = function (dt) {
   var self = this, px = this.pos.x, pz = this.pos.z, adt = this.adt || dt;
@@ -297,9 +314,9 @@ Game.prototype.updateMonsters = function (dt) {
     if (m.dead) { m.deadT = (m.deadT || 0) + dt; animateCreature(m.c, adt, { dead: true }); if (m.deadT > 240 || (d > 300)) { self.scene.remove(m.c.root); return false; } return true; }
     // in a turn-based fight the battle scripts move this creature; here it is only posed
     if (m.inBattle) {
-      m.y = self.terrain.groundAt(m.x, m.z) + (m.c.arch === "wisp" ? 0.2 : 0); m.c.root.position.set(m.x, m.y, m.z); m.c.root.rotation.y = lerpAngle(m.c.root.rotation.y, m.yaw, dt * 14);
+      m.air += ((m.airT || 0) - m.air) * Math.min(1, dt * 3.5); m.y = self.terrain.groundAt(m.x, m.z) + (m.c.arch === "wisp" ? 0.2 : 0) + (m.fly ? m.air * 3.2 : 0); m.c.root.position.set(m.x, m.y, m.z); m.c.root.rotation.y = lerpAngle(m.c.root.rotation.y, m.yaw, dt * 14);
       if (m.hitT > 0) m.hitT -= dt; if (m.attackT > 0) m.attackT -= adt;
-      animateCreature(m.c, adt, { speed: (m.gait || 0) / 6, attack: m.attackT > 0, attackT: (m.attackDur || 0.6) - (m.attackT || 0), attackDur: m.attackDur || 0.6, hitT: m.hitT || 0, combat: true });
+      animateCreature(m.c, adt, { speed: (m.gait || 0) / 6, attack: m.attackT > 0, attackT: (m.attackDur || 0.6) - (m.attackT || 0), attackDur: m.attackDur || 0.6, hitT: m.hitT || 0, combat: true, flying: m.fly && m.air > 0.35 });
       return true;
     }
     var speed = 0;
@@ -308,9 +325,9 @@ Game.prototype.updateMonsters = function (dt) {
     if (m.state === "return") { var hx = m.home.x - m.x, hz = m.home.z - m.z, hd = Math.hypot(hx, hz); if (hd < 3) { m.state = "idle"; m.fled = false; } else { speed = m.speed * (m.fled ? 1 : 0.6); m.yaw = lerpAngle(m.yaw, Math.atan2(hx, hz), dt * 4); if (m.hp < m.maxHp) m.hp = Math.min(m.maxHp, m.hp + dt * 2); } }
     else { m.t -= dt; if (m.t < 0) { m.t = 3 + Math.random() * 6; m.wanderYaw = Math.random() * 6.28; m.wandering = Math.random() < 0.5; } if (m.wandering) { speed = m.speed * 0.25; m.yaw = lerpAngle(m.yaw, m.wanderYaw, dt * 2); if (Math.hypot(m.x - m.home.x, m.z - m.home.z) > 40) m.wanderYaw = Math.atan2(m.home.x - m.x, m.home.z - m.z); } }
     if (speed) { var nx = m.x + Math.sin(m.yaw) * speed * dt, nz = m.z + Math.cos(m.yaw) * speed * dt; if (landSD(nx / MILE, -nz / MILE) > 0.02 && !insideTown(nx, nz)) { m.x = nx; m.z = nz; } else m.state = "return"; }
-    m.y = self.terrain.groundAt(m.x, m.z) + (m.c.arch === "wisp" ? 0.2 : 0); m.c.root.position.set(m.x, m.y, m.z); m.c.root.rotation.y = m.yaw;
+    m.air += ((m.fly ? 0.4 : 0) - m.air) * Math.min(1, dt * 2); m.y = self.terrain.groundAt(m.x, m.z) + (m.c.arch === "wisp" ? 0.2 : 0) + (m.fly ? m.air * 3.2 : 0); m.c.root.position.set(m.x, m.y, m.z); m.c.root.rotation.y = m.yaw;
     if (m.hitT > 0) m.hitT -= dt;
-    if (d < 180) animateCreature(m.c, adt, { speed: speed / 6, combat: false });
+    if (d < 180) animateCreature(m.c, adt, { speed: speed / 6, combat: false, flying: m.fly && speed > 0 });
     return true;
   });
   function insideTown(x, z) { var p = insidePlace(x / MILE, -z / MILE); return p && !/ruin|dungeon|landmark|shrine|tower|camp/.test(p.kind); }
@@ -351,37 +368,43 @@ Game.prototype.attack = function (opts) {
   if (!m) { if (this.battle) this.toast("No target — tap or click an enemy.", "info"); else playAction(this.player, w.ranged ? "bow" : attackClip(w.kind)); return false; }
   this.target = m; return C.attack(this, m, opts);
 };
-Game.prototype.situational = function (m) { return (this.buffs.blessing ? 1 : 0) + (this.quarry === m ? 1 : 0) + (this.read === m.mon.name ? 1 : 0) + (this.nextBonus || 0); };
-Game.prototype.rollAttack = function (m, opts) {
-  opts = opts || {}; var b = this.battle; var bonus = this.situational(m) + (opts.bonus || 0); this.nextBonus = 0; if (this.quarry === m) this.quarry = null;
-  var extra = opts.extra || 0;
-  if (this.calling() === "Rogue" && b && !b.sneak) { var behind = Math.abs(lerpAngle(0, Math.atan2(this.pos.x - m.x, this.pos.z - m.z) - m.yaw, 1)) > 1.9; if (b.round === 1 || behind) { extra += R.d(6); b.sneak = 1; } }
-  return R.playerAttack(this.v, m.mon, { bonus: bonus, bonusLabel: "situational", extraDamage: extra, condPenalty: this.conditionPenalty() });
+Game.prototype.situational = function (m) { return (this.quarry === m ? 1 : 0) + (this.read === m.mon.name ? 1 : 0) + (this.nextBonus || 0); };
+Game.prototype.rollAttack = function (m, opts, att) {
+  opts = opts || {}; att = att || this.pe; var b = this.battle; var player = att.kind === "player"; var sheet = B.sheetOf(this, att); var w = R.weaponProfile(sheet);
+  var bonus = (opts.bonus || 0) + B.stSum(att, "atk") + B.stSum(m, "evMinus") + (B.airborne(m) && !w.ranged ? -3 : 0); var nb = B.getSt(att, "blessing"); if (nb) { bonus += 1; B.dropSt(att, "blessing"); }
+  var extra = opts.extra || 0; var smite = B.getSt(att, "smite");
+  if (player) { bonus += this.situational(m); this.nextBonus = 0; if (this.quarry === m) this.quarry = null; if (this.calling() === "Rogue" && b && !b.sneak) { var behind = Math.abs(lerpAngle(0, Math.atan2(this.pos.x - m.x, this.pos.z - m.z) - m.yaw, 1)) > 1.9; if (b.round === 1 || behind) { extra += R.d(6); b.sneak = 1; } } }
+  var res = R.playerAttack(sheet, m.mon, { bonus: bonus, bonusLabel: "situational", extraDamage: extra, condPenalty: player ? this.conditionPenalty() : 0, evBonus: B.stSum(m, "ev") });
+  if (res.hit && smite) { var sm = R.rollDice(smite.smite[0], smite.smite[1]).total; res.damage += sm; res.line = res.line.replace(/\)$/, " + " + sm + " radiant Smite)"); B.dropSt(att, "smite"); res.smitten = true; }
+  return res;
 };
-Game.prototype.applyAttack = function (m, res, skill, opts) {
-  var kit = R.CALLING_KIT[this.calling()] || {}; if (opts && opts.radiant && res.hit) res.line = res.line.replace(" damage", " radiant damage");
-  this.resolveHit(m, res, skill); if (res.hit && kit.build === "hit") this.res = Math.min(kit.max, this.res + 1);
+Game.prototype.applyAttack = function (m, res, skill, opts, att) {
+  att = att || this.pe; var kit = R.CALLING_KIT[att.kind === "player" ? this.calling() : String((att.sheet && (att.sheet.class || att.sheet.calling)) || "")] || {}; if (opts && opts.radiant && res.hit) res.line = res.line.replace(" damage", " radiant damage");
+  this.resolveHit(m, res, skill, res.smitten || (opts && opts.radiant) ? "radiant" : null, att); if (res.hit && kit.build === "hit" && att.kind === "player") this.res = Math.min(kit.max, this.res + 1);
 };
 Game.prototype.chestOf = function (m) { return m ? { x: m.x, y: m.y + (m.c.height || 1.6) * 0.62, z: m.z } : { x: this.pos.x, y: this.pos.y + 1.25, z: this.pos.z }; };
-Game.prototype.resolveHit = function (m, res, skill, element) {
-  this.pushLog(res.line, res.hit ? "hit" : "miss"); if (this.combatSummary && res.crit) this.combatSummary.rolls.push(res.line);
+Game.prototype.resolveHit = function (m, res, skill, element, src) {
+  src = src || this.pe; this.pushLog(res.line, res.hit ? "hit" : "miss"); if (this.combatSummary && res.crit) this.combatSummary.rolls.push(res.line);
   var p = this.chestOf(m); var h = m.c.parts.h; var bloodless = /skeleton|bone|wisp|sprite|golem|colossus|construct|avatar|walker/i.test(m.mon.name) || m.c.arch === "wisp";
-  if (!res.hit) { this.floater(m, "Miss", "#c8c8c8"); if (h && !h.action) playAction(h, Math.random() < 0.5 ? "dodge" : "block"); this.fx.dust(m.x, m.y + 0.2, m.z, null, 6); return; }
-  m.hp -= res.damage; m.hitT = 0.3; this.floater(m, (res.crit ? "Critical! " : "") + res.damage, res.crit ? "#ffd04a" : "#ffffff"); if (this.combatSummary) this.combatSummary.dmgDealt += res.damage;
-  if (element) this.fx.burst(p.x, p.y, p.z, elementColor(element), res.crit); else { this.fx.sparks(p.x, p.y, p.z, null, res.crit); if (!bloodless) this.fx.blood(p.x, p.y, p.z); }
+  var dmg = res.hit ? res.damage : (res.half || 0);
+  if (!res.hit && !(dmg > 0)) { this.floater(m, "Miss", "#c8c8c8"); if (h && !h.action) playAction(h, Math.random() < 0.5 ? "dodge" : "block"); this.fx.dust(m.x, m.y + 0.2, m.z, null, 6); return; }
+  var out = B.dealDamage(this, src, m, dmg, { el: element || res.element, magic: !!element, skill: skill });
+  m.hitT = 0.3; this.floater(m, (res.crit ? "Critical! " : "") + out.dealt + (res.hit ? "" : " (half)"), res.crit ? "#ffd04a" : "#ffffff"); if (this.combatSummary && src.kind !== "ally") this.combatSummary.dmgDealt += out.dealt;
+  if (element) this.fx.burst(p.x, p.y, p.z, SC.elementColor(element), res.crit); else { this.fx.sparks(p.x, p.y, p.z, null, res.crit); if (!bloodless) this.fx.blood(p.x, p.y, p.z); }
   this.fx.kick(res.crit ? 0.32 : 0.08); if (res.crit) this.hitStop = 0.12; else this.hitStop = 0.045;
   if (h && m.hp > 0) playAction(h, "hit");
-  this.skillProgress(skill, 1);
-  if (m.hp <= 0) this.kill(m, skill);
+  if (src.kind === "player") this.skillProgress(skill, 1);
 };
 function elementColor(e) { e = String(e || ""); return /fire|ember|flame/.test(e) ? "#ff8a3a" : /cold|frost|ice/.test(e) ? "#9fe0ff" : /lightning|storm/.test(e) ? "#d8e8ff" : /necrotic|umbral|shadow/.test(e) ? "#a06ad0" : /radiant|holy/.test(e) ? "#fff0a0" : /poison|acid/.test(e) ? "#9ae05a" : "#7ab8ff"; }
-Game.prototype.kill = function (m, skill) {
-  m.dead = true; m.hp = 0; m.aggro = false; if (this.target === m) this.target = null;
+Game.prototype.kill = function (m, skill, src) {
+  m.dead = true; m.hp = 0; m.aggro = false; if (this.target === m) this.target = null; m.st = [];
+  if (m.summoned) { this.pushLog(m.mon.name + " dissipates.", "info"); this.fx.burst(m.x, m.y + 1, m.z, "#c8a0ff", false); return; }
+  if (B.sideOf(m) === "party") { this.pushLog(m.mon.name + " falls, its bonds undone.", "info"); return; }
   var xp = R.KILL_XP[m.mon.threat] || 10; var v = this.v; this.write("player-xp", Math.max(0, Number(this.cur("player-xp")) || 0) + xp);
-  if (this.combatSummary) { this.combatSummary.xp += xp; this.combatNote("killed", m); }
-  this.skillProgress(skill, 3 + m.mon.threat * 3);
+  if (this.combatSummary) { this.combatSummary.xp += xp; this.combatNote("killed", m); if (src && src.kind === "ally") this.combatSummary.allyKills = (this.combatSummary.allyKills || 0) + 1; }
+  if (skill) this.skillProgress(skill, 3 + m.mon.threat * 3);
   this.slain[m.cell] = Math.floor(this.clock / 1440); this.dirtyFog = true;
-  this.floater(m, "+" + xp + " XP", "#9fe07a"); this.pushLog(m.mon.name + " falls. +" + xp + " XP.", "kill");
+  this.floater(m, "+" + xp + " XP", "#9fe07a"); this.pushLog(m.mon.name + " falls" + (src && src.kind === "ally" ? " to " + src.name : "") + ". +" + xp + " XP.", "kill");
   // codex: first proper identification
   var codex = Object.assign({ lore: [], titles: [], recipes: [], bestiary: [] }, this.cur("codex") || {}); var best = Array.isArray(codex.bestiary) ? codex.bestiary.slice() : [];
   var ix = best.findIndex(function (b) { return (b && (b.name || b)) === m.mon.name; });
@@ -394,60 +417,40 @@ Game.prototype.skillProgress = function (id, amount) {
   if (!id) return; var skills = Object.assign({}, this.cur("skills") || {}); var s = Object.assign({ name: id.split("-").map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(" "), category: "Combat", level: 1, prog: 0, origin: "practice", teacher: null }, skills[id] || {});
   s.prog = (Number(s.prog) || 0) + amount; skills[id] = s; this.write("skills", skills);
 };
-Game.prototype.monsterHit = function (m, ranged, tag) {
-  if (this.down || m.dead) return; var b = this.battle; var shield = R.hasShield(this.v);
-  var res = R.monsterAttack(m.mon, this.v, { evasionBonus: this.dodging ? 3 : 0 });
-  if (res.hit && res.damage > 0 && shield && b && b.reaction && !ranged) { b.reaction = 0; var blocked = Math.min(res.damage, 2); res.damage -= blocked; res.line = res.line.replace(/\)$/, " — Reaction: shield block −" + blocked + " → " + res.damage + ")"); playAction(this.player, "block"); var sp = this.chestOf(null); this.fx.sparks(sp.x, sp.y, sp.z, "#e8f0ff"); }
-  this.pushLog((tag === "opportunity" ? "Opportunity attack — " : "") + res.line, res.hit && res.damage > 0 ? "hurt" : "miss");
-  var kit = R.CALLING_KIT[this.calling()] || {};
-  if (res.hit && res.damage > 0) {
-    this.stats.hp -= res.damage; playAction(this.player, "hit"); this.floater(null, "-" + res.damage, "#ff6a5a"); if (this.combatSummary) this.combatSummary.dmgTaken += res.damage; this.hurtFlash = 0.4;
-    var cp = this.chestOf(null); this.fx.blood(cp.x, cp.y, cp.z); this.fx.sparks(cp.x, cp.y, cp.z, "#ffd0b0"); this.fx.kick(0.12 + Math.min(0.3, res.damage / Math.max(1, this.stats.maxHp))); this.hitStop = 0.05;
-    if (kit.build === "hurt") this.res = Math.min(kit.max, this.res + 1);
-    if (res.damage >= this.stats.maxHp * 0.25) this.log("Took a heavy blow (" + res.damage + " damage, ≥25% Max HP) from " + m.mon.name + "'s " + res.atk.name + " — injury check owed per Combat Numerics.");
-    if (this.stats.hp <= 0) this.fall(m);
-    this.writeStats();
-  } else {
-    if (this.dodging) { playAction(this.player, "dodge"); this.skillProgress("acrobatics", 1); }
-    if (kit.build === "dodge") this.res = Math.min(kit.max, this.res + 1);
-    this.floater(null, res.hit ? "Blocked" : this.dodging ? "Dodged" : "Miss", "#9fd0ff");
-  }
-};
 Game.prototype.fall = function (m) {
   this.stats.hp = 0; this.down = true; if (this.battle) C.finish(this, "fell"); else if (this.inCombat) this.closeCombat(true);
   var t0 = this.time; this.monsters.forEach(function (x) { x.aggro = false; x.state = "return"; x.calmUntil = t0 + 180; });
   var d = describe(this.pos.x / MILE, -this.pos.z / MILE);
   this.bridge.sfx && this.bridge.sfx("sfx-defeat-medieval");
-  this.log("I was struck down to 0 HP by " + m.mon.name + " (" + m.mon.region + " bestiary, Threat " + m.mon.threat + ") in " + d.location + ". The monsters broke off. Resolve consciousness, death or rescue strictly by the Combat rules — no plot armor.");
-  this.writeStats(); this.flush(); this.bridge.onFall && this.bridge.onFall(m.mon.name);
+  this.log("I was struck down to 0 HP by " + (m && m.mon ? m.mon.name + " (" + m.mon.region + " bestiary, Threat " + m.mon.threat + ")" : "the fight") + " in " + d.location + ". The monsters broke off. Resolve consciousness, death or rescue strictly by the Combat rules — no plot armor.");
+  this.writeStats(); this.flush(); this.bridge.onFall && this.bridge.onFall(m && m.mon ? m.mon.name : "the fight");
 };
-Game.prototype.castSpell = function (sp) {
-  var cost = sp.mp; if (this.v.conditions && JSON.stringify(this.v.conditions).indexOf("Mana Burn") >= 0) cost = Math.ceil(cost * 1.5);
-  if (this.overchannel) cost = Math.ceil(cost * 1.5);
-  if (this.stats.mp < cost) { this.toast("Not enough Mana for " + sp.name + " (" + cost + " MP).", "error"); return; }
-  var self = this; var w = R.weaponProfile(this.v); var clip = sp.heal ? "castUp" : w.kind === "staff" ? "staffCast" : "cast"; var m = null;
-  if (sp.dice && !sp.heal) {
-    m = this.target && !this.target.dead ? this.target : this.pickTarget(); if (!m) { this.toast("No target for " + sp.name + ".", "info"); return; }
-    this.target = m;
-    if (!this.battle) { C.engage(this, m, { playerFirst: true, pending: function () { self.castSpell(sp); } }); return; }
-    var d = Math.hypot(m.x - this.pos.x, m.z - this.pos.z); if (d > 30 + C.radius(m)) { this.toast(sp.name + " is out of range (" + Math.round(d) + " m; 30 m).", "info"); return; }
+Game.prototype.onEntityHit = function (att, tgt, res, dealt, info) {
+  var p = this.chestOf(tgt); var player = tgt.kind === "player"; var kit = player ? (R.CALLING_KIT[this.calling()] || {}) : {};
+  if (res.hit && res.damage > 0 && dealt) {
+    this.floatAt(tgt, "-" + dealt.dealt, "#ff6a5a"); if (tgt.mon) { tgt.hitT = 0.3; var th = tgt.c.parts.h; if (th && tgt.hp > 0) playAction(th, "hit"); } else { var h = tgt.c.parts.h; if (h && tgt.hp > 0) playAction(h, "hit"); }
+    this.fx.blood(p.x, p.y, p.z); this.fx.sparks(p.x, p.y, p.z, "#ffd0b0"); this.fx.kick((player ? 0.12 : 0.05) + Math.min(0.3, dealt.dealt / Math.max(1, tgt.maxHp))); if (player) { this.hurtFlash = 0.4; this.hitStop = 0.05; if (this.combatSummary) this.combatSummary.dmgTaken += dealt.dealt; if (kit.build === "hurt") this.res = Math.min(kit.max, this.res + 1); if (dealt.dealt >= this.stats.maxHp * 0.25) this.log("Took a heavy blow (" + dealt.dealt + " damage, ≥25% Max HP) from " + (att.mon ? att.mon.name + "'s " + info.atk.name : "an attacker") + " — injury check owed per Combat Numerics."); this.writeStats(); }
+    else if (tgt.kind === "ally" && dealt.dealt >= tgt.maxHp * 0.25) this.log(tgt.name + " took a heavy blow (" + dealt.dealt + " damage, ≥25% Max HP) from " + att.mon.name + " — injury check owed.");
+  } else if (!(res.hit && res.damage > 0)) {
+    var dodged = !res.hit; if (player && tgt.dodging) { var h2 = this.player; playAction(h2, "dodge"); this.skillProgress("acrobatics", 1); } else if (dodged && !tgt.mon) { var h3 = tgt.c.parts.h; if (h3 && !h3.action) playAction(h3, "dodge"); }
+    if (player && kit.build === "dodge") this.res = Math.min(kit.max, this.res + 1);
+    this.floatAt(tgt, info.blocked ? "Blocked" : tgt.dodging ? "Dodged" : "Miss", "#9fd0ff");
   }
-  if (this.battle && !C.canAct(this, "action")) return;
-  this.stats.mp -= cost; if (!this.battle) this.cooldowns["spell:" + sp.id] = this.time + 2.2;
-  this.bridge.sfx && this.bridge.sfx(sp.heal ? "sfx-heal" : /lightning|electric|spark|arc/.test(sp.name.toLowerCase() + sp.element) ? "sfx-electric-spell" : "sfx-magic-cast-" + (1 + Math.floor(Math.random() * 3)));
-  this.writeStats(); this.skillProgress(R.slug(sp.school) + "-magic", 1);
-  var col = sp.heal ? "#9cff9c" : elementColor(sp.element || sp.school);
-  C.act(this, clip, "action", function () {
-    var hp = self.handPos(); self.fx.burst(hp.x, hp.y, hp.z, col, false);
-    if (sp.heal) { var r = R.rollDice((sp.dice || [1, 8])[0], (sp.dice || [1, 8])[1]); var amt = r.total + Math.max(0, R.attrMod((self.v.attributes || {}).willpower)); self.stats.hp = Math.min(self.stats.maxHp, self.stats.hp + amt); self.floater(null, "+" + amt, "#7ae07a"); self.fx.motes(self.pos.x, self.pos.y + 0.3, self.pos.z); self.pushLog("(" + sp.name + " — heals " + amt + " HP)", "heal"); var kit = R.CALLING_KIT[self.calling()] || {}; if (kit.build === "heal") self.res = Math.min(kit.max, self.res + 1); self.writeStats(); return; }
-    if (m) {
-      self.faceTarget(m); var spell = self.overchannel ? Object.assign({}, sp, { dice: [sp.dice[0] + 1, sp.dice[1]] }) : sp; self.overchannel = false;
-      return (function* () { var done = false; self.projectile(m, "bolt", function () { var res = R.spellAttack(self.v, spell, m.mon); self.resolveHit(m, res, R.slug(sp.school) + "-magic", spell.element || "arcane"); done = true; }, null, sp.element); yield function () { return done; }; })();
-    }
-    var id = sp.id; self.fx.motes(self.pos.x, self.pos.y + 0.5, self.pos.z, col, 14);
+};
+Game.prototype.castSpell = function (sp) { SC.begin(this, sp); };
+Game.prototype.cancelTarget = function () { SC.cancel(this); };
+Game.prototype.confirmTarget = function () { SC.confirm(this); };
+Game.prototype.knowsSpell = function (e, id) { return SC.knows(this, e, id); };
+// spells with no use in a fight, cast in the world (the light, a ward on a door, a scrying…)
+Game.prototype.useUtilSpell = function (sp) {
+  if (this.battle) { this.toast(S.whyNot(sp) || (sp.name + " cannot be cast in a fight."), "info"); return; }
+  var cost = SC.manaCost(this, this.pe, sp); if (this.stats.mp < cost) { this.toast("Not enough Mana for " + sp.name + " (" + cost + " MP).", "error"); return; }
+  var self = this; this.stats.mp -= cost; this.cooldowns["spell:" + sp.id] = this.time + 2.2; this.bridge.sfx && this.bridge.sfx("sfx-magic-cast-" + (1 + Math.floor(Math.random() * 3)));
+  this.writeStats(); this.skillProgress(R.slug(sp.school) + "-magic", 1); var col = SC.elementColor(sp.element || "");
+  C.act(this, "castUp", null, function () {
+    var hp = self.handPos(); self.fx.burst(hp.x, hp.y, hp.z, col, false); var id = sp.id;
     if (/light/.test(id)) { self.lightOrb(); self.pushLog("(" + sp.name + " — a floating light follows you for an hour)", "info"); self.log("Cast " + sp.name + "."); }
-    else if (/bless/.test(id)) { self.buffs.blessing = self.battle ? 1 : 0; self.pushLog("(" + sp.name + " — +1 to attacks for the encounter)", "info"); }
-    else { self.pushLog("(" + sp.name + " — " + (sp.desc || "cast") + ")", "info"); self.log("Cast " + sp.name + " (utility; narrate any lasting effect)."); }
+    else { self.pushLog("(" + sp.name + " — " + (sp.desc || "cast") + ")", "info"); self.log("Cast " + sp.name + " (" + (sp.desc || "utility") + "; narrate any lasting effect)."); }
   });
 };
 Game.prototype.handPos = function () { var T3 = T(); var v = new T3.Vector3(); try { this.player.root.updateMatrixWorld(true); this.player.RA.hand.getWorldPosition(v); } catch (e) { v.set(this.pos.x, this.pos.y + 1.3, this.pos.z); } return v; };
@@ -488,28 +491,57 @@ Game.prototype.dodge = function (free) {
   if (!free) { if (this.stats.sp < 2) { this.toast("Too winded to dodge.", "info"); return; } this.stats.sp -= 2; }
   this.dodgeT = this.time + 0.5; this.cooldowns.dodge = this.time + 0.9; playAction(this.player, "dodge"); var mx = this.move.x, my = this.move.y; var a = (mx || my) ? this.camYaw + Math.atan2(mx, my) + Math.PI : this.yaw + Math.PI; this.dash = { vx: Math.sin(a) * 18, vz: Math.cos(a) * 18, t: 0.28 }; this.fx.dust(this.pos.x, this.pos.y + 0.1, this.pos.z); this.writeStats();
 };
-Game.prototype.useItem = function (item) {
-  if (this.battle && !C.canAct(this, "bonus")) return;
-  var inv = (this.cur("inventory") || []).slice(); var ix = inv.findIndex(function (x) { return x && x.id === item.id; }); if (ix < 0) return; var it = Object.assign({}, inv[ix]); var n = String(it.name).toLowerCase(); var self = this;
-  it.qty = (Number(it.qty) || 1) - 1; if (it.qty <= 0) inv.splice(ix, 1); else inv[ix] = it; this.write("inventory", inv); if (!this.battle) this.cooldowns["item:" + item.id] = this.time + 2;
-  var food = !/mana|potion|elixir|draught|tonic|salve/.test(n);
-  C.act(this, food ? "talk" : "drink", "bonus", function () {
-    var msg = "", col = "#9cff9c";
-    if (/mana/.test(n)) { var a = R.rollDice(2, 4).total + 2; self.stats.mp = Math.min(self.stats.maxMp, self.stats.mp + a); msg = "+" + a + " MP"; col = "#8ab8ff"; }
-    else if (!food) { var a2 = R.rollDice(2, 4).total + 2; self.stats.hp = Math.min(self.stats.maxHp, self.stats.hp + a2); msg = "+" + a2 + " HP"; }
-    else { self.stats.sp = Math.min(self.stats.maxSp, self.stats.sp + 5); msg = "+5 SP"; col = "#ffd070"; }
-    self.writeStats(); self.floater(null, msg, col); self.fx.motes(self.pos.x, self.pos.y + 0.3, self.pos.z, col, 18); self.pushLog("(Used " + item.name + " — " + msg + ")", "heal"); self.log("Used 1× " + item.name + " (" + msg + ").");
+Game.prototype.useItem = function (ref) {
+  var inv = (this.cur("inventory") || []).slice(); var ix = inv.findIndex(function (x) { return x && (x.id === ref.id); }); if (ix < 0) { this.toast("You no longer have that.", "info"); return; }
+  var it = Object.assign({}, inv[ix]); var c = I.classify(it); var self = this;
+  if (c.kind === "weapon") return this.equipWeapon(it);
+  if (c.kind === "throw") return this.throwItem(it, c);
+  var cost = "bonus"; if (this.battle && !C.canAct(this, cost)) return;
+  var consume = function () { var nv = (self.cur("inventory") || []).slice(); var j = nv.findIndex(function (x) { return x && x.id === it.id; }); if (j < 0) return; var q = Object.assign({}, nv[j]); q.qty = (Number(q.qty) || 1) - 1; if (q.qty <= 0) nv.splice(j, 1); else nv[j] = q; self.write("inventory", nv); };
+  consume(); if (!this.battle) this.cooldowns["item:" + it.id] = this.time + 2;
+  C.act(this, c.kind === "food" ? "talk" : "drink", cost, function () {
+    var msg = "", col = "#9cff9c", d = c.dice ? R.rollDice(c.dice[0], c.dice[1]).total + c.dice[2] : 0;
+    if (c.kind === "mana") { var a = Math.min(d, self.stats.maxMp - self.stats.mp); self.stats.mp += a; msg = "+" + d + " MP"; col = "#8ab8ff"; }
+    else if (c.kind === "stamina") { self.stats.sp = Math.min(self.stats.maxSp, self.stats.sp + d); msg = "+" + d + " SP"; col = "#ffd070"; }
+    else if (c.kind === "food") { self.stats.sp = Math.min(self.stats.maxSp, self.stats.sp + 5); msg = "+5 SP"; col = "#ffd070"; }
+    else if (c.kind === "heal") { var got = B.healEntity(self, self.pe, self.pe, d); msg = "+" + d + " HP"; self.writeStats(); }
+    else if (c.kind === "cure") { msg = "cured"; }
+    if (c.cures || c.kind === "cure") { var cond = (self.cur("conditions") || []).filter(function (x) { var n = String(typeof x === "string" ? x : x && x.name).toLowerCase(); return !((c.cures || /poison|venom|toxin/).test(n)); }); if (cond.length !== (self.cur("conditions") || []).length) { self.write("conditions", cond); msg += (msg ? ", " : "") + "condition removed"; } }
+    self.writeStats(); self.floater(null, msg, col); self.fx.motes(self.pos.x, self.pos.y + 0.3, self.pos.z, col, 18); self.pushLog("(Used " + it.name + " — " + msg + ")", "heal"); self.log("Used 1× " + it.name + " (" + msg + ").");
   }, { after: 0.25 });
+};
+// drawing a different weapon: a Bonus Action; the avatar re-dresses when the equipment changes
+Game.prototype.equipWeapon = function (it) {
+  if (it.id === (this.cur("equipment") || {}).weapon) { this.toast(it.name + " is already in hand.", "info"); return; }
+  if (this.battle && !C.canAct(this, "bonus")) return; var self = this; if (this.battle) C.spend(this, "bonus");
+  var inv = (this.cur("inventory") || []).map(function (x) { return Object.assign({}, x); }); var eq = Object.assign({}, this.cur("equipment") || {});
+  var prev = eq.weapon && inv.find(function (x) { return x.id === eq.weapon; }); if (prev) prev.equipped = false; eq.weapon = it.id; var me = inv.find(function (x) { return x.id === it.id; }); if (me) me.equipped = true;
+  if (I.twoHanded(it) && eq.offhand) { var off = inv.find(function (x) { return x.id === eq.offhand; }); if (off) off.equipped = false; eq.offhand = null; }
+  this.write("equipment", eq); this.write("inventory", inv); this.flushSoon(); playAction(this.player, "talk");
+  this.pushLog("(Drew " + it.name + ")", "info"); this.log("Drew " + it.name + (this.battle ? " as a Bonus Action." : ".")); this.v = Object.assign({}, this.v, { equipment: eq, inventory: inv }); this.rebuildPlayer();
+};
+Game.prototype.rebuildPlayer = function () { var p0 = this.player.root.position.clone(), rot = this.player.root.rotation.y; this.buildPlayer(this.v); this.player.root.position.copy(p0); this.player.root.rotation.y = rot; };
+// a thrown flask or bomb: the Action, 12 m, 3d6 + Agility vs Evasion, damage ignores armour
+Game.prototype.throwItem = function (it, c) {
+  var m = this.target && !this.target.dead ? this.target : this.pickTarget(); if (!m) { this.toast("Choose an enemy to throw at.", "info"); return; } this.target = m; var self = this;
+  var d = Math.hypot(m.x - this.pos.x, m.z - this.pos.z) - C.radius(m); if (d > c.range + 0.1) { this.toast("Out of range (" + Math.round(d) + " m, throw reach " + c.range + " m).", "info"); return; }
+  if (!this.battle) { C.engage(this, m, { playerFirst: true, pending: function () { self.throwItem(it, c); } }); return; }
+  if (!C.canAct(this, "action")) return;
+  var nv = (this.cur("inventory") || []).slice(); var j = nv.findIndex(function (x) { return x && x.id === it.id; }); if (j >= 0) { var q = Object.assign({}, nv[j]); q.qty = (Number(q.qty) || 1) - 1; if (q.qty <= 0) nv.splice(j, 1); else nv[j] = q; this.write("inventory", nv); }
+  var col = c.element === "fire" ? "#ff8a3a" : c.element === "acid" ? "#9ae05a" : c.element === "cold" ? "#9fe0ff" : "#d0c0a0";
+  C.act(this, "throw", "action", function () { return (function* () { self.faceTarget(m); var done = false; self.projectile(m, "flask", function () { var res = I.throwAttack(self.v, c, m.mon, { name: it.name, bonus: B.stSum(self.pe, "atk"), evBonus: B.stSum(m, "ev") }); self.resolveHit(m, res, "throwing", res.hit ? c.element || "fire" : null, self.pe); if (res.hit && c.element === "fire") self.fx.ring(m.x, m.y, m.z, "#ff8a3a", 2.4); done = true; }, null, c.element, col); yield function () { return done; }; })(); });
+  this.log("Threw " + it.name + " at " + m.mon.name + ".");
 };
 Game.prototype.hotbar = function () {
   var v = this.v, w = R.weaponProfile(v), kit = R.CALLING_KIT[this.calling()] || { tech: [] }; var slots = []; var self = this; var b = this.battle;
   slots.push({ id: "attack", kind: "attack", cost: "action", label: w.item ? w.name : "Unarmed", icon: w.ranged ? "bow" : w.kind === "staff" ? "staff" : w.kind === "dagger" ? "dagger" : w.kind === "none" ? "fist" : w.blunt ? "hammer" : "sword", desc: "Weapon attack (Action)." });
   (kit.tech || []).slice(0, 2).forEach(function (t) { slots.push({ id: "tech:" + t.id, kind: "tech", tech: t, cost: self.techCost(t), label: t.name, icon: "tech", desc: t.desc, disabled: (t.cost && self.res < t.cost) || (t.sp && self.stats.sp < t.sp) || (t.once && self.encounterUsed[t.id]), why: t.cost ? "Requires " + t.cost + " " + kit.res : t.once && self.encounterUsed[t.id] ? "Spent for this encounter." : "" }); });
-  var spells = v["known-spells"] && typeof v["known-spells"] === "object" ? v["known-spells"] : {};
-  Object.keys(spells).slice(0, 3).forEach(function (k) { var sp = R.spellFor(k, spells[k]); slots.push({ id: "spell:" + sp.id, kind: "spell", spell: sp, cost: "action", label: sp.name, icon: sp.heal ? "heal" : /fire|ember|flame/.test(sp.id + sp.element) ? "fire" : /frost|ice|cold/.test(sp.id + sp.element) ? "ice" : /lightning|spark|arc/.test(sp.id + sp.element) ? "bolt" : "magic", mp: sp.mp, desc: sp.desc, disabled: self.stats.mp < sp.mp, why: "Not enough Mana." }); });
+  // the first spells the character can actually use in a fight; every learned spell is in the spellbook tray (R)
+  var learned = SC.known(this, this.pe); learned.sort(function (a, b2) { return (S.describeSpell(b2).usable ? 1 : 0) - (S.describeSpell(a).usable ? 1 : 0); });
+  learned.slice(0, 3).forEach(function (sp) { var st = SC.state(self, self.pe, sp); var kind = st.d.kind; slots.push({ id: "spell:" + sp.id, kind: "spell", spell: sp, cost: st.d.cost && st.d.cost.reaction ? "reaction" : st.d.cost && st.d.cost.action ? "action" : null, label: sp.name, icon: kind === "heal" ? "heal" : /fire|ember|flame/.test(sp.id + sp.element) ? "fire" : /frost|ice|cold/.test(sp.id + sp.element) ? "ice" : /lightning|spark|arc/.test(sp.id + sp.element) ? "bolt" : "magic", mp: st.mp, desc: sp.desc, disabled: !st.ok, why: st.why }); });
   while (slots.length < 5) slots.push(null);
   var inv0 = this.cur("inventory"); var inv = Array.isArray(inv0) ? inv0 : [];
-  var heal = inv.find(function (x) { return x && /potion|elixir|draught|salve|tonic/i.test(x.name) && !/mana/i.test(x.name); }); var mana = inv.find(function (x) { return x && /mana/i.test(x.name) && /potion|elixir|draught/i.test(x.name); }); var food = inv.find(function (x) { return x && /ration|bread|jerky|herb|trail food|meal/i.test(x.name); });
+  var heal = inv.find(function (x) { return x && Number(x.qty) > 0 && I.classify(x).kind === "heal"; }); var mana = inv.find(function (x) { return x && Number(x.qty) > 0 && I.classify(x).kind === "mana"; }); var food = inv.find(function (x) { return x && Number(x.qty) > 0 && I.classify(x).kind === "food"; });
   slots.push(heal ? { id: "item:" + heal.id, kind: "item", item: heal, cost: "bonus", label: heal.name, icon: "potion-red", count: heal.qty || 1, desc: "Drink (Bonus Action)." } : { id: "none6", kind: "empty", label: "No healing potion", icon: "potion-red", disabled: true, count: 0, why: "No healing potions in your pack." });
   slots.push(mana ? { id: "item:" + mana.id, kind: "item", item: mana, cost: "bonus", label: mana.name, icon: "potion-blue", count: mana.qty || 1, desc: "Drink (Bonus Action)." } : { id: "none7", kind: "empty", label: "No mana potion", icon: "potion-blue", disabled: true, count: 0, why: "No mana potions in your pack." });
   if (b) {
@@ -517,7 +549,7 @@ Game.prototype.hotbar = function () {
     slots.push({ id: "dash", kind: "dash", cost: "action", label: "Dash", icon: "dash", desc: "Double your movement this turn (Action)." });
     slots.push({ id: "endturn", kind: "endturn", label: "End Turn", icon: "end", desc: "End your turn (Space)." });
     var ready = C.ready(this);
-    slots.forEach(function (s) { if (!s || s.kind === "empty") return; if (s.kind === "endturn") { s.disabled = !ready; return; } if (!ready || (s.cost && !b.econ[s.cost])) { s.disabled = true; s.why = !ready ? "Wait for your turn." : s.cost === "action" ? "Action spent this turn." : "Bonus Action spent this turn."; } });
+    slots.forEach(function (sl) { if (!sl || sl.kind === "empty") return; if (sl.kind === "endturn") { sl.disabled = !ready; return; } if (!ready || (sl.cost && sl.cost !== "reaction" && !b.econ[sl.cost])) { sl.disabled = true; sl.why = !ready ? "Wait for your turn." : sl.cost === "action" ? "Action spent this turn." : "Bonus Action spent this turn."; } });
   } else {
     slots.push(food ? { id: "item:" + food.id, kind: "item", item: food, cost: "bonus", label: food.name, icon: "herb", count: food.qty || 1 } : { id: "none8", kind: "empty", label: "No rations", icon: "herb", disabled: true, count: 0, why: "No separate rations or herbs." });
     slots.push({ id: "dodge", kind: "dodge", label: "Dodge Roll (2 SP)", icon: "dodge", disabled: this.stats.sp < 2 });
@@ -525,32 +557,119 @@ Game.prototype.hotbar = function () {
   }
   return slots.slice(0, 10);
 };
+// the spellbook and item trays: everything learned or carried, with the reason when it cannot be used right now
+Game.prototype.listSpells = function () {
+  var self = this; return SC.known(this, this.pe).map(function (sp) { var st = SC.state(self, self.pe, sp); var d = st.d; return { id: sp.id, name: sp.name, school: sp.school, tier: sp.tier, mp: st.mp, ok: st.ok, why: st.why, label: d.label, kind: d.kind, util: !!st.util, range: Math.round(d.maxR || 0), area: Math.round(d.area || 0), dice: sp.dice ? sp.dice[0] + "d" + sp.dice[1] : "", element: sp.element || "", desc: sp.desc || "", tgt: d.tgt }; }).sort(function (a, b) { return (b.ok ? 1 : 0) - (a.ok ? 1 : 0) || (a.mp - b.mp); });
+};
+Game.prototype.listItems = function () {
+  var inv = this.cur("inventory"); var eq = this.cur("equipment") || {}; var self = this; return I.combatItems(inv, eq).map(function (c) { var cost = I.costOf(c); var ok = true, why = ""; if (self.battle) { if (!C.ready(self)) { ok = false; why = "Wait for your turn."; } else if (!self.battle.econ[cost]) { ok = false; why = cost === "action" ? "Action spent." : "Bonus Action spent."; } } if (c.kind === "weapon" && c.equipped) { ok = false; why = "Already in hand."; } return { id: c.id, name: c.name, qty: c.qty, kind: c.kind, label: c.label, desc: I.describe(c), cost: cost, ok: ok, why: why, equipped: !!c.equipped }; });
+};
+Game.prototype.useSpellById = function (id) { var sp = SC.known(this, this.pe).find(function (x) { return x.id === id; }); if (sp) SC.begin(this, sp); };
+Game.prototype.useItemById = function (id) { var it = (this.cur("inventory") || []).find(function (x) { return x && x.id === id; }); if (it) this.useItem(it); };
+Game.prototype.handPos = function () { var T3 = T(); var v = new T3.Vector3(); try { this.player.root.updateMatrixWorld(true); this.player.RA.hand.getWorldPosition(v); } catch (e) { v.set(this.pos.x, this.pos.y + 1.3, this.pos.z); } return v; };
+Game.prototype.engageWith = function (m, opts) { C.engage(this, m, opts); };
+Game.prototype.runScript = function (gen) { C.run(this, gen); };
+Game.prototype.endTurnNow = function () { C.endTurn(this); };
+Game.prototype.battleEntities = function () { var l = [this.pe]; (this.allies || []).forEach(function (a) { if (!a.dead && !a.gone) l.push(a); }); this.monsters.forEach(function (m) { if (!m.dead && !m.fled && (m.inBattle || m.summoned)) l.push(m); }); return l; };
+Game.prototype.entityById = function (id) { if (id === "player" || id == null) return this.pe; var a = this.allyById(id); if (a) return a; return this.monsters.find(function (m) { return m.id === id; }) || this.pe; };
+Game.prototype.allyById = function (id) { return (this.allies || []).find(function (a) { return a.id === id; }) || null; };
+Game.prototype.spawnGuardian = function (caster, x, z, rounds, sp) {
+  var m = this.addMonster(R.GUARDIAN, x, z, "summon" + Math.random().toString(36).slice(2, 6)); if (!m) return; m.summoned = true; m.passive = false; m.speed = 8; C.join(this, m, true); B.addSt(this, m, { id: "controlled", name: "Spirit Guardian", rounds: rounds, controlled: 1 }, caster); m.tag = ""; var c = this.battle && this.battle.order.find(function (o) { return o.e === m; }); if (c) c.name = "Spirit Guardian"; this.fx.burst(x, m.y + 1, z, "#c8a0ff", true);
+};
 // ------------------------------------------------------------------ projectiles, floaters, effects
-Game.prototype.projectile = function (target, kind, onHit, from, element) {
+Game.prototype.projectile = function (target, kind, onHit, from, element, colOverride) {
   var THREE = T(); var o; var src = from ? { x: from.x, y: from.y + 1.4, z: from.z } : { x: this.pos.x, y: this.pos.y + 1.5, z: this.pos.z };
   if (kind === "arrow") { o = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 4), new THREE.MeshBasicMaterial({ color: 0x8a6a40 })); o.rotation.order = "YXZ"; }
-  else { var col = /fire|ember/.test(element || "") ? 0xff8a3a : /cold|frost|ice/.test(element || "") ? 0x9fe0ff : /lightning/.test(element || "") ? 0xd8e8ff : /necrotic|umbral/.test(element || "") ? 0x9a5ac0 : /radiant/.test(element || "") ? 0xfff0a0 : 0x7ab8ff; o = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); o.scale.set(1.3, 1.3, 1); }
-  o.position.set(src.x, src.y, src.z); this.scene.add(o); this.projectiles.push({ o: o, target: target, onHit: onHit, speed: kind === "arrow" ? 46 : 26, kind: kind, col: elementColor(element) });
+  else if (kind === "rock" || kind === "flask") { o = new THREE.Mesh(new THREE.SphereGeometry(kind === "rock" ? 0.28 : 0.13, 8, 6), new THREE.MeshStandardMaterial({ color: kind === "rock" ? 0x6a6560 : 0x7a5a30, roughness: 0.9 })); }
+  else { var col = colOverride ? new THREE.Color(colOverride) : new THREE.Color(/fire|ember/.test(element || "") ? 0xff8a3a : /cold|frost|ice/.test(element || "") ? 0x9fe0ff : /lightning/.test(element || "") ? 0xd8e8ff : /necrotic|umbral/.test(element || "") ? 0x9a5ac0 : /radiant/.test(element || "") ? 0xfff0a0 : 0x7ab8ff); o = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); o.scale.set(1.3, 1.3, 1); }
+  o.position.set(src.x, src.y, src.z); this.scene.add(o); this.projectiles.push({ o: o, target: target, onHit: onHit, speed: kind === "arrow" ? 46 : kind === "rock" || kind === "flask" ? 22 : 26, kind: kind, col: colOverride || SC.elementColor(element), arc: kind === "rock" || kind === "flask", t0: 0, d0: Math.hypot(target.x - src.x, target.z - src.z) });
 };
 Game.prototype.updateProjectiles = function (dt) {
   var self = this; this.projectiles = this.projectiles.filter(function (p) {
     var t = p.target; var tx = t.x, tz = t.z, ty = (t.y || 0) + ((t.c && t.c.height) || 1.4) * 0.6;
     var dx = tx - p.o.position.x, dy = ty - p.o.position.y, dz = tz - p.o.position.z, d = Math.hypot(dx, dy, dz);
     if (d < 0.8 || d > 300) { self.scene.remove(p.o); if (p.o.geometry) p.o.geometry.dispose(); p.o.material.dispose(); if (d < 0.8) { if (p.kind === "arrow") self.fx.sparks(p.o.position.x, p.o.position.y, p.o.position.z, "#e8d8b0"); p.onHit(); } return false; }
-    var s = Math.min(d, p.speed * dt); p.o.position.x += dx / d * s; p.o.position.y += dy / d * s; p.o.position.z += dz / d * s;
+    var s = Math.min(d, p.speed * dt); p.o.position.x += dx / d * s; p.o.position.y += dy / d * s + (p.arc ? Math.sin(Math.min(1, (p.d0 - Math.hypot(dx, dz)) / Math.max(1, p.d0)) * Math.PI) * 4 * dt : 0); p.o.position.z += dz / d * s;
     if (p.kind === "arrow") { p.o.rotation.y = Math.atan2(dx, dz); p.o.rotation.x = Math.PI / 2; }
+    else if (p.arc) { p.o.rotation.x += dt * 9; p.o.rotation.y += dt * 7; if (p.kind === "flask") self.fx.trailPuff(p.o.position.x, p.o.position.y, p.o.position.z, p.col); }
     else { p.o.scale.setScalar(1.1 + Math.sin(self.time * 30) * 0.15); self.fx.trailPuff(p.o.position.x, p.o.position.y, p.o.position.z, p.col || "#7ab8ff"); }
     return true;
   });
 };
+Game.prototype.projectileTo = function (caster, pt, col) { var self = this; var hp = this.handPos ? (caster.kind === "player" ? this.handPos() : { x: caster.x, y: caster.y + 1.4, z: caster.z }) : { x: caster.x, y: caster.y + 1.4, z: caster.z }; var o = { x: pt.x, y: pt.y, z: pt.z, c: { height: 0 } }; this.projectile(o, "bolt", function () { }, { x: hp.x, y: hp.y - 1.4, z: hp.z }, "", col); };
+Game.prototype.beam = function (a, b, col) { var n = Math.ceil(B.dist(a, b) / 0.5); for (var i = 0; i <= n; i++) { var t = i / n; this.fx.emit(a.x + (b.x - a.x) * t, (a.y || 0) + 1.2 + (((b.y || 0) - (a.y || 0)) * t), a.z + (b.z - a.z) * t, { n: 2, color: col, color2: "#ffffff", speed: 0.4, size: 0.3, life: 0.35, grav: 0, drag: 2 }); } };
 Game.prototype.floater = function (m, text, color) {
   var s = textSprite(text, { size: 34, scale: 0.011, color: color, bold: true, depthTest: false }); var pos = m ? { x: m.x, y: m.y + (m.c.height || 1.6) + 0.4, z: m.z } : { x: this.pos.x, y: this.pos.y + 2.3, z: this.pos.z };
   s.position.set(pos.x + (Math.random() - 0.5) * 0.6, pos.y, pos.z + (Math.random() - 0.5) * 0.6); this.scene.add(s); this.floaters.push({ s: s, t: 0 });
 };
+Game.prototype.floatAt = function (e, text, color) { this.floater(e && e.kind === "player" ? null : e, text, color); };
+Game.prototype.statusFloat = function (e, name, good) { if (!name) return; this.floatAt(e, name, good ? "#d8c8ff" : "#ffb0a0"); };
 Game.prototype.updateFloaters = function (dt) { var self = this; this.floaters = this.floaters.filter(function (f) { f.t += dt; f.s.position.y += dt * 1.4; f.s.material.opacity = Math.max(0, 1 - f.t / 1.3); if (f.t > 1.3) { self.scene.remove(f.s); f.s.material.map.dispose(); f.s.material.dispose(); return false; } return true; }); };
 Game.prototype.lightOrb = function () { var THREE = T(); if (this.orb) { this.orbUntil = this.time + 60; return; } var l = new THREE.PointLight(0xbfd8ff, 1.6, 26); var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xbfd8ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); sp.scale.set(1.2, 1.2, 1); l.add(sp); this.scene.add(l); this.orb = l; this.orbUntil = this.time + 60; };
 Game.prototype.pushLog = function (line, kind) { this.combatLog.push({ t: Date.now(), line: line, kind: kind || "info" }); if (this.combatLog.length > 30) this.combatLog.shift(); };
 Game.prototype.toast = function (msg, type) { this.bridge.toast && this.bridge.toast(msg, type || "info"); };
+
+
+// ------------------------------------------------------------------ companions
+// The party the Game Master keeps in `party` and `companions` becomes real people who follow you in the world and
+// fight beside you. Their statistics are the companion records' own (attributes, skills, equipment, spells, HP/Mana/Stamina).
+function allySheet(rec) {
+  var base = { strength: 10, agility: 10, endurance: 10, intellect: 10, perception: 10, willpower: 10, presence: 10, arcana: 10 };
+  return { attributes: Object.assign(base, rec.attributes || {}), skills: rec.skills || {}, equipment: rec.equipment || {}, inventory: Array.isArray(rec.inventory) ? rec.inventory : [], "known-spells": rec.knownSpells || rec["known-spells"] || {}, techniques: rec.techniques || {}, class: rec.class || rec.calling || (Array.isArray(rec.callings) && rec.callings[0]) || "Fighter", conditions: rec.conditions || [], encumbrance: rec.encumbrance };
+}
+Game.prototype.partyMembers = function () {
+  var v = this.v; var party = Array.isArray(v.party) ? v.party : []; var comps = v.companions && typeof v.companions === "object" ? v.companions : {}; var out = []; var seen = {};
+  function ok(rec) { var st = String(rec.partyStatus || rec.status || "").toLowerCase(); return !/dead|captured|separated|departed|left|missing/.test(st) && !(rec.hp != null && Number(rec.hp) <= 0 && /dead/.test(st)); }
+  party.forEach(function (p) { var id = typeof p === "string" ? p : (p && (p.id || p.name)); if (!id) return; var key = R.slug(id); var rec = Object.assign({ name: typeof p === "string" ? (comps[id] || {}).name || id : p.name || id }, comps[id] || comps[key] || {}, typeof p === "object" ? p : {}); if (!rec.name) rec.name = id; if (ok(rec) && !seen[key]) { seen[key] = 1; out.push({ id: key, key: comps[id] ? id : comps[key] ? key : id, rec: rec }); } });
+  if (!party.length) Object.keys(comps).forEach(function (k) { var c = comps[k]; if (c && (c.inParty || /active|traveling|following|party/i.test(String(c.partyStatus || c.status || ""))) && ok(c) && !seen[R.slug(k)]) { seen[R.slug(k)] = 1; out.push({ id: R.slug(k), key: k, rec: Object.assign({ name: c.name || k }, c) }); } });
+  return out;
+};
+function num2(x, d) { var n = Number(x); return isFinite(n) ? n : d; }
+Game.prototype.spawnAlly = function (m) {
+  var rec = m.rec; var rr = rng(hashStr(m.id)); var sheet = allySheet(rec); var w = R.weaponProfile(sheet);
+  var cal = sheet.class; var look = { calling: CALLING_LOOK[cal] ? cal : "Fighter", species: rec.species || "Human", gender: rec.gender || (rr() < 0.5 ? "Female" : "Male"), skin: SKIN_TONES[Math.floor(rr() * 4)], hair: HAIR_COLORS[Math.floor(rr() * 5)], hairStyle: HAIR_STYLES[Math.floor(rr() * 11)], face: Math.floor(rr() * 12), build: ["Slender", "Lean", "Athletic", "Sturdy", "Broad"][Math.floor(rr() * 5)], beard: rr() < 0.3, weapon: w.kind, shield: R.hasShield(sheet) };
+  var h = makeHumanoid(Object.assign({ detail: "lo" }, look)); var ang = this.yaw + Math.PI + (this.allies.length % 2 ? 0.7 : -0.7); var x = this.pos.x + Math.sin(ang) * 2.6, z = this.pos.z + Math.cos(ang) * 2.6;
+  var hp = num2(rec.hp, num2(rec.maxHp, 20)); var maxHp = num2(rec.maxHp != null ? rec.maxHp : rec["max-hp"] != null ? rec["max-hp"] : rec.hpMax, hp);
+  var a = { kind: "ally", id: "ally:" + m.id, cid: m.id, ckey: m.key, name: rec.name, role: rec.role, rec: rec, sheet: sheet, st: [], x: x, z: z, y: this.terrain.groundAt(x, z), yaw: this.yaw, hp: hp, maxHp: Math.max(1, maxHp), mp: num2(rec.mana != null ? rec.mana : rec.mp, 0), maxMp: num2(rec.maxMana != null ? rec.maxMana : rec["max-mana"], num2(rec.mana, 0)), sp: num2(rec.stamina != null ? rec.stamina : rec.sp, 10), maxSp: num2(rec.maxStamina != null ? rec.maxStamina : rec["max-stamina"], num2(rec.stamina, 10)), dead: false, gone: false, gait: 0, reaction: 1, c: { arch: "humanoid", size: 1, height: h.height, parts: { h: h } } };
+  h.root.position.set(a.x, a.y, a.z); this.scene.add(h.root); var lab = textSprite(a.name, { size: 28, scale: 0.0062, color: "#a8dcff" }); lab.position.y = h.height + 0.35; h.root.add(lab); this.allies.push(a); return a;
+};
+Game.prototype.syncAllies = function (initial) {
+  var self = this; var members = this.partyMembers();
+  this.allies = this.allies.filter(function (a) { var keep = members.some(function (m) { return m.id === a.cid; }) && !a.dead; if (!keep && !a.dead) { self.scene.remove(a.c.parts.h.root); a.gone = true; } else if (!keep) { /* corpses stay where they fell */ } return keep || a.dead; });
+  members.forEach(function (m) {
+    var a = self.allies.find(function (x) { return x.cid === m.id; });
+    if (!a) { self.spawnAlly(m); return; }
+    a.rec = m.rec; a.sheet = allySheet(m.rec); a.name = m.rec.name || a.name; a.role = m.rec.role;
+    if (!self.battle) { var hp = num2(m.rec.hp, a.hp); if (Math.round(hp) !== Math.round(a.hp)) a.hp = hp; a.maxHp = Math.max(1, num2(m.rec.maxHp != null ? m.rec.maxHp : m.rec["max-hp"], a.maxHp)); if (m.rec.mana != null) a.mp = num2(m.rec.mana, a.mp); if (m.rec.stamina != null) a.sp = num2(m.rec.stamina, a.sp); }
+  });
+};
+Game.prototype.writeAlly = function (a) {
+  var comps = Object.assign({}, this.cur("companions") || {}); var key = a.ckey in comps ? a.ckey : a.cid; var rec = Object.assign({}, comps[key] || { name: a.name });
+  rec.hp = Math.max(0, Math.round(a.hp)); if (rec.maxHp == null && rec["max-hp"] == null) rec.maxHp = a.maxHp; if (rec.mana != null || a.maxMp > 0) rec.mana = Math.max(0, Math.round(a.mp)); if (rec.stamina != null) rec.stamina = Math.max(0, Math.round(a.sp));
+  if (a.dead) { rec.status = "dead"; rec.partyStatus = "dead"; rec.alive = false; comps[key] = rec; this.write("companions", comps); var party = (this.cur("party") || []).filter(function (p) { var id = typeof p === "string" ? p : p && (p.id || p.name); return R.slug(id) !== a.cid; }); this.write("party", party); var pm = Object.assign({}, this.cur("party-management") || {}); if (Array.isArray(pm.memberIds)) { pm.memberIds = pm.memberIds.filter(function (id) { return R.slug(id) !== a.cid; }); this.write("party-management", pm); } this.flushSoon(); return; }
+  comps[key] = rec; this.write("companions", comps); this.flushSoon();
+};
+Game.prototype.allyPack = function (a) { return a.sheet.inventory; };
+Game.prototype.allyUseItem = function* (a, c) {
+  a.econ.bonus = 0; var rec = Object.assign({}, a.rec); var inv = (rec.inventory || []).map(function (x) { return Object.assign({}, x); }); var j = inv.findIndex(function (x) { return x.id === c.id; }); if (j >= 0) { inv[j].qty = (Number(inv[j].qty) || 1) - 1; if (inv[j].qty <= 0) inv.splice(j, 1); }
+  var h = a.c.parts.h; playAction(h, "drink"); yield 0.7; var d = c.dice ? R.rollDice(c.dice[0], c.dice[1]).total + c.dice[2] : 6; var got = B.healEntity(this, a, a, d); this.pushLog("(" + a.name + " drinks " + c.name + " — +" + got + " HP)", "heal"); this.fx.motes(a.x, a.y + 0.3, a.z, "#9cff9c", 16); a.rec.inventory = inv; a.sheet.inventory = inv;
+  var comps = Object.assign({}, this.cur("companions") || {}); var key = a.ckey in comps ? a.ckey : a.cid; comps[key] = Object.assign({}, comps[key] || {}, { inventory: inv }); this.write("companions", comps); this.writeAlly(a); yield 0.2;
+};
+Game.prototype.updateAllies = function (dt) {
+  var self = this; var adt = this.adt || dt;
+  this.allies.forEach(function (a, i) {
+    var h = a.c.parts.h; if (!a.dead && !a.inBattle) {
+      var k = Math.floor(i / 2); var ang = self.yaw + Math.PI + (i % 2 ? 0.75 : -0.75) * (1 + k * 0.45); var dd = 2.6 + k * 1.5; var tx = self.pos.x + Math.sin(ang) * dd, tz = self.pos.z + Math.cos(ang) * dd; var d = Math.hypot(tx - a.x, tz - a.z);
+      if (d > 55) { a.x = tx; a.z = tz; a.gait = 0; }
+      else if (d > 0.9) { var sp = Math.min(13, 2.2 + d * 2.0); var step = Math.min(d, sp * dt); var nx = a.x + (tx - a.x) / d * step, nz = a.z + (tz - a.z) / d * step; var gh = self.terrain.groundAt(nx, nz); if (gh > -1.3) { var c = self.collide(nx, nz, 0.45); a.x = c.x; a.z = c.z; } a.yaw = lerpAngle(a.yaw, Math.atan2(tx - a.x, tz - a.z), dt * 9); a.gait = sp; }
+      else { a.gait = 0; a.yaw = lerpAngle(a.yaw, self.yaw, dt * 3); }
+    }
+    a.y = self.terrain.groundAt(a.x, a.z); h.root.position.set(a.x, a.y, a.z); h.root.rotation.y = a.yaw;
+    if (a.inBattle && a.gait === 0 && !B.hasSt(a, "unconscious")) { /* stance only */ }
+    if (Math.hypot(a.x - self.pos.x, a.z - self.pos.z) < 180) animateHumanoid(h, adt, { speed: (a.gait || 0) / 7.2, combat: !!a.inBattle, dead: a.dead, calm: true });
+    if (a.inBattle) a.gait = 0;
+  });
+};
 
 // ------------------------------------------------------------------ interaction
 Game.prototype.findInteract = function () {
@@ -597,7 +716,7 @@ Game.prototype.flushSoon = function () { this.flushAt = performance.now() + 900;
 Game.prototype.revealAround = function (silent) {
   var x = this.pos.x / MILE, y = -this.pos.z / MILE; var night = this.envState ? this.envState.night : 0; var R0 = 13 - night * 6 + (this.pos.y > 60 ? 8 : 0); var changed = false;
   for (var dx = -R0; dx <= R0; dx += FOG_CELL) for (var dy = -R0; dy <= R0; dy += FOG_CELL) { if (dx * dx + dy * dy > R0 * R0) continue; var i = fogIndex(x + dx, y + dy); if (i >= 0 && !this.fog[i]) { this.fog[i] = 1; changed = true; } }
-  if (changed) { this.fogVersion++; this.dirtyFog = true; }
+  if (changed) { this.fogVersion++; this.dirtyFog = true; this.fogEnc = null; }
   // canonical places within reach become known (the GM's discovery engine, applied locally)
   var known0 = this.cur("known-locations"); var known = known0 && typeof known0 === "object" ? known0 : {}; var add = null;
   var self = this;
@@ -619,7 +738,7 @@ Game.prototype.travelTo = function (id) {
   var p = PLACE_BY_ID[id]; if (!p) return null; var x0 = this.pos.x / MILE, y0 = -this.pos.z / MILE; var from = describe(x0, y0).location;
   var miles = Math.round(Math.hypot(p.x - x0, p.y - y0) * 1.18); var hours = miles / 3; var days = miles / 25;
   // reveal along the route
-  for (var t = 0; t <= 1; t += 2 / Math.max(2, miles)) { var i = fogIndex(x0 + (p.x - x0) * t, y0 + (p.y - y0) * t); if (i >= 0) this.fog[i] = 1; } this.fogVersion++; this.dirtyFog = true;
+  for (var t = 0; t <= 1; t += 2 / Math.max(2, miles)) { var i = fogIndex(x0 + (p.x - x0) * t, y0 + (p.y - y0) * t); if (i >= 0) this.fog[i] = 1; } this.fogVersion++; this.dirtyFog = true; this.fogEnc = null;
   this.clock += Math.round(days >= 1 ? Math.floor(days) * 1440 + (days % 1) * 10 * 60 : hours * 60);
   this.teleportMiles(p.x, p.y, true); this.walked = 0;
   this.log("Traveled from " + from + " to " + p.name + " (about " + miles + " road miles, ~" + (days >= 1 ? days.toFixed(1) + " days" : hours.toFixed(1) + " hours") + " on foot). The clock was advanced; roll travel events by Route Security and narrate the journey's costs (food, lodging, encounters).");
@@ -629,7 +748,7 @@ Game.prototype.travelTo = function (id) {
 // ------------------------------------------------------------------ input
 Game.prototype.bindInput = function () {
   var self = this, el = this.renderer.domElement; var drag = null; var pts = {}; var pinch = null;
-  this.onKeyDown = function (e) { var tg = e.target; if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.isContentEditable)) return; var k = e.key.toLowerCase(); if (self.bridge.hotkey && self.bridge.hotkey(k, e)) { e.preventDefault(); return; } var ae = document.activeElement; if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return; self.keys[k] = true; if (k === " ") { if (self.battle) C.endTurn(self); else self.jump(); e.preventDefault(); } if (k === "e" || k === "f") self.doInteract(); if (k === "tab") { self.cycleTarget(); e.preventDefault(); } if (k === "escape") { self.target = null; self.autoMove = null; } var n = "1234567890".indexOf(k); if (n >= 0) self.useSlot(n); if (k === "shift") self.running = true; };
+  this.onKeyDown = function (e) { var tg = e.target; if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.isContentEditable)) return; var k = e.key.toLowerCase(); if (self.bridge.hotkey && self.bridge.hotkey(k, e)) { e.preventDefault(); return; } var ae = document.activeElement; if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return; self.keys[k] = true; if (k === " ") { if (self.battle) C.endTurn(self); else self.jump(); e.preventDefault(); } if (k === "e" || k === "f") self.doInteract(); if (k === "tab") { self.cycleTarget(); e.preventDefault(); } if (k === "escape") { if (self.tgt) { SC.cancel(self); } else { self.target = null; self.autoMove = null; } } var n = "1234567890".indexOf(k); if (n >= 0) self.useSlot(n); if (k === "shift") self.running = true; };
   this.onKeyUp = function (e) { var k = e.key.toLowerCase(); self.keys[k] = false; if (k === "shift") self.running = false; };
   this.onDown = function (e) { pts[e.pointerId] = { x: e.clientX, y: e.clientY }; var ids = Object.keys(pts); if (ids.length === 2) { var a = pts[ids[0]], b = pts[ids[1]]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), dist: self.camDist }; drag = null; return; } drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, id: e.pointerId, moved: false, button: e.button, touch: e.pointerType === "touch" || e.pointerType === "pen" }; try { el.setPointerCapture(e.pointerId); } catch (_) { } };
   this.onMove = function (e) {
@@ -639,7 +758,7 @@ Game.prototype.bindInput = function () {
     if (!drag || drag.id !== e.pointerId) return; var dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > (drag.touch ? 10 : 5)) drag.moved = true; if (drag.moved) { self.camYaw -= dx * 0.006; self.camPitch = Math.max(-0.35, Math.min(1.25, self.camPitch + dy * 0.004)); }
   };
   this.onUp = function (e) { delete pts[e.pointerId]; if (pinch) { if (Object.keys(pts).length < 2) pinch = null; drag = null; return; } if (drag && !drag.moved && drag.button === 0) self.clickPick(e.clientX, e.clientY, drag.touch); drag = null; };
-  this.onLeave = function () { self.mouse = null; self.hover = null; };
+  this.onLeave = function (e) { if (e && e.pointerType && e.pointerType !== "mouse") return; /* a lifted finger also "leaves"; its preview must stay */ self.mouse = null; self.hover = null; };
   this.onWheel = function (e) { self.camDist = Math.max(2.5, Math.min(34, self.camDist * (e.deltaY > 0 ? 1.1 : 0.9))); e.preventDefault(); };
   this.onCtx = function (e) { e.preventDefault(); };
   window.addEventListener("keydown", this.onKeyDown); window.addEventListener("keyup", this.onKeyUp); el.addEventListener("pointerdown", this.onDown); el.addEventListener("pointermove", this.onMove); el.addEventListener("pointerup", this.onUp); el.addEventListener("pointercancel", this.onUp); el.addEventListener("pointerleave", this.onLeave); el.addEventListener("wheel", this.onWheel, { passive: false }); el.addEventListener("contextmenu", this.onCtx);
@@ -658,6 +777,7 @@ Game.prototype.groundPick = function (cx, cy) {
   return null;
 };
 Game.prototype.clickPick = function (cx, cy, touch) {
+  if (this.tgt && SC.click(this, cx, cy, touch)) return;
   var best = this.pickAt(cx, cy, touch ? 64 : 48, !this.battle);
   if (best && best.npc) { if (Math.hypot(best.x - this.pos.x, best.z - this.pos.z) < 6) this.bridge.onNpc && this.bridge.onNpc(this.npcCard(best.npc)); else { this.autoMove = { x: best.x, z: best.z, stop: 2.2 }; this.toast(best.npc.name + " — walking over.", "info"); } return; }
   if (best) {
@@ -675,6 +795,7 @@ Game.prototype.clickPick = function (cx, cy, touch) {
   if (Math.hypot(gp.x - this.pos.x, gp.z - this.pos.z) < 120) { this.autoMove = { x: gp.x, z: gp.z, stop: 0 }; this.hover = null; }
 };
 Game.prototype.updateHover = function () {
+  if (this.tgt) { if (this.mouse && !this.tgt.touch) SC.hover(this, this.mouse.x, this.mouse.y); return; }
   if (this.hover && this.hover.touch) { if (this.hover.m && this.hover.m.dead) this.hover = null; return; }
   if (!this.mouse) return; var mm = this.mouse;
   var m = this.pickAt(mm.x, mm.y, 42, false);
@@ -749,9 +870,9 @@ Game.prototype.frame = function (dt) {
   if (this.hurtFlash > 0) this.hurtFlash -= dt;
   // world systems
   this.terrain.update(this.pos.x, this.pos.z, dt > 0.05 ? Math.max(this.q.genBudget, 14) : this.q.genBudget);
-  this.loadT = (this.loadT || 0) + dt; if (this.loadT > 0.7) { this.loadT = 0; this.loadSettlements(false); this.spawnMonsters(); this.revealAround(false); this.checkPlace(); }
+  this.loadT = (this.loadT || 0) + dt; if (this.loadT > 0.7) { this.loadT = 0; this.loadSettlements(false); this.spawnMonsters(); this.revealAround(false); this.checkPlace(); this.syncAllies(false); }
   for (var id in this.settlements) { var s = this.settlements[id]; var d = Math.hypot(s.center.x - this.pos.x, s.center.z - this.pos.z); if (d < s.radius + 140) this.populate(s); s.labels.forEach(function (l) { l.visible = Math.hypot(l.position.x - self.pos.x, l.position.z - self.pos.z) < 40; }); }
-  this.updateNPCs(dt); this.updateMonsters(dt); this.updateProjectiles(dt); this.updateFloaters(dt);
+  this.updateNPCs(dt); this.updateMonsters(dt); this.updateAllies(dt); this.updateProjectiles(dt); this.updateFloaters(dt);
   if (this.inCombat && !this.battle) { this.calmT = (this.calmT || 0) + dt; if (this.calmT > 1) { this.calmT = 0; this.closeCombat(true); } } else this.calmT = 0;
   if (this.orb) { this.orb.position.set(this.pos.x + Math.sin(this.time) * 0.6, this.pos.y + 2.6, this.pos.z + Math.cos(this.time) * 0.6); if (this.time > this.orbUntil) { this.scene.remove(this.orb); this.orb = null; } }
   // hover previews, ground markers, weapon trails and particles
@@ -783,7 +904,7 @@ Game.prototype.checkPlace = function () {
   if (p && this.settlements[p.id]) { var s = this.settlements[p.id]; var best = null, bd = 30; s.spots.forEach(function (q) { var d = Math.hypot(q.x - self.pos.x, q.z - self.pos.z); if (d < bd) { bd = d; best = q; } }); var sub = best ? best.name : null; if (sub && sub !== this.subOverride && !this.talking) { this.subOverride = sub; this.writePosition(true); } }
 };
 Game.prototype.hoverInfo = function () {
-  var h = this.hover; if (!h) return null; var b = this.battle;
+  var h = this.hover; if (!h || this.tgt) return null; var b = this.battle;
   if (h.m && !h.m.dead) { var m = h.m; var pv = C.preview(this, m); var sc = h.touch || h.sx == null ? this.screenOf(m.x, m.y + (m.c.height || 1.6) * 1.05, m.z) : { x: h.sx, y: h.sy }; return Object.assign({ kind: "foe", name: m.mon.name + (m.tag || ""), hp: Math.max(0, Math.round(m.hp)), maxHp: m.maxHp, threat: m.mon.threat, sx: sc ? sc.x : -999, sy: sc ? sc.y : -999, touch: !!h.touch, my: b ? C.ready(this) : true }, pv); }
   if (h.ground && b) { var d = Math.hypot(h.ground.x - this.pos.x, h.ground.z - this.pos.z); var sc2 = h.touch || h.sx == null ? this.screenOf(h.ground.x, this.terrain.groundAt(h.ground.x, h.ground.z) + 0.3, h.ground.z) : { x: h.sx, y: h.sy }; return { kind: "ground", dist: d, ok: d <= b.econ.move + 0.05, left: b.econ.move, sx: sc2 ? sc2.x : -999, sy: sc2 ? sc2.y : -999, touch: !!h.touch }; }
   return null;
@@ -795,7 +916,7 @@ Game.prototype.snapshot = function () {
   return { x: x, y: y, heading: this.camYaw, yaw: this.yaw, location: d.location, sub: this.subOverride || d.sublocation, region: d.region, time: formatTime(minutes), date: formatDate(day), tod: timeOfDay(minutes), minutes: minutes,
     hp: Math.round(this.stats.hp), maxHp: this.stats.maxHp, mp: Math.round(this.stats.mp), maxMp: this.stats.maxMp, sp: Math.round(this.stats.sp), maxSp: this.stats.maxSp,
     target: tg, interact: this.interact ? this.interact.label : null, combat: this.inCombat, log: this.combatLog.slice(-6), down: this.down, hotbar: this.hotbar().map(function (s) { if (!s) return null; var cd = self.cooldowns[s.id] || 0; return Object.assign({}, s, { cd: Math.max(0, cd - self.time), tech: undefined, spell: undefined, item: undefined, mp: s.mp }); }),
-    res: kit.res ? { name: kit.res, val: this.res, max: kit.max } : null, battle: C.snapshot(this), hover: this.hoverInfo(), after: this.after, hurt: this.hurtFlash > 0, fogVersion: this.fogVersion, loading: this.terrain.queue.length, reportCount: this.report.length, talking: this.talking ? this.talking.id : null };
+    res: kit.res ? { name: kit.res, val: this.res, max: kit.max } : null, battle: C.snapshot(this), tgt: SC.snapshot(this), allies: this.allies.map(function (a) { return { name: a.name, hp: Math.max(0, Math.round(a.hp)), maxHp: a.maxHp, mp: Math.round(a.mp), maxMp: a.maxMp, dead: a.dead, role: a.role, conds: B.conditionsText(a), cls: a.sheet.class }; }), pst: B.conditionsText(this.pe), hover: this.hoverInfo(), after: this.after, hurt: this.hurtFlash > 0, fogVersion: this.fogVersion, loading: this.terrain.queue.length, reportCount: this.report.length, talking: this.talking ? this.talking.id : null };
 };
 
 // ------------------------------------------------------------------ minimap: rotating, fog-aware, centered on the player
@@ -833,7 +954,7 @@ Game.prototype.drawMinimap = function () {
 function makeTile(ti, ui, size) { var c = document.createElement("canvas"); var N = 24; c.width = N; c.height = N; var ctx = c.getContext("2d"); var img = ctx.createImageData(N, N); var col = [0, 0, 0]; for (var j = 0; j < N; j++) for (var i = 0; i < N; i++) { var wx = ti * size + (i + 0.5) * size / N, wz = ui * size + (j + 0.5) * size / N; mapColor(wx / MILE, -wz / MILE, col, "satellite"); var o = (j * N + i) * 4; img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255; } ctx.putImageData(img, 0, 0); return c; }
 
 Game.prototype.dispose = function () {
-  this.disposed = true; cancelAnimationFrame(this.raf); try { this.flush(); } catch (e) { }
+  this.disposed = true; cancelAnimationFrame(this.raf); try { this.fx && this.fx.dispose(); } catch (e) { } try { this.flush(); } catch (e) { }
   window.removeEventListener("keydown", this.onKeyDown); window.removeEventListener("keyup", this.onKeyUp); window.removeEventListener("resize", this.onResize); if (this.ro) this.ro.disconnect();
   if (this.renderer) { this.terrain.disposeAll(); for (var id in this.settlements) this.unloadSettlement(id); this.renderer.dispose(); this.renderer.forceContextLoss && this.renderer.forceContextLoss(); if (this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement); }
 };

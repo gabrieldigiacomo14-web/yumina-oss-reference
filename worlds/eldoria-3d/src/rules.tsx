@@ -75,30 +75,36 @@ export function playerAttack(v, mon, opts) {
   line += " — " + (crit ? "CRITICAL " : "") + "hit. " + raw + " damage" + (weakBonus ? " (weak to bludgeoning)" : "") + (dr ? " − " + dr + " DR" : "") + " = " + final + ")";
   return { hit: true, margin: margin, natural: r.total, crit: crit, damage: final, line: line, weapon: w };
 }
-export function spellAttack(v, spell, mon) {
-  var a = obj(v.attributes); var am = attrMod(a.arcana); var school = slug(spell.school || "arcane"); var sk = Math.max(skillLevel(v, school + "-magic"), skillLevel(v, "arcana"), skillLevel(v, school));
-  var sb = skillBonus(sk); var r = roll3d6(); var total = r.total + am + sb; var margin = total - mon.evasion;
-  var line = "(" + spell.name + " — 3d6(" + r.dice.join(",") + ")=" + r.total + signed(am, "ARC") + signed(sb, "skill") + " = " + total + " vs Evasion " + mon.evasion;
-  if (margin < 0) return { hit: false, line: line + " — miss)", damage: 0 };
-  var dice = spell.dice || [1, 6]; var dm = rollDice(dice[0], dice[1]); var raw = dm.total; var weak = String(mon.weakness || "").toLowerCase(); var el = String(spell.element || "").toLowerCase();
-  var wb = (el && weak.indexOf(el) >= 0) || (/radiant|holy|divine/.test(el + " " + spell.school.toLowerCase()) && /radiant|holy/.test(weak)) ? 2 : 0; if (/cold\s*\+(\d+)/.test(weak) && el === "cold") wb = Number(weak.match(/cold\s*\+(\d+)/)[1]);
-  raw += wb; if (r.total === 18 && margin >= 5) raw += Math.floor(dm.total * 0.5);
-  line += " — hit. " + raw + " " + (el || "magic") + " damage" + (wb ? " (weakness)" : "") + ", ignores armor)";
-  return { hit: true, damage: raw, line: line };
+export function spellAttack(v, spell, mon, opts) {
+  opts = opts || {}; var a = obj(v.attributes); var am = attrMod(a.arcana); var school = slug(spell.school || "arcane"); var sk = Math.max(skillLevel(v, school + "-magic"), skillLevel(v, "arcana"), skillLevel(v, school));
+  var sb = skillBonus(sk); var r = roll3d6(); var xb = (opts.bonus || 0) + (opts.cond || 0); var total = r.total + am + sb + xb; var evn = mon.evasion + (opts.evBonus || 0); var margin = total - evn;
+  var line = "(" + spell.name + " — 3d6(" + r.dice.join(",") + ")=" + r.total + signed(am, "ARC") + signed(sb, "skill") + signed(xb, "other") + " = " + total + " vs Evasion " + evn;
+  if (margin < 0) return { hit: false, line: line + " — miss)", damage: 0, half: opts.brace ? Math.floor(spellDamage(spell, opts, mon).raw / 2) : 0, margin: margin };
+  var d0 = spellDamage(spell, opts, mon); var raw = d0.raw, wb = d0.wb, el = d0.el, dm = d0.dm; if (r.total === 18 && margin >= 5) raw += Math.floor(dm.total * 0.5);
+  line += " — hit. " + raw + " " + (el || "magic") + " damage" + (wb ? " (weakness)" : "") + (d0.holy ? " (holy)" : "") + ", ignores armor)";
+  return { hit: true, damage: raw, line: line, crit: r.total === 18 && margin >= 5, element: el, margin: margin };
+}
+// Rolled spell damage: library dice, +1 step from overchannel, weakness and holy bonuses from the bestiary text.
+export function spellDamage(spell, opts, mon) {
+  opts = opts || {}; var dice = (spell.dice || [1, 6]).slice(); if (opts.step) dice[0] += opts.step; var dm = rollDice(dice[0], dice[1]); var raw = dm.total; var weak = String(mon.weakness || "").toLowerCase(); var el = String(spell.element || "").toLowerCase();
+  var wb = (el && weak.indexOf(el) >= 0) || (/radiant|holy|divine/.test(el + " " + String(spell.school || "").toLowerCase()) && /radiant|holy/.test(weak)) ? 2 : 0; if (/cold\s*\+(\d+)/.test(weak) && el === "cold") wb = Number(weak.match(/cold\s*\+(\d+)/)[1]);
+  raw += wb; var holy = false; if (opts.vsHoly && /skeleton|wight|ghast|draugr|ghoul|revenant|colossus|undead|lich|grave|umbral|drowned|bone|wisp/i.test(mon.name + " " + mon.region)) { var x = rollDice(opts.vsHoly[0], opts.vsHoly[1]).total; raw += x; holy = true; }
+  if (opts.holy) { var und = /skeleton|wight|ghast|draugr|ghoul|revenant|colossus|lich|grave|umbral|drowned|bone|wisp|knight|admiral/i.test(mon.name); holy = und; if (!und) raw = Math.floor(raw / 2); }
+  return { raw: raw, wb: wb, el: el, dm: dm, holy: holy };
 }
 // A monster's strike against the player. Monsters use their stat-block dice; their
 // accuracy is 3d6 + 2×Threat (bestiary threat is ecological danger, so this stays modest).
 export function monsterAttack(mon, v, opts) {
-  opts = opts || {}; var atk = mon.attacks[Math.floor(Math.random() * mon.attacks.length)] || { name: "strike", n: 1, d: 6, b: 0 };
-  var r = roll3d6(); var bonus = mon.threat * 2; var total = r.total + bonus; var ev = evasion(v) + (opts.evasionBonus || 0);
-  var line = "(" + mon.name + " " + atk.name + " — 3d6(" + r.dice.join(",") + ")=" + r.total + " +" + bonus + " = " + total + " vs your Evasion " + ev;
-  if (opts.dodging) return { hit: false, line: line + " — dodged)", damage: 0, atk: atk };
-  if (total < ev) return { hit: false, line: line + " — miss)", damage: 0, atk: atk };
+  opts = opts || {}; var atk = opts.attack || mon.attacks[Math.floor(Math.random() * mon.attacks.length)] || { name: "strike", n: 1, d: 6, b: 0 };
+  var r = roll3d6(); var bonus = mon.threat * 2 + (opts.atkBonus || 0); var total = r.total + bonus; var ev = (opts.evasion != null ? opts.evasion : evasion(v) + (opts.evasionBonus || 0));
+  var line = "(" + mon.name + " " + atk.name + " — 3d6(" + r.dice.join(",") + ")=" + r.total + signed(bonus, "") .replace(/ $/, "") + " = " + total + " vs " + (opts.targetName || "your") + " Evasion " + ev;
+  if (opts.dodging) return { hit: false, line: line + " — dodged)", damage: 0, atk: atk, total: total, natural: r.total };
+  if (total < ev) return { hit: false, line: line + " — miss)", damage: 0, atk: atk, total: total, natural: r.total };
   var dm = rollDice(atk.n, atk.d); var raw = dm.total + (atk.b || 0); if (r.total === 18 && total - ev >= 5) raw += Math.floor(dm.total * 0.5);
-  var ar = armorDR(v); var dr = ar.dr; var magical = /necrotic|fire|cold|lightning|force|poison|drain|arc/.test((atk.name + " " + atk.tag).toLowerCase()); if (magical) dr = 0;
+  var ar = v ? armorDR(v) : { dr: opts.dr || 0, type: "cloth" }; var dr = ar.dr + (opts.drBonus || 0); var magical = /necrotic|fire|cold|frost|acid|breath|lightning|force|poison|drain|arc/.test((atk.name + " " + atk.tag).toLowerCase()); if (magical) dr = 0;
   if (!magical && ar.type === "mail" && /claw|blade|sword|scythe|cutlass|talon/.test(atk.name)) dr += 1;
   var final = Math.max(0, raw - dr - (opts.block || 0));
-  return { hit: true, damage: final, line: line + " — hit. " + raw + " damage" + (dr ? " − " + dr + " DR" : "") + (opts.block ? " − " + opts.block + " blocked" : "") + " = " + final + ")", atk: atk };
+  return { hit: true, damage: final, line: line + " — hit. " + raw + " damage" + (dr ? " − " + dr + " DR" : "") + (opts.block ? " − " + opts.block + " blocked" : "") + " = " + final + ")", atk: atk, total: total, natural: r.total, margin: total - ev, magical: magical, raw: raw };
 }
 // Odds of 3d6 meeting a target number (for hover previews), and the fixed parts of each roll.
 var SUM3D6 = [1, 3, 6, 10, 15, 21, 25, 27, 27, 25, 21, 15, 10, 6, 3, 1];
@@ -106,6 +112,22 @@ export function chance3d6(need) { if (need <= 3) return 1; if (need > 18) return
 export function attackBonus(v) { var a = obj(v.attributes); var w = weaponProfile(v); var attr = w.ranged || w.finesse ? "agility" : "strength"; return attrMod(a[attr]) + skillBonus(skillLevel(v, w.skill)) + w.accuracy; }
 export function spellBonus(v, spell) { var a = obj(v.attributes); var school = slug(spell.school || "arcane"); return attrMod(a.arcana) + skillBonus(Math.max(skillLevel(v, school + "-magic"), skillLevel(v, "arcana"), skillLevel(v, school))); }
 export function damageText(v, mon) { var a = obj(v.attributes); var w = weaponProfile(v); var strMod = attrMod(a.strength); var strC = w.ranged ? 0 : w.finesse ? Math.max(0, Math.floor(strMod / 2)) : w.heavy ? Math.floor(strMod * 1.5) : strMod; var flat = w.dice[2] + strC; var lo = Math.max(0, w.dice[0] + flat - (mon ? mon.dr : 0)), hi = Math.max(0, w.dice[0] * w.dice[1] + flat - (mon ? mon.dr : 0)); return { dice: w.dice[0] + "d" + w.dice[1] + (flat ? (flat > 0 ? "+" : "−") + Math.abs(flat) : ""), lo: lo, hi: hi }; }
+// Block: 3d6 + the relevant block skill against the attack total (Combat Numerics). Success turns the strike into durability stress.
+export function blockRoll(v, attackTotal, melee) {
+  var a = obj(v.attributes); var shield = hasShield(v); var w = weaponProfile(v); var skill = shield ? "shield-use" : w.skill; var lvl = skillLevel(v, skill);
+  if (!shield && (!w.item || w.ranged)) return null; var r = roll3d6(); var total = r.total + skillBonus(lvl) + (shield ? Math.max(0, attrMod(a.strength)) : Math.max(0, attrMod(a[w.finesse ? "agility" : "strength"])) );
+  return { ok: total >= attackTotal, total: total, dice: r.dice, skill: skill, shield: shield };
+}
+// One monster striking another (a controlled undead, a summoned guardian): same 3d6 + 2×Threat against Evasion and DR.
+export function creatureAttack(mon, target, opts) {
+  opts = opts || {}; var atk = opts.attack || mon.attacks[Math.floor(Math.random() * mon.attacks.length)] || { name: "strike", n: 1, d: 6, b: 0 };
+  var r = roll3d6(); var total = r.total + mon.threat * 2 + (opts.atkBonus || 0); var ev = target.evasion + (opts.evBonus || 0); var margin = total - ev;
+  var line = "(" + mon.name + " " + atk.name + " — 3d6(" + r.dice.join(",") + ")=" + r.total + " +" + (mon.threat * 2) + " = " + total + " vs " + target.name + " Evasion " + ev;
+  if (margin < 0) return { hit: false, line: line + " — miss)", damage: 0, atk: atk };
+  var dm = rollDice(atk.n, atk.d); var raw = dm.total + (atk.b || 0); if (r.total === 18 && margin >= 5) raw += Math.floor(dm.total * 0.5);
+  var magical = /necrotic|fire|cold|frost|acid|breath|lightning|force|poison|drain|arc/.test((atk.name + " " + atk.tag).toLowerCase()); var dr = magical ? 0 : (target.dr || 0) + (opts.drBonus || 0); var final = Math.max(0, raw - dr);
+  return { hit: true, damage: final, line: line + " — hit. " + raw + " damage" + (dr ? " − " + dr + " DR" : "") + " = " + final + ")", atk: atk, magical: magical };
+}
 function signed(n, label) { if (!n) return ""; return (n > 0 ? " +" : " −") + Math.abs(n) + " " + label; }
 
 // ------------------------------------------------------------------ rewards
@@ -132,6 +154,8 @@ export function spellFor(id, rec) {
   return base;
 }
 export var BESTIARY_BY_REGION = {}; BESTIARY.forEach(function (m) { (BESTIARY_BY_REGION[m.region] = BESTIARY_BY_REGION[m.region] || []).push(m); });
+// The spirit the Summon Guardian spell calls (library: "Tier-appropriate spirit/construct for 3 rounds"); a Threat 3 stat block, between Tier III and IV.
+export var GUARDIAN = { id: "spirit-guardian", name: "Spirit Guardian", region: "Summoned", threat: 3, hp: 36, evasion: 12, dr: 3, attacks: [{ name: "slam", n: 2, d: 6, b: 2, tag: "" }], weakness: "dispelled when concentration breaks", loot: "", tactics: "fights for its summoner" };
 export var REALM_TO_BESTIARY = { "Aurelia": "Aurelia", "Stonehold": "Stonehold", "Sylvanor": "Sylvanor", "Drakmor": "Drakmor", "Sunscar": "Sunscar", "Velkar": "Velkar", "Umbral Reach": "Umbral", "The Marches": "Marches" };
 
 // Calling resources from each class entry's CLASS MECHANICS paragraph.

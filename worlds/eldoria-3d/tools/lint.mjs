@@ -1,0 +1,13 @@
+// Finds undefined identifiers (typos, forgotten imports) in every module with ESLint's no-undef.
+// Needs eslint@8 and esbuild available: node tools/lint.mjs <path-to-node_modules-parent>
+import { createRequire } from "module"; import fs from "fs"; import path from "path";
+const base = process.argv[2] || process.cwd(); const require = createRequire(path.join(base, "x.js"));
+const { Linter } = require("eslint"); const esbuild = await import("../../../node_modules/.pnpm/esbuild@0.25.12/node_modules/esbuild/lib/main.js");
+const linter = new Linter(); let bad = 0;
+const globals = { React: true, Icons: true, MessageList: true, useYumina: true, window: true, document: true, console: true, performance: true, requestAnimationFrame: true, cancelAnimationFrame: true, setTimeout: true, clearTimeout: true, setInterval: true, clearInterval: true, Math: true, JSON: true, Object: true, Array: true, Promise: true, Date: true, Number: true, String: true, Boolean: true, Error: true, Uint8Array: true, Uint16Array: true, Uint32Array: true, Float32Array: true, Float64Array: true, ArrayBuffer: true, Map: true, Set: true, WeakMap: true, parseInt: true, parseFloat: true, isNaN: true, isFinite: true, Infinity: true, NaN: true, RegExp: true, Symbol: true, navigator: true, localStorage: true, ResizeObserver: true, Image: true, Blob: true, URL: true, atob: true, btoa: true, TextDecoder: true, TextEncoder: true, ImageData: true, HTMLElement: true, getComputedStyle: true, createImageBitmap: true, OffscreenCanvas: true, Int16Array: true, Int32Array: true, Int8Array: true, DataView: true, encodeURIComponent: true, decodeURIComponent: true, structuredClone: true, FileReader: true, location: true, matchMedia: true, Event: true };
+for (const f of fs.readdirSync("src").filter((f) => f.endsWith(".tsx") && !["data.tsx", "panels.tsx"].includes(f))) {
+  const code = esbuild.transformSync(fs.readFileSync("src/" + f, "utf8"), { loader: "tsx", jsx: "transform", jsxFactory: "React.createElement", jsxFragment: "React.Fragment", format: "esm" }).code;
+  const msgs = linter.verify(code, { parserOptions: { ecmaVersion: 2022, sourceType: "module" }, env: { es2022: true }, globals, rules: { "no-undef": "error", "no-dupe-keys": "error", "no-unreachable": "warn", "no-redeclare": "off" } });
+  for (const m of msgs) { if (m.ruleId === "no-undef" || m.ruleId === "no-dupe-keys" || m.fatal) { bad++; const line = code.split("\n")[m.line - 1] || ""; console.log(f + ": " + m.message + "  ⟶ " + line.trim().slice(Math.max(0, m.column - 40), m.column + 60)); } }
+}
+console.log(bad ? bad + " problems" : "no undefined identifiers"); process.exit(bad ? 1 : 0);

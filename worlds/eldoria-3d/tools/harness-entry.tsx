@@ -12,10 +12,13 @@ async function main() {
   const vars: Record<string, unknown> = {};
   for (const v of world.variables) vars[v.id] = JSON.parse(JSON.stringify(v.defaultValue));
   Object.assign(vars, window.__presetVars || {});
+  // optional save game: with localStorage.persistVars set, every variable write is mirrored there and reloaded on boot
+  const persist = (() => { try { return localStorage.getItem("persistVars") === "1"; } catch { return false; } })();
+  if (persist) { try { Object.assign(vars, JSON.parse(localStorage.getItem("savedVars") || "{}")); } catch { /* none yet */ } }
   const listeners = new Set<() => void>();
   const state: any = { vars, messages: [], isStreaming: false, streamingContent: "", pendingChoices: [], toasts: [], audio: [], sent: [] };
   window.__state = state;
-  const emit = () => listeners.forEach((f) => f());
+  const emit = () => { if (persist) { try { localStorage.setItem("savedVars", JSON.stringify(state.vars)); } catch { /* quota */ } } listeners.forEach((f) => f()); };
   const store: Record<string, any> = (() => { try { return JSON.parse(localStorage.getItem("harnessStore") || "{}"); } catch { return {}; } })();
   function useYumina() {
     const [, setN] = React.useState(0);
