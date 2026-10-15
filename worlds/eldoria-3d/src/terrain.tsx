@@ -3,6 +3,7 @@
 // around the player at three levels of detail, with instanced vegetation, road and
 // river ribbons, bridges, the sea, sky, day/night lighting and weather.
 import { T, GeoBuilder, prim, M, hex, cobbleTex, noiseTex, glowTex, cloudTex } from "./three";
+import { patchTerrain } from "./surfaces";
 import { MILE, heightAt, groundColor, vegetation, biomeAt, riverAt, roadAt, ROADS, RIVERS, landSD, placesNear, hash2, rng, insidePlace, smooth, CHUNK, LOD0_SEGS, meshHeight, roadBridges, onDeck, deckY, outsideTowns } from "./worldgen";
 import { addTree, addRock, addBridge, ribbon, styleOf } from "./settlements";
 
@@ -29,10 +30,10 @@ function grassTex() { var THREE = T(); var c = document.createElement("canvas");
 export function Terrain(scene, opts) {
   this.scene = scene; this.chunks = {}; this.queue = []; this.job = null; this.opts = opts || {}; this.bridges = []; this.bidx = {}; this.addBridges(roadBridges()); this.radius = opts.radius || 4;
   var THREE = T();
-  this.mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0, map: noiseTex() });
+  this.mat = patchTerrain(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0 }));
   this.waterMat = new THREE.MeshStandardMaterial({ color: 0x2c5d70, roughness: 0.12, metalness: 0.15, transparent: true, opacity: 0.86, polygonOffset: true, polygonOffsetFactor: -1 });
   this.ashenMat = new THREE.MeshStandardMaterial({ color: 0x5a5a58, roughness: 0.3, transparent: true, opacity: 0.9 });
-  this.roadMat = new THREE.MeshStandardMaterial({ vertexColors: true, map: cobbleTex(), roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  this.roadMat = new THREE.MeshStandardMaterial({ vertexColors: true, map: cobbleTex(), bumpMap: cobbleTex(), bumpScale: 0.06, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   this.dirtMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   this.propMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, flatShading: true });
 }
@@ -230,6 +231,18 @@ Terrain.prototype.disposeAll = function () { for (var k in this.chunks) this.dis
 var SKY_VS = "varying vec3 vDir; void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vDir = normalize(wp.xyz - cameraPosition); gl_Position = projectionMatrix*viewMatrix*wp; gl_Position.z = gl_Position.w; }";
 var SKY_FS = "uniform vec3 top; uniform vec3 horizon; uniform vec3 ground; uniform vec3 sunDir; uniform vec3 sunColor; uniform float sunSize; varying vec3 vDir; void main(){ vec3 d = normalize(vDir); float h = d.y; vec3 c = h > 0.0 ? mix(horizon, top, pow(clamp(h,0.0,1.0), 0.55)) : mix(horizon, ground, clamp(-h*3.0,0.0,1.0)); float s = max(dot(d, normalize(sunDir)), 0.0); c += sunColor * (pow(s, 600.0) * sunSize + pow(s, 12.0) * 0.18 + pow(s, 3.0)*0.06); gl_FragColor = vec4(c, 1.0); }";
 
+// Each realm's air: the horizon haze it drifts toward (k = how far), the sun's tint and strength, fill strength, haze distance.
+// Dark fantasy is not grey everywhere: Aurelia is warm and golden, Sylvanor green-lit, Drakmor cold and bright off snow.
+export var REALM_LIGHT = {
+  "Aurelia": { haze: 0xe2d6bc, k: 0.35, tint: [1.0, 0.97, 0.9], sun: 1.0, fill: 1.0, fogNear: 360 },
+  "Sylvanor": { haze: 0xb4cfb0, k: 0.45, tint: [0.95, 1.0, 0.86], sun: 0.9, fill: 1.1, fogNear: 240 },
+  "Stonehold": { haze: 0xc9b89a, k: 0.45, tint: [1.0, 0.92, 0.78], sun: 1.0, fill: 0.9, fogNear: 320 },
+  "Drakmor": { haze: 0xc4d4e6, k: 0.5, tint: [0.9, 0.97, 1.08], sun: 0.95, fill: 1.4, fogNear: 300 },
+  "Sunscar": { haze: 0xead6aa, k: 0.55, tint: [1.0, 0.95, 0.82], sun: 1.15, fill: 1.1, fogNear: 420 },
+  "Velkar": { haze: 0xb8d6e2, k: 0.45, tint: [1.0, 0.98, 0.94], sun: 1.0, fill: 1.0, fogNear: 340 },
+  "Umbral Reach": { haze: 0x6e6276, k: 0.4, tint: [0.85, 0.8, 1.0], sun: 0.7, fill: 0.8, fogNear: 120 },
+  "The Marches": { haze: 0xb8bcb0, k: 0.35, tint: [0.96, 0.95, 0.92], sun: 0.9, fill: 1.0, fogNear: 300 }
+};
 export function Environment(scene, renderer, quality) {
   var THREE = T(); this.scene = scene; this.q = quality;
   this.uniforms = { top: { value: new THREE.Color(0x3a6aa8) }, horizon: { value: new THREE.Color(0xbcd0de) }, ground: { value: new THREE.Color(0x4a4a44) }, sunDir: { value: new THREE.Vector3(0.3, 0.6, -0.5) }, sunColor: { value: new THREE.Color(0xfff2d0) }, sunSize: { value: 1.0 } };
@@ -268,19 +281,21 @@ Environment.prototype.update = function (dt, center, minutes, weather, region, b
   var w = String(weather || "").toLowerCase(); var overcast = /storm|heavy|rain|snow|fog/.test(w) ? 0.8 : /overcast/.test(w) ? 0.45 : /cloud|drizzle|mist|haze|ash/.test(w) ? 0.3 : 0.08;
   var umbral = region === "Umbral Reach" ? 1 : 0, desert = region === "Sunscar" ? 1 : 0, cold = /Drakmor|Marches/.test(region) ? 1 : 0;
   var topDay = new THREE.Color(0x2f62a8).lerp(new THREE.Color(0x7a8494), overcast * 0.8).lerp(new THREE.Color(0x4a4058), umbral * 0.7);
-  var horDay = new THREE.Color(0xc6dbe8).lerp(new THREE.Color(0xa8b0b8), overcast * 0.7).lerp(new THREE.Color(0xe6d2a8), desert * 0.5).lerp(new THREE.Color(0x8a7a7e), umbral * 0.75);
+  var L = REALM_LIGHT[region] || REALM_LIGHT.Aurelia;
+  var horDay = new THREE.Color(0xc6dbe8).lerp(new THREE.Color(L.haze), L.k).lerp(new THREE.Color(0xa8b0b8), overcast * 0.7).lerp(new THREE.Color(0xe6d2a8), desert * 0.5).lerp(new THREE.Color(0x8a7a7e), umbral * 0.75);
   var topN = new THREE.Color(0x070b18), horN = new THREE.Color(0x1a2236), duskC = new THREE.Color(0xe8865a);
   U.top.value.copy(topN).lerp(topDay, day); U.horizon.value.copy(horN).lerp(horDay, day).lerp(duskC, dusk * 0.65 * (1 - overcast));
   U.ground.value.copy(U.horizon.value).multiplyScalar(0.55);
   U.sunColor.value.setRGB(1, 0.85 + day * 0.1, 0.6 + day * 0.3).multiplyScalar(elev > -0.05 ? (1 - overcast * 0.85) : 0);
   this.scene.fog.color.copy(U.horizon.value);
-  var fogNear = /fog|mist/.test(w) ? 40 : umbral ? 120 : /rain|snow|storm/.test(w) ? 180 : 420; this.scene.fog.near = fogNear; this.scene.fog.far = Math.min(this.q.far, /fog|mist/.test(w) ? 380 : umbral ? 700 : this.q.far);
+  var fogNear = /fog|mist/.test(w) ? 40 : umbral ? 120 : /rain|snow|storm/.test(w) ? 180 : L.fogNear; this.scene.fog.near = fogNear; this.scene.fog.far = Math.min(this.q.far, /fog|mist/.test(w) ? 380 : umbral ? 700 : this.q.far);
   // lights
   var lightDir = elev > -0.08 ? sunDir.clone() : new THREE.Vector3(-az * 0.6, Math.max(0.2, -elev), 0.3).normalize();
   this.sun.position.set(center.x + lightDir.x * 300, center.y + lightDir.y * 300, center.z + lightDir.z * 300); this.sun.target.position.set(center.x, center.y, center.z);
-  this.sun.intensity = elev > -0.08 ? (0.25 + day * 1.55) * (1 - overcast * 0.55) : 0.22; this.sun.color.setRGB(1, 0.8 + day * 0.15, 0.62 + day * 0.32);
+  // a strong, warm key light and a weak fill: the image-based environment (game.tsx) supplies most of the ambient
+  this.sun.intensity = elev > -0.08 ? (0.3 + day * 2.5 * L.sun) * (1 - overcast * 0.5) : 0.22; this.sun.color.setRGB(L.tint[0], (0.78 + day * 0.14) * L.tint[1], (0.58 + day * 0.3) * L.tint[2]);
   if (elev <= -0.08) this.sun.color.setRGB(0.55, 0.65, 0.95);
-  this.hemi.intensity = 0.12 + day * 0.22; this.hemi.color.copy(U.horizon.value).lerp(new THREE.Color(0xffffff), 0.4); this.hemi.groundColor.setRGB(0.25 + day * 0.1, 0.22 + day * 0.08, 0.18);
+  this.hemi.intensity = 0.08 + day * 0.12 * L.fill; this.hemi.color.copy(U.horizon.value).lerp(new THREE.Color(0xffffff), 0.4); this.hemi.groundColor.setRGB(0.25 + day * 0.1, 0.22 + day * 0.08, 0.18);
   this.sky.position.copy(center); this.stars.position.copy(center); this.stars.material.opacity = Math.max(0, 1 - day * 1.6) * (1 - overcast);
   this.moon.position.set(center.x - lightDir.x * 1500, center.y + Math.max(200, -elev * 900 + 300), center.z - lightDir.z * 1500); this.moon.material.opacity = Math.max(0, 1 - day * 1.4);
   this.clouds.position.set(center.x, 0, center.z); this.clouds.rotation.y += dt * 0.002; this.clouds.children.forEach(function (c) { c.material.opacity = (0.35 + overcast * 0.55) * (0.3 + day * 0.7); c.material.color.copy(U.horizon.value).lerp(new THREE.Color(0xffffff), 0.5 * day); });

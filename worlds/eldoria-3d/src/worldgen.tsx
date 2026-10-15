@@ -295,6 +295,13 @@ function roadHeight(hit) {
   var pr = roadProfile(hit.road), s = pr.cum[hit.seg.i] + hit.t * pr.len[hit.seg.i], f = Math.max(0, Math.min(pr.N - 1.001, s / ROAD_DS)), k = Math.floor(f);
   return pr.h[k] + (pr.h[k + 1] - pr.h[k]) * (f - k);
 }
+// Inside a settlement its own streets (which follow the ground) take over from the road: a road's graded profile would
+// otherwise lift the town centre where several roads meet (Aurelia's plaza sat on a 6 m cone from the climb to the citadel).
+function roadInfluence(x, y) {
+  var ps = placesNear(x, y), k = 1;
+  for (var i = 0; i < ps.length; i++) { var p = ps[i], cut = townCut(p) / MILE; if (!cut) continue; var d = Math.hypot(x - p.x, y - p.y); if (d < cut) k = Math.min(k, smooth(cut * 0.55, cut * 0.9, d)); }
+  return k;
+}
 // Final terrain height in WORLD UNITS for a point in miles.
 export function heightAt(x, y) {
   var h = flattened(x, y);
@@ -307,7 +314,7 @@ export function heightAt(x, y) {
     else h = base;
   }
   var rd = roadAt(x, y);
-  if (rd && rd.d < ROAD_BLEND / MILE && h > 0.4 && !(rv && rv.d < rv.w * 1.4)) { var lh = roadHeight(rd); if (rv && !rv.river.dry && rv.d < rv.w * 6 && lh < rv.level + 0.9) lh = lerp(rv.level + 0.9, lh, smooth(rv.w * 3.2, rv.w * 6, rv.d)); h = lerp(lh, h, smooth(ROAD_CORE / MILE, ROAD_BLEND / MILE, rd.d)); } // the flat bench is wider than two terrain cells, so the mesh can represent it
+  if (rd && rd.d < ROAD_BLEND / MILE && h > 0.4 && !(rv && rv.d < rv.w * 1.4)) { var lh = roadHeight(rd); if (rv && !rv.river.dry && rv.d < rv.w * 6 && lh < rv.level + 0.9) lh = lerp(rv.level + 0.9, lh, smooth(rv.w * 3.2, rv.w * 6, rv.d)); var hr = lerp(lh, h, smooth(ROAD_CORE / MILE, ROAD_BLEND / MILE, rd.d)); h = lerp(h, hr, roadInfluence(x, y)); } // the flat bench is wider than two terrain cells, so the mesh can represent it
   return h;
 }
 

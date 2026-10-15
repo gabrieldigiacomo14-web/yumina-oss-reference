@@ -3,6 +3,7 @@
 // canonical atlas entry: kind sets the size and walls, realm sets architecture,
 // and its fixed-interior districts become real landmark buildings with doors.
 import { T, GeoBuilder, prim, M, hex, shadeC, bannerTex, cobbleTex, textSprite, REALM_BANNER } from "./three";
+import { CLS, patchBuildings } from "./surfaces";
 import { MILE, heightAt, riverAt, roadAt, rng, hashStr, districtsOf, ROADS, PLACE_BY_ID, WALLED, PORTS, landSD, hash2, meshHeight, planSpans, onDeck, deckY, roadExits, townCut, isSmallPlace } from "./worldgen";
 
 var STYLE = {
@@ -17,7 +18,12 @@ var STYLE = {
 };
 export function styleOf(p) { return STYLE[p.realm] || STYLE.Aurelia; }
 
-function C(h, j) { var c = hex(h); c.push(j == null ? 0.12 : j); return c; }
+// every palette color names a material: stone, plaster, timber or roof tiles (Drakmor's pale roofs are snow-laden: plaster-smooth)
+var MATOF = { "#3a2618": CLS.wood, "#5a4630": CLS.wood, "#4a3424": CLS.wood, "#6a4c30": CLS.wood };
+(function () { var order = [["roof", CLS.roof], ["roof2", CLS.roof], ["timber", CLS.wood], ["plaster", CLS.plaster], ["stone", CLS.stone], ["wallStone", CLS.stone]];
+  for (var k in STYLE) { var st = STYLE[k]; order.forEach(function (o) { MATOF[st[o[0]].toLowerCase()] = o[1]; }); (st.pastel || []).forEach(function (h) { MATOF[h.toLowerCase()] = CLS.plaster; }); }
+  MATOF[STYLE.Drakmor.roof] = CLS.plaster; })();
+function C(h, j) { var c = hex(h); c.push(j == null ? 0.12 : j); c.push(MATOF[String(h).toLowerCase()] || 0); return c; }
 
 // ------------------------------------------------------------------ building primitives (all write into a GeoBuilder)
 function house(B, W, x, y, z, rot, w, d, h, st, r) {
@@ -284,19 +290,19 @@ export function buildSettlement(p, surf) {
 
   // ---- materials and meshes
   var group = new THREE.Group();
-  var mainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.02, flatShading: true });
+  var mainMat = patchBuildings(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.02, flatShading: true }));
   var m1 = new THREE.Mesh(B.build(), mainMat); m1.castShadow = true; m1.receiveShadow = true; group.add(m1);
   P.empty() || group.add(Object.assign(new THREE.Mesh(P.build(), mainMat), { castShadow: true, receiveShadow: true }));
   var winMat = new THREE.MeshStandardMaterial({ color: 0x1c1610, emissive: new THREE.Color(0xffb560), emissiveIntensity: 0.0, roughness: 0.5 });
   if (!W.empty()) { var wm = new THREE.Mesh(W.build(), winMat); group.add(wm); }
   // streets (cobble ribbons) and plaza disks
   if (!small) {
-    var SB = new GeoBuilder(); var sc = paved ? [0.95, 0.93, 0.9] : [0.55, 0.45, 0.33];
+    var SB = new GeoBuilder(); var sc = paved ? [1.5, 1.45, 1.4] : [0.55, 0.45, 0.33];
     function streetY(x, z) { var h = surf(x, z) + 0.05; for (var bi = 0; bi < out.bridges.length; bi++) { var bb = out.bridges[bi]; var od = onDeck(bb, x, z, 0.25); if (od) h = Math.max(h, deckY(bb, od.t) + 0.05); } return h; }
     streets.forEach(function (s) { ribbon(SB, s.x1 + cx, s.z1 + cz, s.x2 + cx, s.z2 + cz, s.w, streetY, sc); });
     // the plaza disk follows the ground it sits on (rings of vertices, each set to the terrain surface)
     var pd = new THREE.RingGeometry(0.001, plazaR, 28, 6); pd.rotateX(-Math.PI / 2); var puv = pd.attributes.uv, ppos = pd.attributes.position; for (var ui = 0; ui < puv.count; ui++) { puv.setXY(ui, ppos.getX(ui) / 4, ppos.getZ(ui) / 4); ppos.setY(ui, surf(cx + ppos.getX(ui), cz + ppos.getZ(ui)) + 0.05); } pd.computeVertexNormals(); SB.add(pd, M(cx, 0, cz), sc);
-    var smat = new THREE.MeshStandardMaterial({ vertexColors: true, map: paved ? cobbleTex() : null, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    var smat = new THREE.MeshStandardMaterial({ vertexColors: true, map: paved ? cobbleTex() : null, bumpMap: paved ? cobbleTex() : null, bumpScale: 0.06, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     var sm = new THREE.Mesh(SB.build(), smat); sm.receiveShadow = true; group.add(sm);
   }
   // banners (textured planes) with the realm's sigil

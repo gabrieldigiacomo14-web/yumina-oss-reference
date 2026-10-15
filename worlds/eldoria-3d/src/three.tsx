@@ -29,18 +29,19 @@ export function colorManage(THREE) { try { var CM = THREE.ColorManagement; if (C
 
 // ------------------------------------------------------------------ merged, vertex-colored geometry
 // Thousands of houses, trees and rocks are baked into a handful of draw calls.
-export function GeoBuilder() { this.pos = []; this.nrm = []; this.col = []; this.uv = []; this._m = null; this._n = null; }
+// color = [r, g, b, jitter, material class]; the class (see surfaces.tsx) picks the surface detail a patched material draws
+export function GeoBuilder() { this.pos = []; this.nrm = []; this.col = []; this.uv = []; this.cls = []; this.anyCls = false; this._m = null; this._n = null; }
 var _v, _n, _m3;
 GeoBuilder.prototype.add = function (geo, matrix, color, flat) {
   var THREE = T(); if (!_v) { _v = new THREE.Vector3(); _n = new THREE.Vector3(); _m3 = new THREE.Matrix3(); }
   var g = geo.index ? geo.toNonIndexed() : geo; if (flat) g.computeVertexNormals();
   var p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv; _m3.getNormalMatrix(matrix);
-  var c = color; var cr = c[0], cg = c[1], cb = c[2], jitter = c[3] || 0;
+  var c = color; var cr = c[0], cg = c[1], cb = c[2], jitter = c[3] || 0, cl = c[4] || 0; if (cl) this.anyCls = true;
   for (var i = 0; i < p.count; i++) {
     _v.fromBufferAttribute(p, i).applyMatrix4(matrix); this.pos.push(_v.x, _v.y, _v.z);
     _n.fromBufferAttribute(n, i).applyMatrix3(_m3).normalize(); this.nrm.push(_n.x, _n.y, _n.z);
     var j = jitter ? 1 + (((i * 7919) % 13) / 13 - 0.5) * jitter : 1;
-    this.col.push(cr * j, cg * j, cb * j);
+    this.col.push(cr * j, cg * j, cb * j); this.cls.push(cl);
     if (uv) this.uv.push(uv.getX(i), uv.getY(i)); else this.uv.push(0, 0);
   }
   if (g !== geo) g.dispose();
@@ -52,6 +53,7 @@ GeoBuilder.prototype.build = function () {
   g.setAttribute("normal", new THREE.Float32BufferAttribute(this.nrm, 3));
   g.setAttribute("color", new THREE.Float32BufferAttribute(this.col, 3));
   g.setAttribute("uv", new THREE.Float32BufferAttribute(this.uv, 2));
+  if (this.anyCls) g.setAttribute("mclass", new THREE.Float32BufferAttribute(this.cls, 1));
   g.computeBoundingSphere(); return g;
 };
 GeoBuilder.prototype.empty = function () { return this.pos.length === 0; };
@@ -95,7 +97,7 @@ export function M(x, y, z, rx, ry, rz, sx, sy, sz) {
 function lin(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
 export function hex(c) { var n = typeof c === "string" ? parseInt(c.replace("#", ""), 16) : c; return [lin(((n >> 16) & 255) / 255), lin(((n >> 8) & 255) / 255), lin((n & 255) / 255)]; }
 export { lin };
-export function shadeC(c, k) { return [c[0] * k, c[1] * k, c[2] * k, c[3]]; }
+export function shadeC(c, k) { return [c[0] * k, c[1] * k, c[2] * k, c[3], c[4]]; }
 export function mixC(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
 
 // ------------------------------------------------------------------ canvas textures
@@ -142,11 +144,27 @@ export function bannerTex(realm) {
   });
 }
 export function shadeHex(hx, k) { var n = parseInt(String(hx).replace("#", ""), 16); var c = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; return "rgb(" + Math.round(c[0] * 255 * k) + "," + Math.round(c[1] * 255 * k) + "," + Math.round(c[2] * 255 * k) + ")"; }
+// Setts laid in a jittered grid (periodic Worley cells): rounded stone faces in varied greys and browns, packed-earth joints.
+// The red channel doubles as the bump map. 512 px per tile, 4 m per tile on streets and plazas.
 export function cobbleTex() {
-  return canvasTex("cobble", 256, 256, function (ctx, w, h) {
-    ctx.fillStyle = "#4d4a46"; ctx.fillRect(0, 0, w, h);
-    for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++) { var ox = (y % 2) * 8; var l = 70 + ((x * 37 + y * 91) % 40); ctx.fillStyle = "rgb(" + l + "," + (l - 4) + "," + (l - 10) + ")"; ctx.beginPath(); ctx.ellipse(x * 16 + ox + 8, y * 16 + 8, 7.2, 6.4, 0, 0, 7); ctx.fill(); }
-  }, true);
+  if (TEX.cobble) return TEX.cobble;
+  var THREE = T(), N = 512, G = 16, cs = N / G, seed = 1, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  var px = [], py = [], tone = [];
+  for (var j = 0; j < G; j++) for (var i = 0; i < G; i++) { px.push((i + 0.5 + (rnd() - 0.5) * 0.55 + (j % 2) * 0.5) * cs); py.push((j + 0.5 + (rnd() - 0.5) * 0.45) * cs); var w = rnd(); tone.push([0.62 + rnd() * 0.36, w]); }
+  var D = new Uint8Array(N * N * 4);
+  for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+    var ci = Math.floor(x / cs), cj = Math.floor(y / cs), f1 = 1e9, f2 = 1e9, id = 0;
+    for (var dj = -1; dj <= 1; dj++) for (var di = -2; di <= 2; di++) { var ii = ((ci + di) % G + G) % G, jj = ((cj + dj) % G + G) % G, k = jj * G + ii; var ox = px[k] + Math.floor((ci + di) / G) * N, oy = py[k] + Math.floor((cj + dj) / G) * N;
+      var dx = x - ox, dy = y - oy; dx -= Math.round(dx / N) * N; dy -= Math.round(dy / N) * N; var d = Math.sqrt(dx * dx + dy * dy); if (d < f1) { f2 = f1; f1 = d; id = k; } else if (d < f2) f2 = d; }
+    var edge = (f2 - f1) * 0.5, gr = ((x * 7919 + y * 104729) % 97) / 97;
+    var face = Math.min(1, edge / 5); face = face * face * (3 - 2 * face); var dome = 1 - Math.min(1, f1 / (cs * 0.75)) * 0.35;
+    var t = tone[id], l = t[0] * dome * (0.92 + gr * 0.12), warm = t[1];
+    var r = l * (0.5 + warm * 0.08), g2 = l * (0.48 + warm * 0.03), b = l * (0.45 - warm * 0.04);
+    var jr = 0.2 + gr * 0.05, jg = 0.17 + gr * 0.04, jb = 0.13 + gr * 0.03; // earth between the stones
+    var o = (y * N + x) * 4; D[o] = (jr + (r - jr) * face) * 255; D[o + 1] = (jg + (g2 - jg) * face) * 255; D[o + 2] = (jb + (b - jb) * face) * 255; D[o + 3] = 255;
+  }
+  var tx = new THREE.DataTexture(D, N, N, THREE.RGBAFormat); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.magFilter = THREE.LinearFilter; tx.minFilter = THREE.LinearMipmapLinearFilter; tx.generateMipmaps = true; tx.anisotropy = 8;
+  if (THREE.sRGBEncoding) tx.encoding = THREE.sRGBEncoding; tx.needsUpdate = true; TEX.cobble = tx; return tx;
 }
 export function noiseTex() {
   return canvasTex("noise", 256, 256, function (ctx, w, h) {

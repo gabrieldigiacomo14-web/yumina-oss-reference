@@ -908,7 +908,7 @@ Game.prototype.frame = function (dt) {
   // environment
   var x = this.pos.x / MILE, y = -this.pos.z / MILE; var region = realmAt(x, y); var minutes = ((this.clock % 1440) + 1440) % 1440;
   this.envState = this.env.update(dt, this.pos, minutes, this.v.weather, region);
-  this.envT = (this.envT || 99) + dt; if (this.envT > 20) { this.envT = 0; try { var U = this.env.uniforms; var old = this.envRT; this.envRT = makeEnvironment(this.renderer, U.top.value.clone().multiplyScalar(0.55).getHex(), U.horizon.value.clone().multiplyScalar(0.5).getHex(), U.ground.value.clone().multiplyScalar(0.45).getHex()); this.scene.environment = this.envRT.texture; if (old) old.dispose(); } catch (e) { } }
+  this.envT = (this.envT || 99) + dt; if (this.envT > 20) { this.envT = 0; try { var U = this.env.uniforms; var old = this.envRT; this.envRT = makeEnvironment(this.renderer, U.top.value.clone().multiplyScalar(0.8).getHex(), U.horizon.value.clone().multiplyScalar(0.85).getHex(), U.ground.value.clone().multiplyScalar(0.6).getHex()); this.scene.environment = this.envRT.texture; if (old) old.dispose(); } catch (e) { } }
   var night = this.envState.night; for (var id2 in this.settlements) { var s2 = this.settlements[id2]; s2.winMat.emissiveIntensity = night * 1.6; s2.lampMat.emissiveIntensity = 0.2 + night * 2.4; }
   // interaction prompt
   this.interact = this.down || b ? null : this.findInteract();

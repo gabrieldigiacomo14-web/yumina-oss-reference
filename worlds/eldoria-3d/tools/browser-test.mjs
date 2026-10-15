@@ -199,6 +199,21 @@ export const SCENARIOS = {
     await shot("5-walk", [2.4, 1.0, 1.2, 0.95, 40], "T.g().keys.w = true"); await page.evaluate(() => { T.g().keys.w = false; });
     await shot("6-slash", [1.8, 1.1, 2.0, 1.0, 40], "T.X().A.playAction(T.g().player, 'slash', null)");
   } },
+  // Gameplay screenshots in Aurelia City with the real game camera: exploring, at the plaza, in combat. SHOT_TAG names files.
+  "shot-city": { manual: true, fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 1280, height: 720 }, run: async (ctx) => {
+    const { page } = ctx; const dir = ctx.shots || "/tmp"; const tag = process.env.SHOT_TAG || "city"; const q = (js) => page.evaluate(js);
+    if (process.env.SHOT_VP) { const [w, h] = process.env.SHOT_VP.split("x").map(Number); await page.setViewportSize({ width: w, height: h }); }
+    await page.waitForTimeout(1500); await q("(() => { const g = T.g(); T.clear(); g.spawnMonsters = function () {}; g.clock = Math.floor(g.clock / 1440) * 1440 + (Number(process && 0) || 0) + 15 * 60; })()").catch(() => {});
+    await q(`(() => { const g = T.g(); g.clock = Math.floor(g.clock / 1440) * 1440 + ${Number(process.env.SHOT_HOUR || 16)} * 60; })()`);
+    const go = async (x, z, yaw, dist, pitch) => { await q(`(() => { const g = T.g(); g.pos.x = ${x}; g.pos.z = ${z}; g.terrain.warm(g.pos.x, g.pos.z, 1); g.loadSettlements(true); const sp = g.safeSpot(g.pos.x, g.pos.z); g.pos.x = sp.x; g.pos.z = sp.z; g.pos.y = g.terrain.groundAt(g.pos.x, g.pos.z); g.camYaw = ${yaw}; g.yaw = ${yaw} + Math.PI; g.camDist = ${dist}; g.camPitch = ${pitch}; g.camF = null; })()`); await page.waitForTimeout(3500); };
+    const shot = async (n) => { await page.screenshot({ path: path.join(dir, tag + "-" + n + ".png"), timeout: 180000 }); };
+    await go(6, -48, Math.PI * 0.92, 6.5, 0.18); await shot("1-street");
+    await go(0, 18, 3.14, 7, 0.22); await shot("2-plaza");
+    await go(0, 18, 2.6, 24, 0.55); await shot("3-overview");
+    await q('T.spawn("Direwood Goblin", 1.5, -6, { hp: 400, maxHp: 400 }); T.spawn("Blackback Wolf", -2, -7, { hp: 400, maxHp: 400 }); 1'); await page.waitForTimeout(400);
+    await q('(() => { const g = T.g(); const m = g.monsters[0]; g.target = m; m.passive = false; g.engageWith(m, { playerFirst: true }); })()'); await page.waitForFunction("T.g().battle && T.g().battle.active && T.g().battle.active.kind === 'player' && !T.g().battle.script", null, { timeout: 60000 }); await page.waitForTimeout(1500); await shot("4-combat");
+    await q("(() => { const g = T.g(); g.target = g.monsters[0]; g.attack(); })()"); await page.waitForTimeout(450); await shot("5-attack");
+  } },
   "shot-world": { manual: true, fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
     const { page } = ctx; await page.waitForTimeout(800);
     const shots = [];
@@ -629,7 +644,7 @@ for (const [name, sc] of Object.entries(SCENARIOS)) {
   const vp = sc.viewport || { width: 480, height: 270 }; const page = await browser.newPage({ viewport: vp, hasTouch: !!sc.touch, isMobile: !!sc.touch }); const errors = [];
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message + " " + (e.stack || "").split("\n").slice(0, 3).join(" | "))); page.on("console", (m) => { if (m.type() === "error" && !/404/.test(m.text())) errors.push(m.text().slice(0, 300)); });
   await page.addInitScript(PRE);
-  await page.goto("http://localhost:" + port + "/"); await page.evaluate(([vars, persist]) => { localStorage.clear(); localStorage.setItem("preset", JSON.stringify(vars)); localStorage.setItem("harnessStore", JSON.stringify({ "eldoria3d-quality": "low" })); if (persist) localStorage.setItem("persistVars", "1"); }, [sc.fx(), !!sc.persist]); await page.reload();
+  await page.goto("http://localhost:" + port + "/"); await page.evaluate(([vars, persist, quality]) => { localStorage.clear(); localStorage.setItem("preset", JSON.stringify(vars)); localStorage.setItem("harnessStore", JSON.stringify({ "eldoria3d-quality": quality })); if (persist) localStorage.setItem("persistVars", "1"); }, [sc.fx(), !!sc.persist, process.env.SHOT_Q || "low"]); await page.reload();
   let out = []; try {
     await page.waitForFunction(() => window.__ready || window.__buildError, null, { timeout: 60000 }); await page.waitForFunction(() => window.__eldoriaGame && window.__eldoriaGame.time > 1, null, { timeout: 120000 });
     if (sc.run) { const res = []; const ctx = { page, vp, name, shots: shotsAt, check: (n, ok, d) => res.push({ name: n, ok: !!ok, detail: d === undefined ? "" : String(d) }) }; if (shotsAt) fs.mkdirSync(shotsAt, { recursive: true }); try { await sc.run(ctx); } catch (e) { res.push({ name: "scenario threw", ok: false, detail: String(e && e.stack || e).slice(0, 600) }); } out = res; }
