@@ -556,7 +556,7 @@ async function mobileFlow(ctx) {
   const tbar = await inside(ctx, ".eTargetBar", "aiming bar"); check("choosing a spell opens the aiming bar and closes the tray", !!tbar && !(await box(page, ".eTray")));
   check("aiming bar does not cover the hotbar", !overlap(tbar, await box(page, ".eHotbar")));
   const mp2 = await screenOf(page, "(() => { const g = T.g(); const m = g.monsters.find((x) => !x.dead); return g.screenOf(m.x, m.y + 0.7, m.z); })()"); await tapAt(ctx, mp2); await page.waitForTimeout(400);
-  check("first tap aims and shows the target list", !!(await box(page, ".eTip.spell")) && (await q("T.g().stats.mp")) === mp0, mp0);
+  check("first tap aims and shows the target list", !!(await box(page, ".eTip.spell")) && (await q("T.g().stats.mp")) === mp0, mp0 + " tip=" + !!(await box(page, ".eTip.spell")) + " mp=" + (await q("T.g().stats.mp")) + " tgt=" + (await q("JSON.stringify(T.g().tgt && { sp: T.g().tgt.sp.id, hasAim: !!T.g().tgt.aim, n: T.g().tgt.list && T.g().tgt.list.length })")) + " tap@" + Math.round(mp2.x) + "," + Math.round(mp2.y) + " top=" + (await page.evaluate((p2) => { const e = document.elementFromPoint(p2.x, p2.y); return e ? (e.className && e.className.baseVal || e.className) : null; }, mp2))); 
   await tapAt(ctx, mp2); await page.waitForFunction("T.g().battle.econ.action === 0", null, { timeout: 20000 }); await page.waitForFunction("!T.g().battle.script", null, { timeout: 20000 });
   check("second tap casts: Mana spent and the Action used", (await q("T.g().stats.mp")) === mp0 - 4, await q("T.g().stats.mp"));
   // movement preview and tap to move

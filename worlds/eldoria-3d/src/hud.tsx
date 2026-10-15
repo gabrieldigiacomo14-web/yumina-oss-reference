@@ -320,14 +320,17 @@ function Settings(p) {
 // already down (the stick), so onClick alone makes buttons dead while moving. The click that follows a single touch is ignored.
 var tapAt = 0;
 function swallowGhostClick() {
-  // the click a touch produces lands wherever the finger is when it lifts - possibly on something the tap just opened
-  var h = function (ev) { ev.stopPropagation(); ev.preventDefault(); window.removeEventListener("click", h, true); };
-  window.addEventListener("click", h, true); setTimeout(function () { window.removeEventListener("click", h, true); }, 700);
+  // the click a touch produces lands wherever the finger is when it lifts - possibly on something the tap just opened.
+  // Swallow clicks from the touch-down until 150 ms after the finger lifts (never longer than 1.5 s).
+  var done = function () { window.removeEventListener("click", h, true); window.removeEventListener("pointerup", up, true); window.removeEventListener("pointercancel", up, true); };
+  var h = function (ev) { ev.stopPropagation(); ev.preventDefault(); done(); };
+  var up = function () { setTimeout(done, 150); };
+  window.addEventListener("click", h, true); window.addEventListener("pointerup", up, true); window.addEventListener("pointercancel", up, true); setTimeout(done, 1500);
 }
 function tapOn(fn) {
   return {
     onPointerDown: function (e) { if (e.pointerType === "touch" || e.pointerType === "pen") { tapAt = Date.now(); swallowGhostClick(); fn(e); } },
-    onClick: function (e) { if (Date.now() - tapAt < 800) return; /* the click that follows a touch we already handled */ fn(e); }
+    onClick: function (e) { if (Date.now() - tapAt < 400) return; /* the click that follows a touch we already handled */ fn(e); }
   };
 }
 function TouchControls(p) {

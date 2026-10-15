@@ -308,6 +308,7 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .eTrayMeta .cost{padding:1px 7px;border:1px solid #4a515c}.eTrayMeta .cost.action{color:#7ae07a;border-color:#3a7a4a}.eTrayMeta .cost.bonus{color:#f0a040;border-color:#8a5a20}.eTrayMeta .cost.reaction{color:#c08aff;border-color:#6a3a9a}
 .eTargetBar{left:50%;top:92px;transform:translateX(-50%);width:min(520px,calc(100vw - 24px));z-index:9;padding:6px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;border-color:#8a6ad0}
 .eTBHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.eTBHead b{font:600 16px Cinzel,serif;color:#e6d8ff}.eTBHead span{color:#b8aed0;font-size:12.5px}
+.eTargetBar{pointer-events:none}.eTargetBar button{pointer-events:auto}
 .eTargetBar p{margin:0;font-size:14px;color:#e0d8c6;flex:1;min-width:140px}.eTargetBar p.bad{color:#f0a090}.eTBBtns{display:flex;gap:6px;margin-left:auto}
 .eChoose{display:flex;gap:5px;flex-wrap:wrap}.eChoose button{padding:4px 10px!important;border:1px solid #5a616c!important;background:rgba(255,255,255,.05)!important;text-transform:capitalize}.eChoose button.on{border-color:#c8a0ff!important;background:rgba(150,100,220,.35)!important}
 .eBtn.alt{background:transparent!important;border-color:#6a717c!important;color:#d0c8b8!important}
