@@ -225,7 +225,9 @@ cards = hair.card_material("hair_cards", hair.strand_texture(os.path.join(A.work
 for style in hair.STYLES: hair.build_style(style, cap_pts, cap_nrm, cap, hs, cards)
 bpy.data.objects.remove(cap, do_unlink=True)
 beard_f = region(lambda v: MASK["jaw"][v] > 0.12 and MASK["lips"][v] < 0.5 and Y[v] < BROW_TOP - 0.75 and Z[v] > HEAD_C[2] - 0.55)
-layer("beard", beard_f, 0.05, mats.beard()).name = "beard_full"
+bl = layer("beard_base", beard_f, 0.05, mats.beard(), morph=False); bl.data.update()
+hair.build_beard(np.array([tuple(v.co) for v in bl.data.vertices]), np.array([tuple(v.normal) for v in bl.data.vertices]), bl, mats.beard(), cards)
+bpy.data.objects.remove(bl, do_unlink=True)
 
 # ------------------------------------------------------------------ armature
 arm_data = bpy.data.armatures.new("Armature"); rig = bpy.data.objects.new("Armature", arm_data); scene.collection.objects.link(rig)

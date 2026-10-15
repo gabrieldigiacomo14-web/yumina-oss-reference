@@ -19,7 +19,7 @@ var STYLE = {
 export function styleOf(p) { return STYLE[p.realm] || STYLE.Aurelia; }
 
 // every palette color names a material: stone, plaster, timber or roof tiles (Drakmor's pale roofs are snow-laden: plaster-smooth)
-var MATOF = { "#3a2618": CLS.wood, "#5a4630": CLS.wood, "#4a3424": CLS.wood, "#6a4c30": CLS.wood };
+var MATOF = { "#3a2618": CLS.wood, "#5a4630": CLS.wood, "#4a3424": CLS.wood, "#6a4c30": CLS.wood, "#5a4030": CLS.wood, "#6e5038": CLS.wood, "#7a5a3a": CLS.wood };
 (function () { var order = [["roof", CLS.roof], ["roof2", CLS.roof], ["timber", CLS.wood], ["plaster", CLS.plaster], ["stone", CLS.stone], ["wallStone", CLS.stone]];
   for (var k in STYLE) { var st = STYLE[k]; order.forEach(function (o) { MATOF[st[o[0]].toLowerCase()] = o[1]; }); (st.pastel || []).forEach(function (h) { MATOF[h.toLowerCase()] = CLS.plaster; }); }
   MATOF[STYLE.Drakmor.roof] = CLS.plaster; })();
@@ -65,13 +65,21 @@ function wallSeg(B, x1, z1, x2, z2, y, h, th, st) {
   B.add(prim("boxb"), M((x1 + x2) / 2, y - 2, (z1 + z2) / 2, 0, a, 0, L, h + 2, th), C(st.wallStone, 0.1), true);
   var n = Math.floor(L / 1.6); for (var i = 0; i < n; i += 2) { var t = (i + 0.5) / n; B.add(prim("boxb"), M(x1 + (x2 - x1) * t, y + h, z1 + (z2 - z1) * t, 0, a, 0, 0.8, 0.7, th + 0.1), C(st.wallStone)); }
 }
+// A market stall: timber frame, counter with a plank top, a striped awning sloping out over the front with a valance,
+// produce heaped on the counter, crates, a barrel and a sack beside it.
 function stall(B, x, y, z, rot, r) {
-  var cloth = ["#8a2c24", "#2c4a7a", "#c8a040", "#3a6a3a", "#7a3a6a", "#d8d0b8"][Math.floor(r() * 6)];
-  var cs = Math.cos(rot), sn = Math.sin(rot);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) { B.add(prim("cyl6"), M(x + q[0] * 1.3 * cs + q[1] * 0.9 * sn, y, z - q[0] * 1.3 * sn + q[1] * 0.9 * cs, 0, 0, 0, 0.12, 2.3, 0.12), C("#4a3424", 0.05)); });
-  B.add(prim("boxb"), M(x, y, z, 0, rot, 0, 2.4, 0.9, 1.4), C("#5a4030"));
-  B.add(prim("roof"), M(x, y + 2.3, z, 0, rot, 0, 3.0, 0.6, 2.2), C(cloth, 0.05), true);
-  for (var i = 0; i < 4; i++) B.add(prim("sphereLo"), M(x + (r() - 0.5) * 1.8, y + 1.0, z + (r() - 0.5) * 0.8, 0, 0, 0, 0.35), C(["#c84a2a", "#d8b040", "#6a8a3a", "#8a5a2a"][i], 0.1));
+  var cloth = ["#8a2c24", "#2c4a7a", "#b88a30", "#3a6a3a", "#6a2e5a", "#2e5a5a"][Math.floor(r() * 6)], cream = "#e2d6bc";
+  var cs = Math.cos(rot), sn = Math.sin(rot); function L(lx, lz) { return [x + lx * cs + lz * sn, z - lx * sn + lz * cs]; } // +lz = front
+  [[-1.35, -0.75, 2.75], [1.35, -0.75, 2.75], [-1.35, 0.85, 2.3], [1.35, 0.85, 2.3]].forEach(function (q) { var p = L(q[0], q[1]); B.add(prim("boxb"), M(p[0], y, p[1], 0, rot, 0, 0.13, q[2], 0.13), C("#4a3424", 0.06)); });
+  var c0 = L(0, 0.05); B.add(prim("boxb"), M(c0[0], y, c0[1], 0, rot, 0, 2.5, 0.88, 1.15), C("#5a4030", 0.08)); B.add(prim("boxb"), M(c0[0], y + 0.88, c0[1], 0, rot, 0, 2.7, 0.07, 1.3), C("#6e5038", 0.05));
+  // awning: seven strips, back edge high, front edge low, overhanging the counter
+  var n = 7, slope = Math.atan2(0.5, 2.5); for (var i = 0; i < n; i++) { var lx = -1.5 + (i + 0.5) * 3.0 / n; var p = L(lx, 0.3); B.add(prim("box"), M(p[0], y + 2.52, p[1], slope, rot, 0, 3.0 / n + 0.005, 0.04, 2.6), C(i % 2 ? cream : cloth, 0.04)); var v = L(lx, 1.6); B.add(prim("box"), M(v[0], y + 2.15, v[1], 0, rot, 0, 3.0 / n * 0.92, 0.26, 0.03), C(i % 2 ? cloth : cream, 0.04)); }
+  // goods: heaped produce in rows, a basket of something pale, crates and a barrel at the side
+  var goods = [["#b8402a", "#d89a30", "#6a8a3a"], ["#c8b070", "#8a5a2a", "#d8c890"], ["#7a2a4a", "#b84a2a", "#e0c060"]][Math.floor(r() * 3)];
+  for (var k = 0; k < 9; k++) { var gx = -0.95 + (k % 3) * 0.95 + (r() - 0.5) * 0.2, gz = 0.05 + (Math.floor(k / 3) - 1) * 0.32; var gp = L(gx, gz); B.add(prim("sphereLo"), M(gp[0], y + 0.98, gp[1], r(), r(), 0, 0.3 + r() * 0.08, 0.2, 0.3 + r() * 0.08), C(goods[k % 3], 0.15)); }
+  var cr = L(1.75, 0.55); B.add(prim("boxb"), M(cr[0], y, cr[1], 0, rot + 0.2, 0, 0.6, 0.5, 0.6), C("#7a5a3a", 0.1), true); var cr2 = L(1.8, 0.5); B.add(prim("boxb"), M(cr2[0], y + 0.5, cr2[1], 0, rot - 0.15, 0, 0.5, 0.42, 0.5), C("#7a5a3a", 0.1), true);
+  var br = L(-1.85, 0.4); B.add(prim("cyl16"), M(br[0], y, br[1], 0, 0, 0, 0.55, 0.85, 0.55), C("#5a4030", 0.08)); B.add(prim("cyl16"), M(br[0], y + 0.25, br[1], 0, 0, 0, 0.58, 0.06, 0.58), C("#3a3632", 0)); B.add(prim("cyl16"), M(br[0], y + 0.62, br[1], 0, 0, 0, 0.58, 0.06, 0.58), C("#3a3632", 0));
+  var sk = L(-1.7, 1.05); B.add(prim("sphereLo"), M(sk[0], y + 0.3, sk[1], 0, r() * 3, 0, 0.5, 0.65, 0.45), C("#b8a47a", 0.1));
 }
 function statue(B, x, y, z, rot, st, lion) {
   B.add(prim("boxb"), M(x, y, z, 0, rot, 0, 2.2, 2.4, 2.2), C(st.stone)); B.add(prim("boxb"), M(x, y + 2.4, z, 0, rot, 0, 2.5, 0.3, 2.5), C(st.stone));
@@ -242,6 +250,10 @@ export function buildSettlement(p, surf) {
     var py0 = gy(0, 0);
     if (p.kind === "capital" || p.kind === "city") { fountain(B, cx, py0, cz, st); statue(B, cx + 14, py0, cz - 6, -1.2, st, false); statue(B, cx - 14, py0, cz - 6, 1.2, st, true); out.colliders.push({ x: cx, z: cz, r: 4 }, { x: cx + 14, z: cz - 6, r: 1.8 }, { x: cx - 14, z: cz - 6, r: 1.8 }); }
     else { B.add(prim("cyl16"), M(cx, py0, cz, 0, 0, 0, 3.2, 1.0, 3.2), C(st.stone)); B.add(prim("cyl16"), M(cx, py0 + 0.9, cz, 0, 0, 0, 2.2, 0.2, 2.2), C("#1a2a30", 0)); out.colliders.push({ x: cx, z: cz, r: 2 }); }
+    if (p.kind === "capital" || p.kind === "city") { // a ring of stalls around the plaza, clear of the statues, the board and the streets
+      var nS = p.kind === "capital" ? 7 : 4; for (var si = 0; si < nS; si++) { var sa = si / nS * Math.PI * 2 + 0.9, sr = plazaR * 0.7; var sx = Math.cos(sa) * sr, sz = Math.sin(sa) * sr;
+        if (Math.hypot(sx - 14, sz + 6) < 5 || Math.hypot(sx + 14, sz + 6) < 5 || streets.some(function (s3) { return segDist(sx, sz, s3) < s3.w / 2 + 2.2; })) continue;
+        stall(B, cx + sx, gy(sx, sz), cz + sz, Math.atan2(-sx, -sz), r); boxCollider(cx + sx, cz + sz, 4.2, 2.6, Math.atan2(-sx, -sz)); } }
     var bA = r() * Math.PI * 2; out.boards.push({ x: cx + Math.cos(bA) * (plazaR * 0.6), z: cz + Math.sin(bA) * (plazaR * 0.6), y: gy(Math.cos(bA) * plazaR * 0.6, Math.sin(bA) * plazaR * 0.6), rot: -bA - Math.PI / 2, name: "Notice Board" });
     out.plazas.push({ x: cx, z: cz, r: plazaR });
     // lamps around the plaza

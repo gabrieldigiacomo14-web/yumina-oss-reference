@@ -93,8 +93,34 @@ def build_style(style, scalp_pts, scalp_nrm, cap_obj, mat_cap, mat_cards, seed=3
             a = i / 48 * 2 * math.pi; b = r.uniform(-0.5, 0.5); c = tie + np.array([math.cos(a) * 0.035, math.sin(a) * 0.035, b * 0.02])
             pts = [c + np.array([math.cos(a + t * 2.4) * 0.03, math.sin(a + t * 2.4) * 0.03, t * 0.03]) for t in np.linspace(0, 1, 4)]
             strip(np.array(pts), 0.03, r.integers(0, 4) * 0.25)
-    # assemble: cap copy + cards
-    me = cap_obj.data.copy(); me.name = "hair_" + style; ob = bpy.data.objects.new("hair_" + style, me); bpy.context.scene.collection.objects.link(ob)
+    return assemble("hair_" + style, P, F, UV, cap_obj, mat_cap, mat_cards)
+
+def build_beard(pts, nrm, base_obj, mat_base, mat_cards, n=520, seed=11):
+    """A full beard: short cards on the cheeks and upper lip, longer ones from the jaw and chin falling with gravity,
+    over the painted beard layer (base_obj) so no skin shows between them."""
+    r = np.random.default_rng(seed); P = []; F = []; UV = []
+    up = np.array([0, 0, 1.0]); fwd = np.array([0, -1.0, 0]); zlo, zhi = pts[:, 2].min(), pts[:, 2].max()
+    def strip(ps, width, u0):
+        base = len(P); k = len(ps)
+        for i, p in enumerate(ps):
+            d = ps[min(i + 1, k - 1)] - ps[max(i - 1, 0)]; d /= (np.linalg.norm(d) + 1e-9); side = np.cross(d, fwd if abs(np.dot(d, fwd)) < 0.9 else up); side /= (np.linalg.norm(side) + 1e-9)
+            wd = width * (1 - 0.6 * i / (k - 1)); P.append(p - side * wd / 2); P.append(p + side * wd / 2); v = i / (k - 1); UV.append((u0, 1 - v)); UV.append((u0 + 0.25, 1 - v))
+        for i in range(k - 1): F.append((base + 2 * i, base + 2 * i + 1, base + 2 * i + 3, base + 2 * i + 2))
+    for j in r.choice(len(pts), n, replace=len(pts) < n):
+        p0 = pts[j]; nn = nrm[j]; t = (p0[2] - zlo) / max(zhi - zlo, 1e-6)  # 0 at the chin, 1 at the cheekbones
+        L = (0.11 - 0.08 * t) * r.uniform(0.75, 1.25); seg = 4
+        d = nn * 0.5 - up * (0.9 - 0.3 * t) + fwd * 0.15 + r.normal(0, 0.12, 3); d /= np.linalg.norm(d)
+        ps = [p0 + nn * 0.003]
+        for k in range(seg):
+            q = ps[-1] + d * L / seg; out = np.dot(q - p0, nn)
+            if out < 0.004: q = q + nn * (0.004 - out)  # never back into the face
+            ps.append(q); d = d * 0.6 + (-up) * 0.4; d /= np.linalg.norm(d)
+        strip(np.array(ps), 0.014 * r.uniform(0.8, 1.25), r.integers(0, 4) * 0.25)
+    return assemble("beard_full", P, F, UV, base_obj, mat_base, mat_cards)
+
+def assemble(name, P, F, UV, cap_obj, mat_cap, mat_cards):
+    """The base layer (a copy of cap_obj) plus the cards, all weighted to the head."""
+    me = cap_obj.data.copy(); me.name = name; ob = bpy.data.objects.new(name, me); bpy.context.scene.collection.objects.link(ob)
     for vg in cap_obj.vertex_groups: ob.vertex_groups.new(name=vg.name)
     hg = ob.vertex_groups.get("head") or ob.vertex_groups.new(name="head")
     for v in me.vertices: hg.add([v.index], 1.0, "REPLACE")

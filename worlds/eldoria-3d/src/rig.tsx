@@ -167,20 +167,35 @@ function applyVariants(root, look) {
 function prune(root) { var gone = []; root.traverse(function (o) { if (o !== root && o.visible === false && (o.isMesh || /^(hair|beard|outfit|armor)/i.test(o.name || ""))) gone.push(o); }); gone.forEach(function (o) { if (o.parent) o.parent.remove(o); }); return gone.length; }
 
 // ------------------------------------------------------------------ building a character from a template
-var SPECIES_SCALE = { Dwarf: 0.9, Halfling: 0.74, Elf: 1.02, "Orc-Blooded": 1.05 };
+var SPECIES_SCALE = { Dwarf: 0.84, Halfling: 0.72, Elf: 1.02, "Orc-Blooded": 1.06 };
+// Species read at a glance (art-direction sheets): orc-blooded olive-green skin, tusks and a heavy frame; dwarves short, broad and
+// bearded; halflings small with a larger head. Skin tones map the player's chosen tone index onto the species' own range.
+var SPECIES_BULK = { Dwarf: [1.1, 0.95], "Orc-Blooded": [1.06, 1] };
+var ORC_SKIN = ["#9aa36c", "#86925a", "#77844e", "#667244", "#535c38"];
+var SKIN_ORDER = ["#f1d2b6", "#e3b48f", "#c98e64", "#9a6a45", "#5e3d2a"];
+function speciesLook(look) {
+  var sp = look.species, out = Object.assign({}, look);
+  if (sp === "Orc-Blooded") { var i = Math.max(0, SKIN_ORDER.indexOf(String(look.skin || "").toLowerCase())); out.skin = ORC_SKIN[i < 0 ? 2 : i]; if (!look.build || /average/i.test(look.build)) out.build = "Broad"; }
+  if (sp === "Dwarf") { if (!look.build || /average|slender|lean/i.test(look.build)) out.build = "Broad"; if (String(look.gender || "").toLowerCase() !== "female") out.beard = true; }
+  return out;
+}
+function addTusks(THREE, h, B) {
+  var mat = new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.45 }); var g = new THREE.ConeGeometry(0.0085, 0.036, 7); g.translate(0, 0.018, 0);
+  var sk = h.sockets.head; [-1, 1].forEach(function (sd) { var t = new THREE.Mesh(g, mat); t.position.set(sd * 0.026, -0.056, 0.088); t.rotation.set(0.3, 0, -sd * 0.2); t.castShadow = false; t.userData.noShadow = true; t.position.x += sk.pos[0]; t.position.y += sk.pos[1]; t.position.z += sk.pos[2]; sk.parent.add(t); }); // the head socket's frame is the procedural head's (y up, z forward)
+}
 function splitClip(THREE, clip, upperNames, mask) {
   var up = [], lo = []; clip.tracks.forEach(function (t) { var node = t.name.split(".")[0]; (upperNames[node] ? up : lo).push(t); });
   return { up: up.length ? new THREE.AnimationClip(clip.name + ":up", clip.duration, up) : null, lo: lo.length ? new THREE.AnimationClip(clip.name + ":lo", clip.duration, lo) : null };
 }
 function subtree(root) { var s = {}; root.traverse(function (o) { s[o.name] = 1; }); return s; }
 export function build(look, key, deps) {
-  var tpl = TEMPLATES[key]; if (!tpl) return null; var THREE = T(); deps = deps || {}; look = look || {};
+  var tpl = TEMPLATES[key]; if (!tpl) return null; var THREE = T(); deps = deps || {}; look = speciesLook(look || {});
   var scene = cloneSkinned(THREE, tpl.scene); var found = findBones(scene); var B = found.map; if (!B.hips || !B.head) return null;
   var root = new THREE.Group(); var rig = new THREE.Group(); root.add(rig); rig.add(scene);
-  var meta = tpl.meta || {}; var species = look.species; var scale = (look.scale || 1) * (SPECIES_SCALE[species] || 1) * (tpl.opts.scale || meta.scale || 1); rig.scale.setScalar(scale);
+  var meta = tpl.meta || {}; var species = look.species; var scale = (look.scale || 1) * (SPECIES_SCALE[species] || 1) * (tpl.opts.scale || meta.scale || 1); var bulk = SPECIES_BULK[species] || [1, 1]; rig.scale.set(scale * bulk[0], scale * bulk[1], scale * bulk[0]); /* stockier species: a little wider than tall */
   dressMaterials(scene, Object.assign({}, look, { __noTint: !!(tpl.meta && tpl.meta.noTint), __exactTint: !!(tpl.meta && tpl.meta.tinted) }), deps.quality); var variants = applyVariants(scene, look); prune(scene);
   // measure the standing height from the bind pose
-  scene.updateMatrixWorld(true); var box = new THREE.Box3().setFromObject(scene); var height = (meta.height || (box.max.y - box.min.y)) * scale; var hipY = B.hips.getWorldPosition(new THREE.Vector3()).y - box.min.y;
+  scene.updateMatrixWorld(true); var box = new THREE.Box3().setFromObject(scene); var height = (meta.height || (box.max.y - box.min.y)) * scale * bulk[1]; var hipY = B.hips.getWorldPosition(new THREE.Vector3()).y - box.min.y;
   var hs = meta.headSize || [0.205 * 1, 0.25, 0.232];
   var h = { glb: true, key: key, root: root, rig: rig, scene: scene, bones: B, hips: B.hips, spine: B.spine || B.hips, chest: B.chest || B.spine || B.hips, neck: B.neck || null, head: B.head,
     L: { hip: B.lhip, knee: B.lknee }, R: { hip: B.rhip, knee: B.rknee }, LA: { sh: B.lsh, el: B.lel, hand: B.lhand }, RA: { sh: B.rsh, el: B.rel, hand: B.rhand }, cape: null, weapon: null, weaponKind: "none", hipY: hipY, height: height,
@@ -191,6 +206,8 @@ export function build(look, key, deps) {
   // weapon and shield from the procedural builders (same shapes the other characters carry)
   if (deps.buildWeapon && look.weapon && look.weapon !== "none") { var w = deps.buildWeapon(look.weapon); if (w) { var bow = look.weapon === "bow"; var sk = bow ? h.sockets.hand_l : h.sockets.hand_r; sk.parent.add(w); w.position.set(sk.pos[0], sk.pos[1], sk.pos[2]); var rest = /staff|spear|bow/.test(look.weapon) ? Math.PI : look.weapon === "lute" ? Math.PI / 2 : Math.PI - 0.45; w.rotation.set(rest, sk.rot[1], sk.rot[2]); w.userData.rest = rest; w.userData.tipY = { sword: 0.92, dagger: 0.4, staff: 1.38, axe: 0.72, hammer: 0.7, mace: 0.7, club: 0.78, spear: 1.68 }[look.weapon]; h.weapon = w; h.weaponKind = look.weapon; } }
   if (deps.buildShield && (look.shield)) { var sh = deps.buildShield(); if (sh) { h.sockets.shield.parent.add(sh); sh.position.set(h.sockets.shield.pos[0], h.sockets.shield.pos[1], h.sockets.shield.pos[2]); sh.rotation.set(h.sockets.shield.rot[0], h.sockets.shield.rot[1], h.sockets.shield.rot[2]); h.shield = sh; } }
+  if (look.species === "Orc-Blooded") addTusks(THREE, h, B);
+  if (look.species === "Halfling") B.head.scale.setScalar(1.12);
   var hood = scene.getObjectByName("hood") || scene.getObjectByName("Hood"); if (hood) { B.head.userData.hood = hood; hood.visible = !!look.hoodUp; }
   // faces
   h.face = { meshes: [], blinkT: 1 + Math.random() * 3, blink: 0, jaw: 0, brow: 0, smile: 0 }; scene.traverse(function (o) { if (o.morphTargetDictionary && o.morphTargetInfluences) h.face.meshes.push(o); });
