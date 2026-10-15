@@ -16,6 +16,8 @@
 // Every entry point returns null / false on any problem so callers fall back to the procedural model.
 import { T } from "./three";
 import { makeGLTFLoader, cloneSkinned } from "./gltf-loader";
+import { getMeshoptDecoder } from "./meshopt-decoder";
+import { BUILTIN_MODELS } from "./builtin-models";
 
 var CLIP_TABLE = {};
 export function bindClipTable(t) { CLIP_TABLE = t || {}; }
@@ -82,7 +84,7 @@ export function register(key, bytes, opts) {
   return new Promise(function (resolve, reject) {
     try {
       var head4 = new Uint8Array(bytes, 0, Math.min(4, bytes.byteLength || 0)); var magic = String.fromCharCode.apply(null, head4); if (magic !== "glTF" && !(head4[0] === 0x7b)) { STATUS[key] = { ok: false, error: "not a glTF or GLB file" }; reject(new Error(key + ": not a glTF or GLB file")); return; }
-      var Loader = makeGLTFLoader(THREE); var loader = new Loader();
+      var Loader = makeGLTFLoader(THREE); var loader = new Loader(); loader.setMeshoptDecoder(getMeshoptDecoder()); /* gltfpack-compressed assets (EXT_meshopt_compression) */
       loader.parse(bytes, "", function (gltf) {
         try {
           var scene = gltf.scene || gltf.scenes[0]; var found = findBones(scene); var meta = Object.assign(metaOf(scene), opts.meta || {}); var clips = resolveClips(gltf.animations || []);
@@ -107,40 +109,62 @@ export function loadManifest(api, manifest) {
   });
   return Promise.all(jobs).then(function () { return STATUS; });
 }
+// The models to load: the built-in ones shipped with the world (unless the player chose the classic look), then the
+// world3d-models variable, whose entries replace a slot (null or {disabled:true} removes it).
+export function manifestFor(variables, prefs) {
+  var m = {}; if (!(prefs && prefs.classic)) Object.keys(BUILTIN_MODELS).forEach(function (k) { m[k] = { b64: BUILTIN_MODELS[k], builtin: true }; });
+  var v = variables && variables["world3d-models"]; if (v && typeof v === "object") Object.keys(v).forEach(function (k) { if (v[k] === null || (v[k] && v[k].disabled)) delete m[k]; else m[k] = v[k]; });
+  return m;
+}
 // which template should dress this look? gender-specific first, then the generic humanoid
 export function pick(look) { if (look && look.procedural) return null; var g = String(look && look.gender || "").toLowerCase(); var order = [g ? "humanoid-" + g : null, "humanoid"].filter(Boolean); for (var i = 0; i < order.length; i++) if (TEMPLATES[order[i]]) return order[i]; return null; }
 export function pickCreature(mon, arch) { var o = ["creature:" + mon.id, "creature:" + mon.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), "creature:" + arch]; for (var i = 0; i < o.length; i++) if (TEMPLATES[o[i]]) return o[i]; return null; }
 
 // ------------------------------------------------------------------ materials
-function tintFor(look, role) { return role === "skin" ? look.skin : role === "hair" ? look.hair : null; }
+// "@main" / "@cloth" / "@trim" / "@cape" in a material name take that colour from the character's calling palette; "@none" keeps the texture
+var TAG_COLOR = { main: "main", cloth: "cloth", trim: "trim", cape: "cape" };
+function tintFor(look, role, name) { var t = /@(\w+)/.exec(String(name || "")); if (t) return TAG_COLOR[t[1]] ? look[TAG_COLOR[t[1]]] || null : null; return role === "skin" ? look.skin : role === "hair" ? look.hair : null; }
 var ROLE_RE = [["eye", /eye|iris|cornea/], ["hair", /hair|beard|brow|lash|moustache|mustache/], ["skin", /skin|face|head|body|hand|arm|leg|torso|flesh/], ["metal", /metal|armou?r|steel|iron|plate|mail|buckle|blade/], ["cloth", /cloth|fabric|cloak|cape|robe|tunic|shirt|pants|trouser|linen|wool|leather|boot|glove/]];
 export function roleOf(name) { var n = String(name || "").toLowerCase(); for (var i = 0; i < ROLE_RE.length; i++) if (ROLE_RE[i][1].test(n)) return ROLE_RE[i][0]; return "other"; }
 // Upgrade and tint the (cloned) materials of one character. Each clone gets its own material so tints do not leak.
+// Dressed materials are shared between characters that end up with the same tint (one shader setup, far less memory).
+var SHARED = {};
 export function dressMaterials(obj, look, quality) {
   var THREE = T(); look = look || {}; var done = {}; var hi = quality !== "low";
   obj.traverse(function (o) {
     if (!o.isMesh) return; var arr = Array.isArray(o.material) ? o.material : [o.material]; var next = arr.map(function (m) {
-      if (!m) return m; if (done[m.uuid]) return done[m.uuid]; var role = roleOf(m.name + " " + o.name); var c = m.clone(); c.name = m.name;
+      if (!m) return m; if (done[m.uuid]) return done[m.uuid]; var role = roleOf(m.name + " " + o.name);
+      var skey = m.uuid + "|" + (look.__noTint ? "" : tintFor(look, role, m.name) || "") + "|" + hi + "|" + !!look.__exactTint; if (SHARED[skey]) { done[m.uuid] = SHARED[skey]; return SHARED[skey]; }
+      var c = m.clone(); c.name = m.name;
       if (c.isMeshStandardMaterial && hi && (role === "skin" || role === "cloth" || role === "eye") && THREE.MeshPhysicalMaterial) { var p = new THREE.MeshPhysicalMaterial(); THREE.MeshStandardMaterial.prototype.copy.call(p, c); if (role === "skin") { p.sheen = 0.35; p.sheenRoughness = 0.5; p.sheenColor = new THREE.Color(0xffd8c0); p.roughness = Math.max(0.45, Math.min(0.7, c.roughness)); } else if (role === "cloth") { p.sheen = 0.5; p.sheenRoughness = 0.8; p.sheenColor = new THREE.Color(0xffffff); } else if (role === "eye") { p.clearcoat = 1; p.clearcoatRoughness = 0.05; p.roughness = 0.15; } c = p; c.name = m.name; }
       if (c.isMeshStandardMaterial) { c.envMapIntensity = role === "metal" ? 1.4 : 0.9; if (role === "metal") { c.metalness = Math.max(c.metalness, 0.7); c.roughness = Math.min(c.roughness, 0.5); } }
-      var tint = look.__noTint ? null : tintFor(look, role); if (tint && c.color) { var base = new THREE.Color(tint); if (c.map) { /* multiply onto the albedo, keeping its detail: normalise so mid-tones stay readable */ base.lerp(new THREE.Color(0xffffff), 0.35); } c.color.copy(base); }
+      var tint = look.__noTint ? null : tintFor(look, role, m.name); if (tint && c.color) { var base = new THREE.Color(tint); if (c.map && !look.__exactTint) { /* multiply onto the albedo, keeping its detail: normalise so mid-tones stay readable */ base.lerp(new THREE.Color(0xffffff), 0.35); } else if (role === "skin") { /* the painted skin carries its own redness: take some saturation out of the flat creator swatch */ var lum = base.r * 0.3 + base.g * 0.59 + base.b * 0.11; base.lerp(new THREE.Color(lum, lum, lum), 0.22).multiplyScalar(1.08); } c.color.copy(base); }
       if (c.alphaMap || (c.map && role === "hair")) { c.alphaTest = c.alphaTest || 0.5; c.side = THREE.DoubleSide; }
-      done[m.uuid] = c; return c;
+      done[m.uuid] = c; SHARED[skey] = c; return c;
     }); o.material = Array.isArray(o.material) ? next : next[0]; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false;
   });
 }
 
 // ------------------------------------------------------------------ appearance variants (hair_*, beard_*, outfit_*)
+// hairstyles the asset does not model borrow the closest one it does
+var HAIR_MAP = { sweptback: "shortcrop", shavedsides: "shortcrop", buzzcut: "shortcrop", hooded: "shortcrop", curlymop: "messylayered", longwavy: "longstraight", warriorbraids: "braided" };
 var HAIR = ["Messy Layered", "Short Crop", "Long Straight", "Swept Back", "Braided", "Ponytail", "Topknot", "Shaved Sides", "Curly Mop", "Long Wavy", "Warrior Braids", "Bald", "Buzz Cut", "Hooded"];
 function applyVariants(root, look) {
   var groups = {}; root.traverse(function (o) { var m = /^(hair|beard|brow|outfit|armor|armour|hood|helm)[_.\- ]*(.*)$/i.exec(o.name || ""); if (!m || o === root) return; var g = m[1].toLowerCase().replace("armour", "armor"); (groups[g] = groups[g] || []).push({ o: o, tag: m[2].toLowerCase() }); });
   var info = { groups: Object.keys(groups) };
-  if (groups.hair) { var want = String(look.hairStyle || "").toLowerCase().replace(/[^a-z0-9]/g, ""); var idx = Math.max(0, HAIR.indexOf(look.hairStyle)); var any = groups.hair.some(function (e) { return e.tag.replace(/[^a-z0-9]/g, "") === want; }); groups.hair.forEach(function (e, i) { e.o.visible = look.hairStyle === "Bald" ? false : any ? e.tag.replace(/[^a-z0-9]/g, "") === want : i === idx % groups.hair.length; }); }
+  if (groups.hair) { var want = String(look.hairStyle || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (!groups.hair.some(function (e) { return e.tag.replace(/[^a-z0-9]/g, "") === want; }) && HAIR_MAP[want]) want = HAIR_MAP[want]; var idx = Math.max(0, HAIR.indexOf(look.hairStyle)); var any = groups.hair.some(function (e) { return e.tag.replace(/[^a-z0-9]/g, "") === want; }); groups.hair.forEach(function (e, i) { e.o.visible = look.hairStyle === "Bald" ? false : any ? e.tag.replace(/[^a-z0-9]/g, "") === want : i === idx % groups.hair.length; }); }
   if (groups.beard) groups.beard.forEach(function (e, i) { e.o.visible = !!look.beard && i === 0; });
   var armor = look.armor || "light"; var armorGroup = groups.outfit || groups.armor;
-  if (armorGroup) { var re = armor === "heavy" ? /heavy|plate|knight/ : armor === "medium" ? /medium|mail|leather|brigand/ : armor === "robe" ? /robe|mage|cleric/ : armor === "bare" ? /^$/ : /light|cloth|tunic|common|travel/; var hit = false; armorGroup.forEach(function (e) { var ok = re.test(e.tag) || (armor === "bare" && e.tag === ""); if (ok) hit = true; e.o.visible = ok; }); if (!hit) armorGroup.forEach(function (e, i) { e.o.visible = i === 0; }); }
+  if (armorGroup) { var re = armor === "heavy" ? /heavy|plate|knight/ : armor === "medium" ? /medium|mail|leather|brigand/ : armor === "robe" ? /robe|mage|cleric/ : armor === "bare" ? /^bare|^$/ : /light|cloth|tunic|common|travel/; var hit = false; armorGroup.forEach(function (e) { var ok = re.test(e.tag) || (armor === "bare" && e.tag === ""); if (ok) hit = true; e.o.visible = ok; }); if (!hit) armorGroup.forEach(function (e, i) { e.o.visible = i === 0; }); }
+  // skin the visible outfit covers is not drawn at all (no poke-through when limbs bend, fewer triangles)
+  var hide = {}; root.traverse(function (o) { if (o.visible && o.userData && o.userData.hide && /^outfit/i.test(o.name || "")) String(o.userData.hide).split(",").forEach(function (p) { hide[p] = 1; }); });
+  root.traverse(function (o) { if (!o.isMesh) return; var mn = o.material && o.material.name || ""; var mm = /^skin#(\w+)/.exec(mn); if (mm) o.visible = !hide[mm[1]]; });
+  info.hidden = Object.keys(hide);
   return info;
 }
+
+// Variants and covered skin this character does not show are removed outright: fewer objects to traverse, skin and draw.
+function prune(root) { var gone = []; root.traverse(function (o) { if (o !== root && o.visible === false && (o.isMesh || /^(hair|beard|outfit|armor)/i.test(o.name || ""))) gone.push(o); }); gone.forEach(function (o) { if (o.parent) o.parent.remove(o); }); return gone.length; }
 
 // ------------------------------------------------------------------ building a character from a template
 var SPECIES_SCALE = { Dwarf: 0.9, Halfling: 0.74, Elf: 1.02, "Orc-Blooded": 1.05 };
@@ -154,9 +178,9 @@ export function build(look, key, deps) {
   var scene = cloneSkinned(THREE, tpl.scene); var found = findBones(scene); var B = found.map; if (!B.hips || !B.head) return null;
   var root = new THREE.Group(); var rig = new THREE.Group(); root.add(rig); rig.add(scene);
   var meta = tpl.meta || {}; var species = look.species; var scale = (look.scale || 1) * (SPECIES_SCALE[species] || 1) * (tpl.opts.scale || meta.scale || 1); rig.scale.setScalar(scale);
-  dressMaterials(scene, Object.assign({}, look, { __noTint: !!(tpl.meta && tpl.meta.noTint) }), deps.quality); var variants = applyVariants(scene, look);
+  dressMaterials(scene, Object.assign({}, look, { __noTint: !!(tpl.meta && tpl.meta.noTint), __exactTint: !!(tpl.meta && tpl.meta.tinted) }), deps.quality); var variants = applyVariants(scene, look); prune(scene);
   // measure the standing height from the bind pose
-  scene.updateMatrixWorld(true); var box = new THREE.Box3().setFromObject(scene); var height = (box.max.y - box.min.y) * scale; var hipY = B.hips.getWorldPosition(new THREE.Vector3()).y - box.min.y;
+  scene.updateMatrixWorld(true); var box = new THREE.Box3().setFromObject(scene); var height = (meta.height || (box.max.y - box.min.y)) * scale; var hipY = B.hips.getWorldPosition(new THREE.Vector3()).y - box.min.y;
   var hs = meta.headSize || [0.205 * 1, 0.25, 0.232];
   var h = { glb: true, key: key, root: root, rig: rig, scene: scene, bones: B, hips: B.hips, spine: B.spine || B.hips, chest: B.chest || B.spine || B.hips, neck: B.neck || null, head: B.head,
     L: { hip: B.lhip, knee: B.lknee }, R: { hip: B.rhip, knee: B.rknee }, LA: { sh: B.lsh, el: B.lel, hand: B.lhand }, RA: { sh: B.rsh, el: B.rel, hand: B.rhand }, cape: null, weapon: null, weaponKind: "none", hipY: hipY, height: height,
@@ -171,6 +195,8 @@ export function build(look, key, deps) {
   // faces
   h.face = { meshes: [], blinkT: 1 + Math.random() * 3, blink: 0, jaw: 0, brow: 0, smile: 0 }; scene.traverse(function (o) { if (o.morphTargetDictionary && o.morphTargetInfluences) h.face.meshes.push(o); });
   // build morphs: build_slender / build_broad ...
+  var fem = String(look.gender || "").toLowerCase() === "female" ? 1 : 0; var elf = look.species === "Elf" ? 1 : look.species === "Half-Elf" ? 0.55 : 0;
+  h.face.meshes.forEach(function (o) { var d = o.morphTargetDictionary; if (d.female !== undefined) o.morphTargetInfluences[d.female] = fem; if (d.ears_pointed !== undefined) o.morphTargetInfluences[d.ears_pointed] = elf; });
   var bn = "build" + String(look.build || "").toLowerCase().replace(/[^a-z]/g, ""); h.face.meshes.forEach(function (o) { Object.keys(o.morphTargetDictionary).forEach(function (n) { var nn = n.toLowerCase().replace(/[^a-z]/g, ""); if (nn.indexOf("build") === 0) o.morphTargetInfluences[o.morphTargetDictionary[n]] = nn === bn ? 1 : 0; }); });
   // animation set
   setupMixer(h, tpl); return h;
@@ -222,7 +248,7 @@ export function mixerAnimate(h, dt, st) {
   if (h.weapon && h.weapon.userData.orb) h.weapon.userData.orb.material.emissiveIntensity = 1.1 + Math.sin(h.t * 3) * 0.4 + (h.action === "staffCast" || h.action === "cast" ? 2.5 : 0);
 }
 function setMorph(h, names, v) { h.face.meshes.forEach(function (o) { names.forEach(function (n) { var i = o.morphTargetDictionary[n]; if (i !== undefined) o.morphTargetInfluences[i] = v; }); }); }
-var BLINK = ["eyeBlinkLeft", "eyeBlinkRight", "blink", "Blink", "eyesClosed", "EyesClosed", "blink_L", "blink_R"], JAW = ["jawOpen", "JawOpen", "mouthOpen", "MouthOpen", "viseme_aa", "aa"], BROW = ["browDownLeft", "browDownRight", "browDown", "angry", "Angry"], SMILE = ["mouthSmileLeft", "mouthSmileRight", "smile", "Smile", "happy"], WINCE = ["mouthFrownLeft", "mouthFrownRight", "sad", "Sad", "eyeSquintLeft", "eyeSquintRight"];
+var BLINK = ["eyeBlinkLeft", "eyeBlinkRight", "blink", "Blink", "eyesClosed", "EyesClosed", "blink_L", "blink_R"], JAW = ["jawOpen", "JawOpen", "mouthOpen", "MouthOpen", "viseme_aa", "aa"], BROW = ["browDownLeft", "browDownRight", "browDown", "angry", "Angry"], SMILE = ["mouthSmileLeft", "mouthSmileRight", "smile", "Smile", "happy"], WINCE = ["wince", "mouthFrownLeft", "mouthFrownRight", "sad", "Sad", "eyeSquintLeft", "eyeSquintRight"];
 function faceTick(h, dt, st) {
   var f = h.face; if (!f || !f.meshes.length) return; f.blinkT -= dt; if (f.blinkT <= 0) { f.blink = 1; f.blinkT = 2.2 + Math.random() * 4; } f.blink = Math.max(0, f.blink - dt * 8); var blink = h.action === "death" ? 1 : Math.sin(Math.min(1, f.blink) * Math.PI);
   var talk = h.action === "talk" || st.talking; var jawT = talk ? 0.25 + Math.abs(Math.sin(h.t * 11)) * 0.3 * (0.5 + 0.5 * Math.sin(h.t * 3)) : (h.action === "bow" || /slash|smash|thrust|punch/.test(h.action || "")) ? 0.18 : h.action === "hit" ? 0.5 : 0; f.jaw += (jawT - f.jaw) * Math.min(1, dt * 14);

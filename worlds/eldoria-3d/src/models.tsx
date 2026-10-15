@@ -95,7 +95,7 @@ export function makeHumanoid(look) {
   if (glbKey) {
     try {
       var gm = look.main || cl.main, gt = look.trim || cl.trim, garmor = look.armor || cl.armor; var gtrim = metal(gt), gmain = garmor === "heavy" || garmor === "medium" ? metal(gm) : mat(gm); var gl = "#4a3322";
-      var gh = RIG.build(Object.assign({}, look, { weapon: look.weapon || cl.weapon, armor: garmor, shield: !!(cl.shield || look.shield) }), glbKey, {
+      var gh = RIG.build(Object.assign({}, look, { weapon: look.weapon || cl.weapon, armor: garmor, shield: !!(cl.shield || look.shield), main: gm, trim: gt, cloth: look.cloth || cl.cloth, cape: look.cape || cl.cape }), glbKey, {
         quality: look.detail === "lo" ? "low" : "high",
         buildWeapon: function (kind) { return buildWeapon(kind, gtrim, mat(gl), gmain); },
         buildShield: function () { var sg = new THREE.Group(); sg.add(mesh(geo("cyl"), gmain, 0, 0, 0, 0.52, 0.05, 0.52)); sg.add(mesh(geo("cyl"), gtrim, 0, 0.03, 0, 0.15, 0.04, 0.15)); return sg; }

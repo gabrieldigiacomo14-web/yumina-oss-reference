@@ -97,7 +97,8 @@ export function GameScreen(props) {
           catch (err) { console.error(err); if (gameRef.current) { try { gameRef.current.dispose(); } catch (e2) { } gameRef.current = null; } setStatus("The 3D view could not start: " + (err && err.message ? err.message : err) + ". Your chronicle is still available below."); }
         };
         // optional rigged glTF models (world assets named in the world3d-models variable) load first; failures fall back to the procedural bodies
-        var man = (api.variables || {})["world3d-models"]; var gate = man && typeof man === "object" && Object.keys(man).length ? Promise.race([RIG.loadManifest(api, man), new Promise(function (r) { setTimeout(r, 25000); })]) : Promise.resolve(); setStatus(man && Object.keys(man).length ? "Loading character models…" : status);
+        var pref = Promise.resolve(null); try { pref = Promise.resolve(api.storage && api.storage.get && api.storage.get("eldoria3d-models")).catch(function () { return null; }); } catch (e) { }
+        var gate = pref.then(function (pv) { var man = RIG.manifestFor(api.variables || {}, { classic: pv === "classic" }); if (!Object.keys(man).length) return null; setStatus("Loading character models…"); return Promise.race([RIG.loadManifest(api, man), new Promise(function (r) { setTimeout(r, 25000); })]); });
         Promise.resolve(gate).catch(function () { }).then(startGame);
         setTimeout(function () { try { ensureBaseMap(); } catch (e) { console.error(e); } }, 4000);
       }, 30);
@@ -300,10 +301,18 @@ function Techniques(p) {
     <section className="card"><div className="cardTitle"><b>Learned Techniques</b></div>{keys.length ? keys.map(function (k) { var x = t[k] || {}; return <div key={k} className="item"><div><b>{x.name || titleCase(k)}</b><small>{x.skill || x.category || ""}{x.level ? " · Lv " + x.level : ""}{x.cost ? " · " + x.cost : ""}</small></div></div>; }) : <div className="empty">No techniques yet. Practice, train with a real teacher, or invent one in play.</div>}</section></div>;
 }
 
+// Character models: the realistic built-in ones (default) or the light procedural "classic" bodies. Applies on reload.
+function ModelsSetting(p) {
+  var api = p.api; var [v, setV] = React.useState(null);
+  React.useEffect(function () { try { Promise.resolve(api.storage && api.storage.get && api.storage.get("eldoria3d-models")).then(function (x) { setV(x || "builtin"); }); } catch (e) { setV("builtin"); } }, []);
+  function pick(x) { setV(x); try { api.storage && api.storage.set && api.storage.set("eldoria3d-models", x); } catch (e) { } }
+  return <section className="card"><div className="cardTitle"><b>Characters</b></div><div className="eSeg">{[["builtin", "Realistic"], ["classic", "Classic (lighter)"]].map(function (o) { return <button key={o[0]} className={v === o[0] ? "on" : ""} onClick={function () { pick(o[0]); }}>{o[1]}</button>; })}</div><p className="muted">Realistic uses rigged, textured models; Classic uses the lighter procedural bodies (older phones). Takes effect the next time the world loads.</p></section>;
+}
 function Settings(p) {
   var api = p.api; var [ts, setTs] = React.useState(false);
   return <div className="screen">
     <section className="card"><div className="cardTitle"><b>Graphics</b></div><div className="eSeg">{Object.keys(QUALITY).map(function (k) { return <button key={k} className={p.q === k ? "on" : ""} onClick={function () { p.setQ(k); }}>{QUALITY[k].name}</button>; })}</div><p className="muted">Low suits phones and older laptops: no shadows, shorter view distance.</p></section>
+    <ModelsSetting api={api} />
     <section className="card"><div className="cardTitle"><b>Game Master</b></div><div className="eBtnRow">
       <button className="eBtn small" onClick={function () { api.sendMessage("[sync]"); p.close(); }}><Icon n="RefreshCw" s={14} /> Sync state</button>
       <button className="eBtn small" onClick={function () { api.sendMessage("[status]"); p.close(); }}><Icon n="Activity" s={14} /> Status</button>

@@ -189,6 +189,16 @@ export const SCENARIOS = {
       await page.keyboard.press("Escape"); await q("T.X().C.finish(T.g(), 'won'); 1"); await page.waitForTimeout(400);
     }
   } },
+  // Close-ups of the player character for visual review: front, face, side, walking, attacking. HUMAN_GLB=<file> loads that model.
+  "shot-human": { manual: true, fx: () => { const v = fixture({ calling: process.env.SHOT_CALLING || "Fighter" }); if (process.env.HUMAN_GLB) v["world3d-models"] = { humanoid: { b64: fs.readFileSync(process.env.HUMAN_GLB).toString("base64") } }; if (process.env.SHOT_LOOK) v["player-avatar"] = Object.assign({}, v["player-avatar"] || {}, JSON.parse(process.env.SHOT_LOOK)); return v; }, viewport: { width: 900, height: 600 }, run: async (ctx) => {
+    const { page } = ctx; await page.waitForTimeout(800); const dir = ctx.shots || "/tmp"; const tag = process.env.SHOT_TAG || "human";
+    await page.evaluate(() => { const g = T.g(); T.clear(); g.spawnMonsters = function () {}; window.__cam = null; const orig = g.renderer.render; g.renderer.render = function (sc, cam) { const c = window.__cam; if (c) { const yaw = g.yaw; const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw); cam.position.set(g.pos.x + fx * c[2] + rx * c[0], g.pos.y + c[1], g.pos.z + fz * c[2] + rz * c[0]); cam.lookAt(g.pos.x, g.pos.y + c[3], g.pos.z); cam.fov = c[4] || 35; cam.updateProjectionMatrix(); } return orig.call(this, sc, cam); }; });
+    await page.keyboard.press("u"); if (process.env.SHOT_JS) await page.evaluate(process.env.SHOT_JS); const status = await page.evaluate(() => JSON.stringify(T.X().RIG.status())); console.log("RIG", status.slice(0, 300), "glb=", await page.evaluate(() => T.g().player.glb), "height", JSON.stringify(await page.evaluate(() => [T.g().player.height, T.g().player.rig && T.g().player.rig.scale.x, JSON.stringify(T.g().player.look || {}).slice(0, 300)])));
+    const shot = async (n, cam, setup) => { await page.evaluate(([c, s]) => { window.__cam = c; if (s) eval(s); }, [cam, setup || ""]); await page.waitForTimeout(900); await page.screenshot({ path: path.join(dir, tag + "-" + n + ".png") }); };
+    await shot("1-front", [0, 1.0, 3.2, 0.95, 38]); await shot("2-face", [0.05, 1.68, 0.62, 1.66, 30]); await shot("3-side", [2.6, 1.0, 0.4, 0.95, 40]); await shot("4-back", [0.6, 1.3, -2.6, 1.0, 40]);
+    await shot("5-walk", [2.4, 1.0, 1.2, 0.95, 40], "T.g().keys.w = true"); await page.evaluate(() => { T.g().keys.w = false; });
+    await shot("6-slash", [1.8, 1.1, 2.0, 1.0, 40], "T.X().A.playAction(T.g().player, 'slash', null)");
+  } },
   "shot-world": { manual: true, fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
     const { page } = ctx; await page.waitForTimeout(800);
     const shots = [];
@@ -350,7 +360,7 @@ export const SCENARIOS = {
     await T.until(() => g.allies.length === 2, 8000, "allies spawn"); T.check("two companions are in the world from the party variable", g.allies.length === 2 && g.allies.map((a) => a.name).join() === "Mira Vale,Tarn Holt");
     const mira = g.allies[0], tarn = g.allies[1]; T.check("their stats come from the companion records", mira.maxHp === 26 && tarn.sheet.attributes.strength === 14 && T.X().R.weaponProfile(tarn.sheet).kind === "sword");
     const d0 = Math.hypot(tarn.x - g.pos.x, tarn.z - g.pos.z); T.check("they follow the player", d0 < 12, d0.toFixed(1));
-    g.pos.x += 20; await T.sleep(2500); const d1 = Math.hypot(tarn.x - g.pos.x, tarn.z - g.pos.z); T.check("and keep up after the player moves", d1 < 8, d1.toFixed(1));
+    g.pos.x += 20; const tg0 = g.time; await T.until(() => g.time - tg0 > 2.5, 20000, "2.5 s of game time"); const d1 = Math.hypot(tarn.x - g.pos.x, tarn.z - g.pos.z); T.check("and keep up after the player moves (within 2.5 s of game time)", d1 < 8, d1.toFixed(1));
     const a = T.spawn("Direwood Goblin", 0, -9), b = T.spawn("Direwood Goblin", 2, -10); await T.fight(a); T.X().C.join(g, b, true);
     T.check("allies join the initiative order", g.battle.order.filter((c) => c.kind === "ally").length === 2, g.battle.order.map((c) => c.name + ":" + c.roll).join());
     for (let i = 0; i < 8 && g.battle; i++) await T.passTurn();
