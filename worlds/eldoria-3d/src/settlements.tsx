@@ -303,7 +303,7 @@ export function buildSettlement(p, surf) {
   // ---- materials and meshes
   var group = new THREE.Group();
   var mainMat = patchBuildings(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.02, flatShading: true }));
-  var m1 = new THREE.Mesh(B.build(), mainMat); m1.castShadow = true; m1.receiveShadow = true; group.add(m1);
+  var m1 = new THREE.Mesh(B.build(), mainMat); m1.castShadow = true; m1.receiveShadow = true; group.add(m1); out.solid = m1.geometry; /* world-space building shell: the camera collides with it (game.tsx) */
   P.empty() || group.add(Object.assign(new THREE.Mesh(P.build(), mainMat), { castShadow: true, receiveShadow: true }));
   var winMat = new THREE.MeshStandardMaterial({ color: 0x1c1610, emissive: new THREE.Color(0xffb560), emissiveIntensity: 0.0, roughness: 0.5 });
   if (!W.empty()) { var wm = new THREE.Mesh(W.build(), winMat); group.add(wm); }

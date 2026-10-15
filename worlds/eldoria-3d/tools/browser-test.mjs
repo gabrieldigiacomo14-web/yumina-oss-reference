@@ -57,6 +57,19 @@ export const SCENARIOS = {
       T.check(lab + ": back moves toward the camera", Bk.d > 0.3 && Bk.fwd < -Bk.d * 0.9, JSON.stringify(Bk));
     }
   ` },
+  // camera collision: the third-person camera never ends up behind a wall (BVH over each settlement's building shell)
+  camera: { fx: () => fixture(), fn: `
+    const g = T.g(); const THREE = window.THREE; T.noRender(); T.clear(); g.inCombat = false; g.spawnMonsters = function () {};
+    g.pos.x = 6; g.pos.z = -48; g.terrain.warm(6, -48, 1); g.loadSettlements(true); const sp = g.safeSpot(6, -48); g.pos.x = sp.x; g.pos.z = sp.z; g.pos.y = g.terrain.groundAt(sp.x, sp.z); g.camF = null;
+    await T.sleep(1500); const s = g.settlements["aurelia-city"];
+    T.check("Aurelia's building shell has a BVH for camera collision", !!(s && s.bvh));
+    let blocked = 0, pulled = 0; const ray = new THREE.Ray(); const det = [];
+    for (let i = 0; i < 12; i++) { g.camYaw = i * Math.PI / 6; g.camDist = 14; g.camPitch = 0.2; await T.sleep(600);
+      const head = g.camF; ray.origin.set(head.x, head.y + 0.2, head.z); const back = new THREE.Vector3(Math.sin(g.camYaw) * Math.cos(g.camPitch), Math.sin(g.camPitch), Math.cos(g.camYaw) * Math.cos(g.camPitch)); ray.direction.copy(back);
+      const hit = s.bvh.raycastFirst(ray, THREE.DoubleSide); const d = g.camColD; if (hit && hit.distance < d - 0.05) blocked++; if (d < 13.9) pulled++; det.push(d.toFixed(1) + (hit ? "/" + hit.distance.toFixed(1) : "")); }
+    T.check("no wall stands between the camera and the player at 12 angles in a street", blocked === 0, det.join(" "));
+    T.check("the camera pulled in where a building was in the way", pulled > 0, pulled + " of 12");
+  ` },
   world: { fx: () => fixture(), fn: `
     const g = T.g(); const X = T.X(); const WG = X.WG, SET = X.SET; const THREE = window.THREE; T.noRender(); T.clear(); g.inCombat = false; g.spawnMonsters = function () {}; await T.sleep(800);
     const MILE = WG.MILE;

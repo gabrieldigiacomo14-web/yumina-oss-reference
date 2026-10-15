@@ -101,7 +101,14 @@ export function register(key, bytes, opts) {
 }
 function b64ToBuf(b64) { var bin = atob(b64); var u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
 // manifest: { "humanoid": { "asset": "@asset:uuid" }, "humanoid-female": {...}, "creature:canine": {...}, "humanoid-test": { "b64": "..." } }
+// Optional slots (the crowd LOD) load after the essential ones and never hold up the start: until they arrive, pick()
+// falls back to the full humanoid.
 export function loadManifest(api, manifest) {
+  if (manifest && typeof manifest === "object") { var ess = {}, opt = {}; Object.keys(manifest).forEach(function (k) { (/-lod$/.test(k) ? opt : ess)[k] = manifest[k]; });
+    if (Object.keys(opt).length && Object.keys(ess).length) return loadSlots(api, ess).then(function (st) { loadSlots(api, opt); return st; }); }
+  return loadSlots(api, manifest);
+}
+function loadSlots(api, manifest) {
   var keys0 = manifest && typeof manifest === "object" ? Object.keys(manifest) : []; if (!keys0.length) return Promise.resolve({});
   var jobs = keys0.map(function (k) {
     var e = manifest[k] || {}; var sig = JSON.stringify([e.asset || null, e.b64 ? e.b64.length : 0]); if (TEMPLATES[k] && TEMPLATES[k].sig === sig) return Promise.resolve(STATUS[k]); /* already loaded */ var get = e.b64 ? Promise.resolve(b64ToBuf(e.b64)) : e.asset && api && api.fetchAsset ? api.fetchAsset(e.asset).then(function (r) { if (!r || !r.ok) throw new Error("asset " + e.asset + ": " + (r && r.error || "unavailable")); return r.bytes; }) : Promise.reject(new Error("no asset or b64"));
@@ -117,7 +124,8 @@ export function manifestFor(variables, prefs) {
   return m;
 }
 // which template should dress this look? gender-specific first, then the generic humanoid
-export function pick(look) { if (look && look.procedural) return null; var g = String(look && look.gender || "").toLowerCase(); var order = [g ? "humanoid-" + g : null, "humanoid"].filter(Boolean); for (var i = 0; i < order.length; i++) if (TEMPLATES[order[i]]) return order[i]; return null; }
+// crowd characters (look.lod) use the simplified humanoid when it is loaded: about a third of the triangles, 256 px textures
+export function pick(look) { if (look && look.procedural) return null; var g = String(look && look.gender || "").toLowerCase(); var order = [look && look.lod ? "humanoid-lod" : null, g ? "humanoid-" + g : null, "humanoid"].filter(Boolean); for (var i = 0; i < order.length; i++) if (TEMPLATES[order[i]]) return order[i]; return null; }
 export function pickCreature(mon, arch) { var o = ["creature:" + mon.id, "creature:" + mon.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), "creature:" + arch]; for (var i = 0; i < o.length; i++) if (TEMPLATES[o[i]]) return o[i]; return null; }
 
 // ------------------------------------------------------------------ materials

@@ -4,6 +4,7 @@
 // Game Master reads. Conversation, trade, quests and anything social go to the GM.
 import { T, glowTex, textSprite, makeEnvironment } from "./three";
 import * as SURF from "./surfaces";
+import { bvhLib } from "./bvh";
 import { MILE, heightAt, landSD, describe, insidePlace, PLACES, PLACE_BY_ID, nearestPlace, biomeAt, realmAt, roadAt, riverAt, hash2, hashStr, rng, placesNear, districtsOf, wildNameAt, mapColor } from "./worldgen";
 import { Terrain, Environment, CH } from "./terrain";
 import { buildSettlement, styleOf } from "./settlements";
@@ -257,12 +258,13 @@ Game.prototype.populate = function (s) {
     if (!guard) { look.main = CLOTH[Math.floor(rr() * CLOTH.length)]; look.cloth = CLOTH[Math.floor(rr() * CLOTH.length)]; look.armor = rr() < 0.5 ? "robe" : "light"; look.weapon = "none"; look.cape = rr() < 0.4 ? CLOTH[Math.floor(rr() * CLOTH.length)] : null; look.hood = false; }
     else { var st = styleOf(p); look.cape = st.accent; look.weapon = rr() < 0.5 ? "spear" : "sword"; look.shield = rr() < 0.4; }
     if (/Maren/.test(sp.name)) { look.hair = "#8a8a88"; look.hairStyle = "Topknot"; }
+    if (sp.wander && !sp.named) look.lod = true; // the anonymous crowd wears the simplified model
     var h = makeHumanoid(Object.assign({ detail: "lo" }, look)); var spot = null;
     if (sp.vendor) spot = { x: sp.vendor.x, z: sp.vendor.z, rot: sp.vendor.rot };
     else if (sp.at) spot = { x: sp.at.x + (rr() - 0.5) * 4, z: sp.at.z + (rr() - 0.5) * 4 };
     else if (sp.district) { var ds = s.spots.find(function (q) { return q.name === sp.district; }); if (ds) spot = { x: ds.x + (rr() - 0.5) * 6, z: ds.z + (rr() - 0.5) * 6 }; }
     if (!spot) { var pl = s.plazas[0] || { x: s.center.x, z: s.center.z, r: 10 }; var a = rr() * Math.PI * 2; spot = { x: pl.x + Math.cos(a) * pl.r * (0.5 + rr() * 0.5), z: pl.z + Math.sin(a) * pl.r * (0.5 + rr() * 0.5) }; }
-    var npc = { id: p.id + ":" + i, name: sp.name, title: sp.title, desc: sp.desc || "", named: !!sp.named, trainer: sp.trainer, role: sp.role || sp.title, home: p.id, h: h, x: spot.x, z: spot.z, y: 0, yaw: spot.rot != null ? spot.rot : rr() * 6.28, wander: !!sp.wander, goal: null, wait: rr() * 5, speed: 0, district: sp.district || "", label: null, guard: guard, s: s };
+    var npc = { look: look, id: p.id + ":" + i, name: sp.name, title: sp.title, desc: sp.desc || "", named: !!sp.named, trainer: sp.trainer, role: sp.role || sp.title, home: p.id, h: h, x: spot.x, z: spot.z, y: 0, yaw: spot.rot != null ? spot.rot : rr() * 6.28, wander: !!sp.wander, goal: null, wait: rr() * 5, speed: 0, district: sp.district || "", label: null, guard: guard, s: s };
     h.root.position.set(npc.x, self.terrain.groundAt(npc.x, npc.z), npc.z); self.scene.add(h.root); self.npcs.push(npc);
     if (npc.named) { var lab = textSprite(npc.name, { size: 30, scale: 0.0068, color: "#f4e6c2" }); lab.position.y = h.height + 0.42; h.root.add(lab); npc.label = lab; var tl = textSprite(npc.title.length > 34 ? npc.title.slice(0, 33) + "…" : npc.title, { size: 24, scale: 0.0058, color: "#c9c2b0" }); tl.position.y = h.height + 0.2; h.root.add(tl); npc.label2 = tl; }
   });
@@ -271,6 +273,8 @@ function titleFrom(name, desc) { var first = String(desc || "").split(/[.,]/)[0]
 
 Game.prototype.updateNPCs = function (dt) {
   var px = this.pos.x, pz = this.pos.z; var self = this;
+  // townsfolk built before the crowd model finished loading are re-dressed in it, one per frame
+  if (RIG.has("humanoid-lod")) { var up = this.npcs.find(function (n) { return n.look && n.look.lod && n.h.glb && n.h.key !== "humanoid-lod" && !self.talking; }); if (up) { var h2 = makeHumanoid(Object.assign({ detail: "lo" }, up.look)); if (h2 && h2.key === "humanoid-lod") { this.scene.remove(up.h.root); h2.root.position.copy(up.h.root.position); h2.root.rotation.y = up.yaw; this.scene.add(h2.root); up.h = h2; up._sh = undefined; } else up.look.lod = false; } }
   this.npcs.forEach(function (n) {
     var d = Math.hypot(n.x - px, n.z - pz); var vis = d < (self.q.charRange || 160); n.h.root.visible = vis; if (!vis) return;
     if (n.label) { n.label.visible = d < 28; n.label2.visible = d < 18; }
@@ -305,6 +309,19 @@ Game.prototype.pace = function (raw) {
   if (this.ft > target * 1.25) next = Math.max(minS, cur - 0.1); else if (this.ft < target * 0.8) next = Math.min(maxS, cur + 0.05);
   if (Math.abs(next - cur) > 0.001) { this.renderScale = next; r.setPixelRatio(next); r.setSize(this.container.clientWidth, this.container.clientHeight); }
   else this.renderScale = cur;
+};
+// Camera collision against the buildings of nearby settlements, through a bounding volume hierarchy (three-mesh-bvh) built
+// for each settlement's merged shell, one at a time when the player comes within reach. The camera pulls in quickly when a
+// wall comes between it and the player and eases back out.
+Game.prototype.camCollide = function (head, want) {
+  var THREE = T(); var self = this, px = this.pos.x, pz = this.pos.z; if (!this._cray) { this._cray = new THREE.Ray(); this._cdir = new THREE.Vector3(); }
+  var dir = this._cdir.set(Math.sin(this.camYaw) * Math.cos(this.camPitch), Math.sin(this.camPitch), Math.cos(this.camYaw) * Math.cos(this.camPitch));
+  var free = want, built = false;
+  for (var id in this.settlements) { var s = this.settlements[id]; if (!s.solid || Math.hypot(s.center.x - px, s.center.z - pz) > s.radius + 40) continue;
+    if (!s.bvh) { if (built || s.bvhFailed) continue; built = true; try { s.bvh = new (bvhLib().MeshBVH)(s.solid, { maxLeafTris: 12 }); } catch (e) { s.bvhFailed = true; console.error(e); } continue; }
+    this._cray.origin.set(head.x, head.y + 0.2, head.z); this._cray.direction.copy(dir); var hit = s.bvh.raycastFirst(this._cray, THREE.DoubleSide); if (hit && hit.distance < free) free = hit.distance; }
+  var target = free < want ? Math.max(0.9, free - 0.35) : want; var cur = this.camColD == null ? want : this.camColD;
+  cur = target < cur ? target : cur + (target - cur) * 0.08; this.camColD = Math.min(cur, want); return this.camColD;
 };
 function lerpAngle(a, b, t) { var d = Math.atan2(Math.sin(b - a), Math.cos(b - a)); return a + d * Math.min(1, t); }
 
@@ -912,7 +929,7 @@ Game.prototype.frame = function (dt) {
   if (b) { fy = this.pos.y + 1.4; var act = b.active && b.active.m && !b.active.m.dead ? b.active.m : null; if (act) { fx = act.x * 0.6 + this.pos.x * 0.4; fy = act.y * 0.6 + this.pos.y * 0.4 + 1.3; fz = act.z * 0.6 + this.pos.z * 0.4; } }
   if (!this.camF) this.camF = new THREE.Vector3(fx, fy, fz); var kf = 1 - Math.exp(-dt * (b ? 3.2 : 14)); this.camF.x += (fx - this.camF.x) * kf; this.camF.y += (fy - this.camF.y) * kf; this.camF.z += (fz - this.camF.z) * kf;
   var head = this.camF;
-  var cd = this.camDist; var cx = head.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * cd, cz = head.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * cd, cy = head.y + Math.sin(this.camPitch) * cd;
+  var cd = this.camCollide(head, this.camDist); var cx = head.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * cd, cz = head.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * cd, cy = head.y + Math.sin(this.camPitch) * cd;
   var cg = this.terrain.groundAt(cx, cz) + 0.6; if (cy < cg) cy = cg;
   var side = b ? 0 : 0.55; cx += Math.cos(this.camYaw) * side; cz -= Math.sin(this.camYaw) * side;
   this.camera.position.set(cx, cy, cz); this.camera.lookAt(head.x + Math.cos(this.camYaw) * side, head.y + (b ? 0 : 0.35), head.z - Math.sin(this.camYaw) * side);
