@@ -117,6 +117,77 @@ export const SCENARIOS = {
     const ap = WG.PLACE_BY_ID["aurelia-city"]; const sa = SET.buildSettlement(ap), sb = SET.buildSettlement(ap); const sig = (q) => q.colliders.length + ":" + q.bridges.length + ":" + q.colliders.slice(0, 30).map((c) => c.x.toFixed(3) + "," + c.z.toFixed(3)).join(";");
     T.check("a settlement rebuilds to exactly the same layout", sig(sa) === sig(sb));
   ` },
+  "landscape-layout": { fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
+    const { page, check } = ctx; const q = (js) => page.evaluate(js);
+    await q("T.noRender(); T.clear(); T.g().spawnMonsters = function () {}; 1");
+    const box = async (sel) => page.evaluate((s2) => { const e = document.querySelector(s2); if (!e) return null; const cs = getComputedStyle(e); if (cs.display === "none" || cs.visibility === "hidden") return null; const r = e.getBoundingClientRect(); if (!r.width || !r.height) return null; return { x: r.left, y: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; }, sel);
+    const hit = (a, b2) => a && b2 && a.x < b2.r - 1 && b2.x < a.r - 1 && a.y < b2.b - 1 && b2.y < a.b - 1;
+    const sizes = [[844, 390], [667, 375], [932, 430], [844, 340], [740, 360], [896, 414]];
+    // the notch and home bar of an iPhone in landscape, as the page would see them through env(safe-area-inset-*)
+    await page.addStyleTag({ content: ".eGame{--sl:47px!important;--sr:47px!important;--sb:21px!important;--st:0px!important}" });
+    const CONTROLS = [".eStick", ".eActs", ".eHotbar", ".ePlayer", ".eWhere", ".eMenuToggle", ".eQuick", ".eInit", ".eEcon", ".eQuestPill", ".ePartyPill", ".eLogPill"];
+    for (const [w, h] of sizes) {
+      await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500); const tag = w + "x" + h + " ";
+      const states = [["exploring", async () => {}], ["in combat", async () => { await q('T.spawn("Blackback Wolf", 1, -8, { hp: 500, maxHp: 500 }); 1'); await q('(() => { const g = T.g(); const m = g.monsters[0]; g.target = m; m.passive = false; g.engageWith(m, { playerFirst: true }); })()'); await q("T.myTurn()"); await page.waitForTimeout(500); }]];
+      for (const [name, setup] of states) {
+        await setup(); await page.waitForTimeout(300); const B = {}; for (const c of CONTROLS) B[c] = await box(c);
+        for (const c of CONTROLS) { const b2 = B[c]; if (!b2) continue; check(tag + name + ": " + c + " is inside the safe area", b2.x >= 47 - 1 && b2.r <= w - 47 + 1 && b2.y >= -1 && b2.b <= h - 21 + 1, JSON.stringify([b2.x, b2.y, b2.r, b2.b].map(Math.round)) + " in " + w + "x" + h); }
+        const pairs = [[".eStick", ".eHotbar"], [".eActs", ".eHotbar"], [".eStick", ".eActs"], [".eWhere", ".eQuick"], [".eInit", ".ePlayer"], [".eInit", ".eWhere"], [".eInit", ".eQuick"], [".eMenuToggle", ".ePlayer"], [".eQuestPill", ".eStick"], [".eLogPill", ".eStick"], [".ePartyPill", ".eStick"], [".eEcon", ".eActs"], [".eEcon", ".eStick"], [".eHotbar", ".eWhere"], [".eMenuToggle", ".eStick"]];
+        for (const [a2, b2] of pairs) if (B[a2] && B[b2]) check(tag + name + ": " + a2 + " does not overlap " + b2, !hit(B[a2], B[b2]), JSON.stringify([B[a2], B[b2]].map((z) => [z.x, z.y, z.r, z.b].map(Math.round))));
+        if (name === "in combat") { await q("T.X().C.finish(T.g(), 'won'); 1"); await page.waitForTimeout(400); }
+      }
+      // the menu and a window use the whole safe area and have a reachable close button
+      await page.tap(".eMenuToggle"); await page.waitForTimeout(250); const mb = await box(".eMenu"); check(tag + "the menu sheet fits the safe area", !!mb && mb.x >= 46 && mb.r <= w - 46 && mb.b <= h - 20 && mb.y >= 0, JSON.stringify(mb && [mb.x, mb.y, mb.r, mb.b].map(Math.round))); await page.tap(".eMenuToggle");
+      await page.keyboard.press("i"); await page.waitForTimeout(300); const wb = await box(".eWin"); const xb = await box(".eWin .eX"); check(tag + "a window fills the safe area and its close button is reachable", !!wb && wb.x >= 46 && wb.r <= w - 46 && !!xb && xb.r <= w - 46 && xb.y >= 0 && xb.w >= 28, JSON.stringify([wb, xb].map((z) => z && [z.x, z.y, z.r, z.b].map(Math.round))));
+      const sc = await q("(() => { const b = document.querySelector('.eWin .ePanelBody'); return b ? b.scrollHeight > b.clientHeight && getComputedStyle(b).overflowY : 'nobody'; })()"); check(tag + "the window body scrolls", sc === "auto" || sc === "scroll" || sc === "nobody" || sc === false, sc);
+      await page.tap(".eWin .eX"); await page.waitForTimeout(200);
+    }
+  } },
+  "touch-gestures": { fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
+    const { page, check } = ctx; const q = (js) => page.evaluate(js); await q("T.noRender(); T.clear(); T.g().spawnMonsters = function () {}; T.g().inCombat = false; 1"); await page.waitForTimeout(1500);
+    const cdp = await page.context().newCDPSession(page); const ev = async (type, pts) => { await cdp.send("Input.dispatchTouchEvent", { type, touchPoints: pts }); await page.waitForTimeout(60); };
+    const rect = async (sel) => page.evaluate((s2) => { const r = document.querySelector(s2).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }, sel);
+    const st = await rect(".eStick"); const A = (dx) => ({ x: st.x + dx, y: st.y, id: 1 }); const cam = { x: 420, y: 150, id: 2 };
+    check("touch-action: the 3D view and the stick take every gesture; panels scroll vertically only", await q("(() => { const ta = (s) => getComputedStyle(document.querySelector(s)).touchAction; return ta('.eView canvas') === 'none' && ta('.eStick') === 'none' && ta('.eGame') !== 'auto'; })()"));
+    // finger 1 holds the stick right while finger 2 drags the camera: both work at once
+    await q("(() => { const g = T.g(); g.camYaw = 0; g.camF = null; })()"); const p0 = await q("[T.g().pos.x, T.g().pos.z]"); const yaw0 = await q("T.g().camYaw");
+    await ev("touchStart", [A(0)]); await ev("touchMove", [A(36)]); await ev("touchStart", [A(36), { ...cam }]); for (let i = 1; i <= 6; i++) await ev("touchMove", [A(36), { x: cam.x + i * 18, y: cam.y, id: 2 }]);
+    const mv = await q("T.g().move.x"); await page.waitForTimeout(500);
+    const yaw1 = await q("T.g().camYaw"); const p1 = await q("[T.g().pos.x, T.g().pos.z]");
+    check("dragging the camera with a second finger does not drop the stick", mv > 0.5, "move.x " + mv);
+    check("the second finger turns the camera while the stick is held", Math.abs(yaw1 - yaw0) > 0.3, yaw0 + " -> " + yaw1);
+    check("the character keeps walking while the camera turns", Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 1, JSON.stringify([p0, p1]));
+    // finger 3 taps a button while the stick is still held: the button fires, the stick keeps going
+    const jb = await rect('.eActs button[aria-label="Jump"]'); const y0 = await q("T.g().pos.y - T.g().terrain.groundAt(T.g().pos.x, T.g().pos.z)"); let hop = 0;
+    await q("(() => { window.__pe = []; for (const t of ['pointerdown', 'pointerup', 'pointercancel', 'click']) window.addEventListener(t, (e) => window.__pe.push(t + ':' + (e.pointerId || '') + ':' + (e.target.getAttribute && e.target.getAttribute('aria-label') || e.target.className)), true); })()"); const m0 = await q("T.g().move.x"); await ev("touchStart", [A(36), { x: cam.x + 108, y: cam.y, id: 2 }, { x: jb.x, y: jb.y, id: 3 }]); const m1 = await q("T.g().move.x"); await ev("touchEnd", [{ x: jb.x, y: jb.y, id: 3 }]); for (let i = 0; i < 10; i++) { hop = Math.max(hop, await q("T.g().pos.y - T.g().terrain.groundAt(T.g().pos.x, T.g().pos.z)")); await page.waitForTimeout(40); }
+    check("tapping Jump with a third finger works while moving and turning", hop > 0.25, "peak height " + hop.toFixed(2) + " move.x before/after touchStart " + m0 + "/" + m1 + " jb " + JSON.stringify(jb) + " events " + JSON.stringify(await q("window.__pe")));
+    check("the stick is still held after the button tap", (await q("T.g().move.x")) > 0.5);
+    await ev("touchEnd", []); await page.waitForTimeout(150); check("lifting the last finger stops the character", (await q("T.g().move.x")) === 0 && (await q("T.g().move.y")) === 0);
+    // two fingers on the view pinch-zoom and neither moves the character nor turns it into a tap
+    const pa = await q("[T.g().pos.x, T.g().pos.z]"); const d0 = await q("T.g().camDist"); await ev("touchStart", [{ x: 380, y: 150, id: 1 }, { x: 460, y: 150, id: 2 }]); for (let i = 1; i <= 5; i++) await ev("touchMove", [{ x: 380 - i * 14, y: 150, id: 1 }, { x: 460 + i * 14, y: 150, id: 2 }]); await ev("touchEnd", []);
+    const pb = await q("[T.g().pos.x, T.g().pos.z]"); check("pinching zooms the camera and leaves the character where it is", Math.abs((await q("T.g().camDist")) - d0) > 0.8 && Math.hypot(pb[0] - pa[0], pb[1] - pa[1]) < 0.01 && !(await q("T.g().autoMove")), d0 + " -> " + (await q("T.g().camDist")));
+    // a drag that starts on the minimap or a HUD button must not spin the camera
+    const mm = await rect(".eWhere"); const yawA = await q("T.g().camYaw"); await ev("touchStart", [{ x: mm.x, y: mm.y, id: 1 }]); for (let i = 1; i <= 5; i++) await ev("touchMove", [{ x: mm.x - i * 20, y: mm.y + i * 5, id: 1 }]); await ev("touchEnd", []);
+    check("dragging across the HUD does not turn the camera", Math.abs((await q("T.g().camYaw")) - yawA) < 0.02, yawA + " -> " + (await q("T.g().camYaw")));
+  } },
+  "ui-shots": { fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
+    const { page } = ctx; const q = (js) => page.evaluate(js); const sizes = (process.env.UI_SIZES || "844x390,667x375,932x430,844x340").split(",").map((z) => z.split("x").map(Number));
+    await q("T.noRender(); T.clear(); T.g().spawnMonsters = function () {}; 1"); if (process.env.UI_INSETS) await page.addStyleTag({ content: ".eGame{--sl:47px!important;--sr:47px!important;--sb:21px!important;--st:0px!important}" });
+    for (const [w, h] of sizes) {
+      await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(600); const tag = w + "x" + h; const shot = async (n) => { await page.waitForTimeout(350); await page.screenshot({ path: path.join(ctx.shots || "/tmp", "ui-" + tag + "-" + n + ".png") }); };
+      await shot("1-explore"); await page.tap('.eQuick button[aria-label="More buttons"]'); await shot("1b-quick"); await page.tap('.eQuick button[aria-label="Fold buttons"]');
+      await page.tap(".eMenuToggle"); await shot("2-menu"); await page.tap(".eMenuToggle");
+      await page.keyboard.press("i"); await shot("3-inventory"); await page.keyboard.press("Escape");
+      await page.keyboard.press("p"); await shot("4-skills"); await page.keyboard.press("Escape");
+      await page.keyboard.press("m"); await shot("5-map"); await page.keyboard.press("Escape");
+      await q('T.spawn("Blackback Wolf", 1, -8, { hp: 500, maxHp: 500 }); T.g().camYaw = 0; T.g().camPitch = 0.4; T.g().camDist = 9; 1'); await page.waitForTimeout(500);
+      await q('(() => { const g = T.g(); const m = g.monsters[0]; g.target = m; m.passive = false; g.engageWith(m, { playerFirst: true }); })()'); await q("T.myTurn()"); await page.waitForTimeout(500); await shot("6-combat");
+      await page.tap('.eActs.battle button[aria-label="Spellbook"]'); await shot("7-spellbook");
+      const rb = await page.evaluate(() => { const r = [...document.querySelectorAll(".eTrayRow")].find((e) => /Arcane Bolt/.test(e.textContent)); r.scrollIntoView({ block: "center" }); const b = r.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; }); await page.touchscreen.tap(rb.x, rb.y); await shot("8-aiming");
+      const mp2 = await q("(() => { const g = T.g(); const m = g.monsters.find((x) => !x.dead); return g.screenOf(m.x, m.y + 0.7, m.z); })()"); await page.touchscreen.tap(mp2.x, mp2.y); await shot("9-targeted");
+      await page.keyboard.press("Escape"); await q("T.X().C.finish(T.g(), 'won'); 1"); await page.waitForTimeout(400);
+    }
+  } },
   "shot-world": { fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
     const { page } = ctx; await page.waitForTimeout(800);
     const shots = [];

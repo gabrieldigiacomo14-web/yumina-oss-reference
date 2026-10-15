@@ -301,7 +301,7 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .eTray{left:50%;bottom:92px;transform:translateX(-50%);width:min(560px,calc(100vw - 24px));max-height:min(54vh,460px);z-index:9;display:flex;flex-direction:column}
 .eTrayHead{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.08)}.eTrayHead b{font:600 18px Cinzel,serif;letter-spacing:.06em}.eTrayHead small{color:var(--e-muted);font-size:12.5px;flex:1;min-width:0}.eTrayHead .eX{margin-left:auto}
 .eTrayList{overflow:auto;padding:4px;display:flex;flex-direction:column;gap:3px}
-.eTrayRow{display:flex!important;align-items:center;gap:10px;justify-content:space-between;text-align:left;padding:7px 10px!important;background:rgba(255,255,255,.03)!important;border:1px solid rgba(255,255,255,.07)!important;min-height:44px}
+.eTrayRow{flex-shrink:0;display:flex!important;align-items:center;gap:10px;justify-content:space-between;text-align:left;padding:7px 10px!important;background:rgba(255,255,255,.03)!important;border:1px solid rgba(255,255,255,.07)!important;min-height:44px}
 .eTrayRow:hover{background:rgba(70,110,170,.25)!important;border-color:#5d8fd0!important}.eTrayRow.off{opacity:.5}
 .eTrayMain{min-width:0;flex:1;display:flex;flex-direction:column}.eTrayMain b{font:600 15px Cinzel,serif;color:#efe6d0}.eTrayMain small{color:#a8a08e;font-size:12.5px;line-height:1.3}
 .eTrayMeta{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;font:12px Georgia,serif;color:#cfc6b2;max-width:46%}.eTrayMeta .mp{color:#7fb0ff;font-weight:600}.eTrayMeta em{flex-basis:100%;text-align:right;color:#e8967a;font-style:normal}
@@ -382,4 +382,70 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
  .eBanner{top:20%}
 }
 `;
-export var CSS = ORIGINAL_CSS + THEME;
+var LANDSCAPE = `
+/* ---- phone / short landscape ------------------------------------------------------------------------------------
+   One layout for every landscape screen under ~520px tall (iPhone SE to Pro Max, with or without Safari's bars). It replaces the
+   shrunken desktop/portrait rules above rather than adding to them. Everything hangs off the safe-area insets: the notch on the
+   long side, the rounded bottom corners and the home-indicator strip. env() is 0 where the host does not expose insets. */
+.eGame{touch-action:manipulation;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.eGame .eView,.eGame .eView canvas,.eStick,.eKnob{touch-action:none}
+.eGame .ePanelBody,.eGame .eTrayList,.eGame .eMenu,.eGame .eQuests,.eGame .eDlgBody{touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}.eGame .eInit{touch-action:pan-x}
+.eGame{--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px);--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px)}
+/* portrait phones: keep the top row out of the notch/status area and the bottom row above the home indicator */
+@media (orientation:portrait) and (max-width:700px){
+ .ePlayer,.ePlayer.compact,.eWhere{top:calc(var(--st) + 6px)}.eMenuToggle{top:calc(var(--st) + 66px)!important}
+ .eQuests,.eQuestPill,.eQuick,.eQuick.folded,.ePartyPill{top:calc(var(--st) + 112px)}.eLogPill{top:calc(var(--st) + 152px)}.eInit{top:calc(var(--st) + 74px)}
+ .eHotbar{bottom:calc(var(--sb) + 6px)}.eTouch{bottom:calc(var(--sb) + 62px)}.eLog{bottom:calc(var(--sb) + 200px)}.ePrompt{bottom:calc(var(--sb) + 190px)}
+ .eWinBack{padding:var(--st) var(--sr) var(--sb) var(--sl)}
+}
+
+@media (orientation:landscape) and (max-height:520px){
+ .eGame{--ml:calc(var(--sl) + 6px);--mr:calc(var(--sr) + 6px);--mt:calc(var(--st) + 6px);--mb:calc(var(--sb) + 6px);--eside:calc(var(--mr) + 140px)}
+ /* top-left: player frame, then a column of buttons under it */
+ .ePlayer,.ePlayer.compact{top:var(--mt);left:var(--ml);width:auto;padding:4px 24px 4px 4px;gap:6px}.ePlayer .ePortrait{width:46px;height:46px}.ePName,.eRank{display:none}.ePlayerInfo{width:128px;justify-content:center}.eBar{height:11px}.eBar span{font-size:9px;line-height:11px}
+ .eMenuToggle{top:calc(var(--mt) + 60px)!important;left:var(--ml)!important;width:40px;height:40px}
+ .eQuestPill,.ePartyPill,.eLogPill{right:auto;bottom:auto;left:var(--ml);height:32px;padding:0 10px!important;font-size:12px}
+ .eQuestPill{top:calc(var(--mt) + 104px)}.ePartyPill{top:calc(var(--mt) + 140px)}.eLogPill{top:calc(var(--mt) + 176px)}
+ .eQuests{top:calc(var(--mt) + 62px);left:calc(var(--ml) + 48px);right:auto;width:min(260px,40vw);max-height:calc(100vh - var(--mt) - var(--mb) - 70px);overflow:auto;font-size:13px}
+ .eParty{display:none}
+ /* top-right: minimap; the two folded quick buttons sit beside it, the unfolded set is a sheet under it */
+ .eWhere{top:var(--mt);right:var(--mr);padding:4px 26px 4px 4px}.eWhere .eWhereText{display:none}.eMini{width:92px;height:92px}
+ .eQuick,.eQuick.folded{top:var(--mt);right:var(--eside);bottom:auto;flex-direction:row;gap:6px}.eQuick .eRound{width:38px;height:38px}
+ .eQuick:not(.folded){top:var(--mt);right:var(--eside);width:204px;flex-wrap:wrap;justify-content:flex-end;padding:6px;background:rgba(8,10,14,.92);border:1px solid #59616c;z-index:12}
+ .eWallet{display:none}
+ /* bottom: stick left, action buttons right, hotbar between */
+ .eTouch{inset:auto 0 0 0;height:0}
+ .eStick{left:calc(var(--ml) + 4px);bottom:var(--mb);width:96px;height:96px}.eKnob{left:26px;top:26px}
+ .eActs{right:calc(var(--mr) + 4px);bottom:var(--mb);grid-template-columns:repeat(2,48px);gap:7px}.eActs button{width:48px;height:48px}.eActs button:first-child{width:56px;height:56px}
+ .eHotbar{bottom:var(--mb);left:50%;right:auto;transform:translateX(-50%);max-width:calc(100vw - var(--sl) - var(--sr) - 250px)}.eSlot{width:34px;height:34px}.eSlot svg{width:16px;height:16px}.eSlot kbd{display:none}.eSlots{gap:2px;padding:3px}
+ .eEcon{padding:2px 8px;font-size:11px;gap:6px}.eMoveBar{width:44px}
+ .ePrompt{bottom:calc(var(--mb) + 82px);font-size:13px;padding:5px 12px!important}
+ .eLog{left:calc(var(--ml) + 56px);bottom:calc(var(--mb) + 62px);width:min(360px,38vw)}.inBattle .eLog{bottom:calc(var(--mb) + 62px)}
+ /* combat: turn order between the player frame and the minimap, scrolling when long */
+ .eInit{top:var(--mt);bottom:auto;left:calc(var(--ml) + 216px);right:var(--eside);transform:none;max-width:none;min-width:0;overflow-x:auto;overscroll-behavior:contain;scrollbar-width:none}.eInit::-webkit-scrollbar{display:none}
+ .eChip{width:46px}.eChipP{width:28px;height:28px}.eChip span{display:none}.eRoundNo{padding:2px 6px}.eRoundNo b{font-size:17px}
+ .inBattle .eMenuToggle,.inBattle .eQuests,.inBattle .eQuestPill,.inBattle .ePartyPill,.inBattle .eQuick{display:none!important}.inBattle .eLogPill{top:calc(var(--mt) + 60px)}
+ .eEndTurn{display:none!important}
+ .eTarget{top:var(--mt);left:calc(var(--ml) + 216px);right:var(--eside);transform:none;width:auto;padding:4px 10px}.eTarget b{font-size:15px}.eTarget small{font-size:11px;margin-bottom:3px}
+ /* trays, dialogs, menus: between the stick and the buttons, never under the turn order */
+ .eTray{bottom:var(--mb);left:calc(var(--sl) + 118px);right:calc(var(--sr) + 118px);transform:none;width:auto;max-height:calc(100vh - var(--mt) - var(--mb) - 52px)}
+ .eTargetBar{top:calc(var(--mt) + 62px);left:var(--ml);transform:none;width:min(300px,42vw);padding:5px 8px}
+ .eDialog{left:calc(var(--sl) + 118px);right:calc(var(--sr) + 118px);bottom:var(--mb);transform:none;width:auto;min-width:0;max-height:calc(100vh - var(--mt) - var(--mb) - 20px)}
+ .eNpcMenu{left:auto;right:calc(var(--mr) + 120px);top:22%}
+ .eMenu{position:absolute;inset:auto var(--mr) var(--mb) var(--ml)!important;top:auto!important;width:auto!important;max-height:calc(100vh - var(--mt) - var(--mb) - 8px);grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+ .eMenu button{padding:7px 8px}
+ .eBanner{top:18%}
+ .eTip{width:190px}
+ /* full-screen windows keep out of the notch and the corners */
+ .eWinBack{padding:var(--st) var(--sr) var(--sb) var(--sl)}.eWin,.eWinBack.wide .eWin{width:100%!important;height:100%!important;max-height:100%!important}
+ .eWinHead{padding:4px 10px}.eWinHead h2{font-size:16px}.ePanelBody{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+ .eShowHud{top:var(--mt);right:var(--mr)}
+}
+@media (orientation:landscape) and (max-height:520px) and (max-width:720px){
+ .eInit{left:calc(var(--ml) + 222px)}
+ .eSlot{width:31px;height:31px}.eHotbar{max-width:calc(100vw - var(--sl) - var(--sr) - 236px)}
+ .eStick{width:88px;height:88px}.eKnob{left:22px;top:22px}
+}
+/* the unfolded quick set is a sheet: its own fold button closes it */
+`;
+export var CSS = ORIGINAL_CSS + THEME + LANDSCAPE;

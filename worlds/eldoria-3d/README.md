@@ -122,12 +122,47 @@ variants. Anything missing falls back to the procedural body. `assets/models/eld
 template exported from the procedural body (`tools/export-glb.mjs`) with 23 clips: it proves the pipeline and
 is the rig to author against. **It is not a finished artist-made character.**
 
+## World geometry (terrain, roads, bridges, settlements)
+
+Everything that must agree about "where the ground is" goes through one pure function, `meshHeight(x, z)` in `worldgen.tsx`: the
+same samples and triangulation as the full-detail terrain mesh. `Terrain.groundAt` is that surface (or the loaded chunk's own copy,
+identical to it) plus bridge decks, so the player's feet, road and street ribbons, building lots and collision all use the rendered
+surface, before and after chunks stream in and after a reload.
+
+- **Bridges** are planned once for the whole continent from the road polylines (`planSpans`, `roadBridges`): both ends are anchored
+  to the terrain surface outside the river's carved bank, so the deck meets the road flush whatever the bank heights are. Short sea
+  gaps get a causeway; long ones are ferry crossings with a jetty on each shore (`planSea`, `roadFerries`). Decks have stone rails
+  (collision) and piers; walking under a deck does not lift you onto it.
+- **Roads** follow a graded profile (cuttings/embankments, max grade 0.4) instead of the raw terrain, stay clear of river banks except
+  where they truly cross, and stop exactly at each settlement's edge circle, where its street (and wall gate) begins.
+- **Rivers** flow around settlements instead of through their plazas; banks are never lower than the water.
+- **Settlements** put every building on a level lot with a foundation down to its lowest corner, use oriented box colliders, keep
+  landmarks off the streets, and share the bridge planner for streets that cross a river.
+- Spawn points go through `safeSpawn`/`Game.safeSpot` (dry, out of rivers, off cliffs, outside buildings).
+
+Validation: `node tools/world-test.mjs` (no browser; road continuity, bridge ends/heights, determinism, street grades, spawn points)
+and the `world` browser scenario (rendered mesh vs ground height at chunk borders, walking across bridges and through town gates,
+lots/streets/rivers, rebuild determinism).
+
+## Mobile layout
+
+Landscape phones (under ~520 px tall, any width) use one dedicated layout: player frame top-left with the menu/log buttons in a
+column below it, minimap top-right with the quick buttons beside it, turn order between them (scrolls when long), stick bottom-left,
+action buttons bottom-right, hotbar between. All of it hangs off `env(safe-area-inset-*)` (notch, rounded corners, home indicator);
+windows and menus fill the safe area. Action buttons fire on touch-down so they work while the stick is held (browsers do not send a
+click for a tap made while another finger is down). The `landscape-layout` scenario checks six phone sizes with a simulated notch for
+containment and overlaps; `touch-gestures` drives real multi-touch (stick + camera drag + button tap, pinch, HUD drag).
+**These are Chromium emulations, not a real iPhone.**
+
 ## Status
 
 | Area | State |
 |---|---|
 | Spells, items, techniques, enemy AI, party, persistence | Done, covered by `browser-test.mjs` scenarios and `unit.mjs` (122 checks) |
 | Mobile portrait/landscape combat | Done, tested with simulated touch in headless Chromium |
+| Walkable-surface geometry, bridges, ferries, roads, gates | Done; `world-test.mjs` + `world` scenario |
+| Camera-relative movement (stick and WASD) | Fixed and tested at 0/90/180/270 degrees |
+| Landscape phone layout, safe areas, multi-touch | Done in emulation; not verified on a physical iPhone |
 | GLB pipeline (blend, layering, events, faces, sockets, tint, fallback) | Done, tested with the exported template |
 | Counterspell / countermelody / dispel-weave | Not implemented in combat (no combat use) |
 | Artist-made GLB characters, tuned creature GLB animations | Not provided; only the template exists |
