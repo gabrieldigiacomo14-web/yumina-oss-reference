@@ -95,7 +95,7 @@ def build_style(style, scalp_pts, scalp_nrm, cap_obj, mat_cap, mat_cards, seed=3
             strip(np.array(pts), 0.03, r.integers(0, 4) * 0.25)
     return assemble("hair_" + style, P, F, UV, cap_obj, mat_cap, mat_cards)
 
-def build_beard(pts, nrm, base_obj, mat_base, mat_cards, n=520, seed=11):
+def build_beard(pts, nrm, base_obj, mat_base, mat_cards, n=520, seed=11, name="beard_full", length=0.08):
     """A full beard: short cards on the cheeks and upper lip, longer ones from the jaw and chin falling with gravity,
     over the painted beard layer (base_obj) so no skin shows between them."""
     r = np.random.default_rng(seed); P = []; F = []; UV = []
@@ -108,15 +108,18 @@ def build_beard(pts, nrm, base_obj, mat_base, mat_cards, n=520, seed=11):
         for i in range(k - 1): F.append((base + 2 * i, base + 2 * i + 1, base + 2 * i + 3, base + 2 * i + 2))
     for j in r.choice(len(pts), n, replace=len(pts) < n):
         p0 = pts[j]; nn = nrm[j]; t = (p0[2] - zlo) / max(zhi - zlo, 1e-6)  # 0 at the chin, 1 at the cheekbones
-        L = (0.11 - 0.08 * t) * r.uniform(0.75, 1.25); seg = 4
+        L = length * (1 - 0.75 * t) * r.uniform(0.75, 1.25); seg = 4
         d = nn * 0.5 - up * (0.9 - 0.3 * t) + fwd * 0.15 + r.normal(0, 0.12, 3); d /= np.linalg.norm(d)
+        if t > 0.42 and abs(p0[0]) < 0.05:  # upper lip and mouth corners: a short moustache swept out to the sides, mouth left clear
+            if abs(p0[0]) < 0.014: continue
+            L = 0.03 * r.uniform(0.8, 1.2); d = np.array([np.sign(p0[0]) * 0.8, -0.2, 0]) - up * 0.6 + nn * 0.3; d /= np.linalg.norm(d)
         ps = [p0 + nn * 0.003]
         for k in range(seg):
             q = ps[-1] + d * L / seg; out = np.dot(q - p0, nn)
             if out < 0.004: q = q + nn * (0.004 - out)  # never back into the face
             ps.append(q); d = d * 0.6 + (-up) * 0.4; d /= np.linalg.norm(d)
         strip(np.array(ps), 0.014 * r.uniform(0.8, 1.25), r.integers(0, 4) * 0.25)
-    return assemble("beard_full", P, F, UV, base_obj, mat_base, mat_cards)
+    return assemble(name, P, F, UV, base_obj, mat_base, mat_cards)
 
 def assemble(name, P, F, UV, cap_obj, mat_cap, mat_cards):
     """The base layer (a copy of cap_obj) plus the cards, all weighted to the head."""

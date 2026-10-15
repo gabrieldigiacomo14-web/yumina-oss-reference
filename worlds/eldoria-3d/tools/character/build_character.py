@@ -226,7 +226,9 @@ for style in hair.STYLES: hair.build_style(style, cap_pts, cap_nrm, cap, hs, car
 bpy.data.objects.remove(cap, do_unlink=True)
 beard_f = region(lambda v: MASK["jaw"][v] > 0.12 and MASK["lips"][v] < 0.5 and Y[v] < BROW_TOP - 0.75 and Z[v] > HEAD_C[2] - 0.55)
 bl = layer("beard_base", beard_f, 0.05, mats.beard(), morph=False); bl.data.update()
-hair.build_beard(np.array([tuple(v.co) for v in bl.data.vertices]), np.array([tuple(v.normal) for v in bl.data.vertices]), bl, mats.beard(), cards)
+bp, bn = np.array([tuple(v.co) for v in bl.data.vertices]), np.array([tuple(v.normal) for v in bl.data.vertices]); bm_ = mats.beard()
+hair.build_beard(bp, bn, bl, bm_, cards, n=380, name="beard_full", length=0.055)    # trimmed: most bearded men
+hair.build_beard(bp, bn, bl, bm_, cards, n=620, name="beard_long", length=0.16)   # long and full: dwarves
 bpy.data.objects.remove(bl, do_unlink=True)
 
 # ------------------------------------------------------------------ armature

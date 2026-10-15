@@ -213,7 +213,7 @@ export const SCENARIOS = {
     await go(0, 18, 2.6, 24, 0.55); await shot("3-overview");
     await q('T.spawn("Direwood Goblin", 1.5, -6, { hp: 400, maxHp: 400 }); T.spawn("Blackback Wolf", -2, -7, { hp: 400, maxHp: 400 }); 1'); await page.waitForTimeout(400);
     await q('(() => { const g = T.g(); const m = g.monsters[0]; g.target = m; m.passive = false; g.engageWith(m, { playerFirst: true }); })()'); await page.waitForFunction("T.g().battle && T.g().battle.active && T.g().battle.active.kind === 'player' && !T.g().battle.script", null, { timeout: 60000 }); await page.waitForTimeout(800);
-    await q(`(() => { const g = T.g(); const m = g.monsters[0]; g.camYaw = Math.atan2(g.pos.x - m.x, g.pos.z - m.z) + 0.5; g.camDist = ${Number(process.env.SHOT_CD || 8)}; g.camPitch = 0.42; })()`); await page.waitForTimeout(2500); await shot("4-combat");
+    await q(`(() => { const g = T.g(); const m = g.monsters[0]; g.camYaw = Math.atan2(g.pos.x - m.x, g.pos.z - m.z) + ${Number(process.env.SHOT_CY || -0.6)}; g.camDist = ${Number(process.env.SHOT_CD || 8)}; g.camPitch = 0.42; })()`); await page.waitForTimeout(2500); await shot("4-combat");
     await q("(() => { const g = T.g(); g.target = g.monsters[0]; g.attack(); })()"); await page.waitForTimeout(450); await shot("5-attack");
   } },
   "shot-world": { manual: true, fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {

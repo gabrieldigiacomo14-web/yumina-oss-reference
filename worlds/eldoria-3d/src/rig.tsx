@@ -153,7 +153,7 @@ function applyVariants(root, look) {
   var groups = {}; root.traverse(function (o) { var m = /^(hair|beard|brow|outfit|armor|armour|hood|helm)[_.\- ]*(.*)$/i.exec(o.name || ""); if (!m || o === root) return; var g = m[1].toLowerCase().replace("armour", "armor"); (groups[g] = groups[g] || []).push({ o: o, tag: m[2].toLowerCase() }); });
   var info = { groups: Object.keys(groups) };
   if (groups.hair) { var want = String(look.hairStyle || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (!groups.hair.some(function (e) { return e.tag.replace(/[^a-z0-9]/g, "") === want; }) && HAIR_MAP[want]) want = HAIR_MAP[want]; var idx = Math.max(0, HAIR.indexOf(look.hairStyle)); var any = groups.hair.some(function (e) { return e.tag.replace(/[^a-z0-9]/g, "") === want; }); groups.hair.forEach(function (e, i) { e.o.visible = look.hairStyle === "Bald" ? false : any ? e.tag.replace(/[^a-z0-9]/g, "") === want : i === idx % groups.hair.length; }); }
-  if (groups.beard) groups.beard.forEach(function (e, i) { e.o.visible = !!look.beard && i === 0; });
+  if (groups.beard) { var bw = String(look.beardStyle || "full").toLowerCase(); var bi = Math.max(0, groups.beard.findIndex(function (e) { return e.tag === bw; })); groups.beard.forEach(function (e, i) { e.o.visible = !!look.beard && i === bi; }); }
   var armor = look.armor || "light"; var armorGroup = groups.outfit || groups.armor;
   if (armorGroup) { var re = armor === "heavy" ? /heavy|plate|knight/ : armor === "medium" ? /medium|mail|leather|brigand/ : armor === "robe" ? /robe|mage|cleric/ : armor === "bare" ? /^bare|^$/ : /light|cloth|tunic|common|travel/; var hit = false; armorGroup.forEach(function (e) { var ok = re.test(e.tag) || (armor === "bare" && e.tag === ""); if (ok) hit = true; e.o.visible = ok; }); if (!hit) armorGroup.forEach(function (e, i) { e.o.visible = i === 0; }); }
   // skin the visible outfit covers is not drawn at all (no poke-through when limbs bend, fewer triangles)
@@ -176,7 +176,7 @@ var SKIN_ORDER = ["#f1d2b6", "#e3b48f", "#c98e64", "#9a6a45", "#5e3d2a"];
 function speciesLook(look) {
   var sp = look.species, out = Object.assign({}, look);
   if (sp === "Orc-Blooded") { var i = Math.max(0, SKIN_ORDER.indexOf(String(look.skin || "").toLowerCase())); out.skin = ORC_SKIN[i < 0 ? 2 : i]; if (!look.build || /average/i.test(look.build)) out.build = "Broad"; }
-  if (sp === "Dwarf") { if (!look.build || /average|slender|lean/i.test(look.build)) out.build = "Broad"; if (String(look.gender || "").toLowerCase() !== "female") out.beard = true; }
+  if (sp === "Dwarf") { if (!look.build || /average|slender|lean/i.test(look.build)) out.build = "Broad"; if (String(look.gender || "").toLowerCase() !== "female") { out.beard = true; out.beardStyle = look.beardStyle || "long"; } }
   return out;
 }
 function addTusks(THREE, h, B) {

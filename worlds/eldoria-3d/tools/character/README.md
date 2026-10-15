@@ -19,7 +19,7 @@ No commercial game asset, texture or animation is used.
   outfit hides exactly the skin it covers (`outfit_*` node extras `hide`).
 - Morph targets: `female`, `build_slender|lean|sturdy|broad`, `eyeBlinkLeft/Right`, `jawOpen`, `browDownLeft/Right`, `mouthSmileLeft`, `wince`, `ears_pointed`.
 - Skeleton: the game's 15 joints + `lfoot`/`rfoot`; `socket_hand_r|hand_l|shield|head|back` empties reproduce the procedural frames.
-- Variants: `outfit_light|medium|heavy|robe|bare`, `hair_short_crop|messy_layered|long_straight|ponytail|braided|topknot`, `beard_full`.
+- Variants: `outfit_light|medium|heavy|robe|bare`, `hair_short_crop|messy_layered|long_straight|ponytail|braided|topknot`, `beard_full` (trimmed), `beard_long` (dwarves): card beards over a painted base.
 - Materials named `<kind> @main|@cloth|@trim|@none`: the runtime multiplies the calling palette colour onto the greyscale albedo.
 - 23 clips with the gameplay names and exact durations (`retime:false`, `bakedFades:true` in `EldoriaMeta` extras).
 

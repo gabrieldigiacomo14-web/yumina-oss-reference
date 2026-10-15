@@ -181,6 +181,11 @@ image files: the environment textures are generated in the browser at startup.
   "lite" surface shader (one texture fetch, no derivative bump), grass density, crowd size and character range. Townsfolk and
   roaming creatures outside the view frustum are hidden and not animated, distant ones animate at ½ or ¼ rate, and only nearby
   characters cast shadows. Combatants are never throttled (their clips drive hit timing).
+- **Species and props from the art-direction sheets** (the user's concept renders of races, buildings and props, used as visual
+  reference only; none of the images ship): orc-blooded characters get olive-green skin across the tone range, tusks and a heavier
+  frame; dwarves are short and stocky with a long card beard (other bearded men get a trimmed one, mouth left clear); halflings get a
+  larger head. Market stalls now have a timber frame, a striped awning with a valance, heaped produce, crates, a barrel and a sack, and
+  city plazas get a ring of them; lamp posts carry lanterns.
 - **Fix found on the way**: roads lifted the terrain inside towns; Aurelia's central fountain stood on a 6 m cone. Roads now hand over
   to the town's own streets inside its limits.
 
@@ -188,6 +193,8 @@ image files: the environment textures are generated in the browser at startup.
 |---|---|---|---|---|
 | Realistic humanoid (player, companions, NPCs) with outfits, hair, morphs, 23 clips | yes | yes (screenshots, `glb-game`, all combat scenarios) | **no** | artist-sculpted faces, more base heads, cloth simulation, motion-captured clips |
 | Generated building/terrain/cobble surfaces | yes | yes (screenshots, all scenarios) | **no** | photoscanned PBR sets would look better; none are needed to run |
+| Species looks (orc tusks/skin, dwarf build and long beard, halfling head) and card beards | yes | yes (`shot-human` renders) | **no** | horns, tails and non-human heads (tiefling, dragonborn) need sculpted parts |
+| Market stalls, plaza stall ring, lanterns | yes | yes (city screenshots, collision via box colliders) | **no** | — |
 | Per-realm lighting and haze | yes | Aurelia only visually checked | **no** | — |
 | Frame cap, adaptive resolution, shadow cadence, character culling/LOD, grass density | yes | functionally (no errors, scenarios pass); SwiftShader cannot measure GPU speed | **no**, not on an iPhone | — |
 | Character mesh LODs (fewer triangles at distance) | **no** (animation-rate LOD and culling only) | — | — | a decimated GLB per LOD level (buildable with the same pipeline) |
@@ -196,6 +203,16 @@ image files: the environment textures are generated in the browser at startup.
 "Tested inside Yumina" is **no** throughout: this repository's harness mounts the world through Yumina's own `buildComponent` and
 bundler in headless Chromium with software WebGL, which is not the Yumina app on an iPhone. The WebGL features used (derivatives,
 DataTexture mipmaps, PCF shadows) are WebGL1-safe; the meshopt decoder falls back to pure JavaScript if WebAssembly is blocked.
+
+Screenshots (headless Chromium, software WebGL; Medium tier unless noted):
+
+![Before this pass](docs/aurelia-before.jpg)
+![Aurelia street](docs/aurelia-g-street.jpg)
+![Aurelia plaza with stalls](docs/aurelia-g-plaza.jpg)
+![Aurelia from above](docs/aurelia-g-overview.jpg)
+![Turn-based combat in the plaza](docs/aurelia-g-combat.jpg)
+![Phone landscape, Low tier, combat](docs/aurelia-g-phone-combat.jpg)
+![Dwarf](docs/species-dwarf.jpg) ![Orc-blooded](docs/species-orc.jpg)
 
 ## Status
 
