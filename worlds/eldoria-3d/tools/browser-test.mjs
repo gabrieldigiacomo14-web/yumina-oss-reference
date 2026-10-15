@@ -203,7 +203,8 @@ export const SCENARIOS = {
   "shot-city": { manual: true, fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 1280, height: 720 }, run: async (ctx) => {
     const { page } = ctx; const dir = ctx.shots || "/tmp"; const tag = process.env.SHOT_TAG || "city"; const q = (js) => page.evaluate(js);
     if (process.env.SHOT_VP) { const [w, h] = process.env.SHOT_VP.split("x").map(Number); await page.setViewportSize({ width: w, height: h }); }
-    await page.waitForTimeout(1500); await q("(() => { const g = T.g(); T.clear(); g.spawnMonsters = function () {}; g.clock = Math.floor(g.clock / 1440) * 1440 + (Number(process && 0) || 0) + 15 * 60; })()").catch(() => {});
+    await page.waitForTimeout(1500); await q("(() => { window.__fixedRes = true; const g = T.g(); T.clear(); g.spawnMonsters = function () {}; })()").catch(() => {});
+    if (process.env.SHOT_FOLD !== "0") await q("(() => { const b = document.querySelector('.eMenuToggle.on'); if (b) b.click(); })()");
     await q(`(() => { const g = T.g(); g.clock = Math.floor(g.clock / 1440) * 1440 + ${Number(process.env.SHOT_HOUR || 16)} * 60; })()`);
     const go = async (x, z, yaw, dist, pitch) => { await q(`(() => { const g = T.g(); g.pos.x = ${x}; g.pos.z = ${z}; g.terrain.warm(g.pos.x, g.pos.z, 1); g.loadSettlements(true); const sp = g.safeSpot(g.pos.x, g.pos.z); g.pos.x = sp.x; g.pos.z = sp.z; g.pos.y = g.terrain.groundAt(g.pos.x, g.pos.z); g.camYaw = ${yaw}; g.yaw = ${yaw} + Math.PI; g.camDist = ${dist}; g.camPitch = ${pitch}; g.camF = null; })()`); await page.waitForTimeout(3500); };
     const shot = async (n) => { await page.screenshot({ path: path.join(dir, tag + "-" + n + ".png"), timeout: 180000 }); };
@@ -211,7 +212,8 @@ export const SCENARIOS = {
     await go(0, 18, 3.14, 7, 0.22); await shot("2-plaza");
     await go(0, 18, 2.6, 24, 0.55); await shot("3-overview");
     await q('T.spawn("Direwood Goblin", 1.5, -6, { hp: 400, maxHp: 400 }); T.spawn("Blackback Wolf", -2, -7, { hp: 400, maxHp: 400 }); 1'); await page.waitForTimeout(400);
-    await q('(() => { const g = T.g(); const m = g.monsters[0]; g.target = m; m.passive = false; g.engageWith(m, { playerFirst: true }); })()'); await page.waitForFunction("T.g().battle && T.g().battle.active && T.g().battle.active.kind === 'player' && !T.g().battle.script", null, { timeout: 60000 }); await page.waitForTimeout(1500); await shot("4-combat");
+    await q('(() => { const g = T.g(); const m = g.monsters[0]; g.target = m; m.passive = false; g.engageWith(m, { playerFirst: true }); })()'); await page.waitForFunction("T.g().battle && T.g().battle.active && T.g().battle.active.kind === 'player' && !T.g().battle.script", null, { timeout: 60000 }); await page.waitForTimeout(800);
+    await q(`(() => { const g = T.g(); const m = g.monsters[0]; g.camYaw = Math.atan2(g.pos.x - m.x, g.pos.z - m.z) + 0.5; g.camDist = ${Number(process.env.SHOT_CD || 8)}; g.camPitch = 0.42; })()`); await page.waitForTimeout(2500); await shot("4-combat");
     await q("(() => { const g = T.g(); g.target = g.monsters[0]; g.attack(); })()"); await page.waitForTimeout(450); await shot("5-attack");
   } },
   "shot-world": { manual: true, fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {

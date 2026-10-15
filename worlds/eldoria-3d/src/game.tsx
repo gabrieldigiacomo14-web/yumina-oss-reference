@@ -3,6 +3,7 @@
 // harvesting, discovering) and writes the results into the same variables the AI
 // Game Master reads. Conversation, trade, quests and anything social go to the GM.
 import { T, glowTex, textSprite, makeEnvironment } from "./three";
+import * as SURF from "./surfaces";
 import { MILE, heightAt, landSD, describe, insidePlace, PLACES, PLACE_BY_ID, nearestPlace, biomeAt, realmAt, roadAt, riverAt, hash2, hashStr, rng, placesNear, districtsOf, wildNameAt, mapColor } from "./worldgen";
 import { Terrain, Environment, CH } from "./terrain";
 import { buildSettlement, styleOf } from "./settlements";
@@ -66,13 +67,14 @@ export function Game(container, bridge, quality) {
 
 Game.prototype.start = function (v) {
   var THREE = T(); var self = this; this.v = v || {}; window.__eldoriaRules = R; window.__eldoria = { WG: WG, SET: SET, R: R, B: B, SC: SC, S: S, I: I, C: C, RIG: RIG, M: { makeHumanoid: makeHumanoid, makeCreature: makeCreature }, A: { animateHumanoid: animateHumanoid, playAction: playAction } }; /* debugging hooks for the test harness */
+  SURF.setSurfaceQuality(this.q.surface);
   var r = new THREE.WebGLRenderer({ antialias: this.q.aa, powerPreference: "high-performance" });
   r.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.q.pixelRatio)); r.setSize(this.container.clientWidth, this.container.clientHeight);
   if (THREE.sRGBEncoding) r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
   r.shadowMap.enabled = this.q.shadows; r.shadowMap.type = THREE.PCFSoftShadowMap;
   this.container.appendChild(r.domElement); r.domElement.style.display = "block"; r.domElement.style.touchAction = "none";
   this.renderer = r; this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(58, this.container.clientWidth / this.container.clientHeight, 0.2, this.q.far + 600);
-  this.fx = new Fx(this.scene); this.env = new Environment(this.scene, r, this.q); this.terrain = new Terrain(this.scene, { radius: this.q.radius }); this.terrain.seaMat = this.env.sea.material;
+  this.fx = new Fx(this.scene); this.env = new Environment(this.scene, r, this.q); this.terrain = new Terrain(this.scene, { radius: this.q.radius, veg: this.q.veg }); this.terrain.seaMat = this.env.sea.material;
   // player
   this.buildPlayer(v);
   this.adoptState(v, true);
@@ -88,7 +90,7 @@ Game.prototype.start = function (v) {
   this.ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(this.onResize) : null; if (this.ro) this.ro.observe(this.container);
   var w3b = (v["world3d-state"] || {}).battle; if (w3b) { try { C.restore(this, w3b); } catch (e) { console.error(e); this.battle = null; this.inCombat = false; } }
   this.last = performance.now();
-  var loop = function () { if (self.disposed) return; self.raf = requestAnimationFrame(loop); var now = performance.now(); var raw = (now - self.last) / 1000; var dt = Math.min(0.1, raw); self.last = now; self.wall = Math.min(1, raw); try { self.frame(dt); } catch (e) { if (!self.errShown) { self.errShown = true; console.error(e); self.bridge.toast && self.bridge.toast("3D error: " + e.message, "error"); } } };
+  var loop = function () { if (self.disposed) return; self.raf = requestAnimationFrame(loop); var now = performance.now(); if (self.q.fpsCap && now - self.last < 1000 / self.q.fpsCap - 4) return; var raw = (now - self.last) / 1000; self.pace(raw); var dt = Math.min(0.1, raw); self.last = now; self.wall = Math.min(1, raw); try { self.frame(dt); } catch (e) { if (!self.errShown) { self.errShown = true; console.error(e); self.bridge.toast && self.bridge.toast("3D error: " + e.message, "error"); } } };
   loop();
 };
 
@@ -270,7 +272,7 @@ function titleFrom(name, desc) { var first = String(desc || "").split(/[.,]/)[0]
 Game.prototype.updateNPCs = function (dt) {
   var px = this.pos.x, pz = this.pos.z; var self = this;
   this.npcs.forEach(function (n) {
-    var d = Math.hypot(n.x - px, n.z - pz); var vis = d < 160; n.h.root.visible = vis; if (!vis) return;
+    var d = Math.hypot(n.x - px, n.z - pz); var vis = d < (self.q.charRange || 160); n.h.root.visible = vis; if (!vis) return;
     if (n.label) { n.label.visible = d < 28; n.label2.visible = d < 18; }
     var speed = 0;
     if (self.talking === n) { n.yaw = lerpAngle(n.yaw, Math.atan2(px - n.x, pz - n.z), dt * 6); if (!n.h.action) playAction(n.h, "talk"); }
@@ -279,8 +281,30 @@ Game.prototype.updateNPCs = function (dt) {
       else { var gx = n.goal.x - n.x, gz = n.goal.z - n.z, gd = Math.hypot(gx, gz); if (gd < 1.2) { n.goal = null; n.wait = 3 + Math.random() * 8; } else { speed = 1.6; var dirx = gx / gd, dirz = gz / gd; var nx = n.x + dirx * speed * dt, nz = n.z + dirz * speed * dt; var pushed = self.collide(nx, nz, 0.4, n.s); if (Math.hypot(pushed.x - nx, pushed.z - nz) > 0.01) { n.stuck = (n.stuck || 0) + dt; if (n.stuck > 1.5) { n.goal = null; n.stuck = 0; n.wait = 1; } } n.x = pushed.x; n.z = pushed.z; n.yaw = lerpAngle(n.yaw, Math.atan2(dirx, dirz), dt * 5); } }
     } else if (d < 6 && !n.guard) n.yaw = lerpAngle(n.yaw, Math.atan2(px - n.x, pz - n.z), dt * 2);
     n.y = self.terrain.groundAt(n.x, n.z); n.h.root.position.set(n.x, n.y, n.z); n.h.root.rotation.y = n.yaw;
-    if (d < 70) animateHumanoid(n.h, dt, { speed: speed / 1.6 * 0.55, crossArms: n.guard || /Captain|Commander/.test(n.title) });
+    var adt2 = self.charLod(n.h.root, n.x, n.y, n.z, d, dt, n); if (adt2 > 0) animateHumanoid(n.h, adt2, { speed: speed / 1.6 * 0.55, crossArms: n.guard || /Captain|Commander/.test(n.title) });
   });
+};
+// Character level of detail. Townsfolk and roaming creatures outside the view frustum or beyond the quality's range are
+// hidden and not animated; distant ones animate every 2nd or 4th frame with the time they skipped (so clips stay in step),
+// and only characters near the camera cast shadows. Combatants never go through here: their clips drive hit events.
+Game.prototype.charLod = function (root, x, y, z, d, dt, st) {
+  var THREE = T(); if (!this._sph) { this._sph = new THREE.Sphere(); this._fr = new THREE.Frustum(); this._pm = new THREE.Matrix4(); }
+  var vis = d < (this.q.charRange || 160) && (!this._frOk || this._fr.intersectsSphere(this._sph.set(this._sph.center.set(x, y + 1, z), 1.8)));
+  root.visible = vis; if (!vis) { st._acc = 0; return 0; }
+  var sh = d < (this.q.shadowChars || 30); if (st._sh !== sh) { st._sh = sh; root.traverse(function (o) { if (o.isMesh && !o.userData.noShadow) o.castShadow = sh; }); }
+  var every = d < 22 ? 1 : d < 45 ? 2 : 4; st._acc = (st._acc || 0) + dt; st._n = ((st._n || 0) + 1) % every; if (st._n) return 0;
+  var a = Math.min(st._acc, 0.3); st._acc = 0; return a;
+};
+// Frame pacing and resolution: a frame-rate cap (steadier on phones than an uneven 40-60 fps), a render scale that drops
+// when frames run long and climbs back when there is headroom, and shadow maps re-rendered every Nth frame on lighter tiers.
+Game.prototype.pace = function (raw) {
+  var q = this.q, r = this.renderer; if (!r) return;
+  var target = 1 / (q.fpsCap || 60); this.ft = this.ft == null ? raw : this.ft + (Math.min(raw, 0.25) - this.ft) * 0.05;
+  this.scaleT = (this.scaleT || 0) + raw; if (this.scaleT < 1.5 || window.__fixedRes) return; this.scaleT = 0;
+  var maxS = Math.min(window.devicePixelRatio || 1, q.pixelRatio), minS = q.minScale || 0.6, cur = this.renderScale || maxS, next = cur;
+  if (this.ft > target * 1.25) next = Math.max(minS, cur - 0.1); else if (this.ft < target * 0.8) next = Math.min(maxS, cur + 0.05);
+  if (Math.abs(next - cur) > 0.001) { this.renderScale = next; r.setPixelRatio(next); r.setSize(this.container.clientWidth, this.container.clientHeight); }
+  else this.renderScale = cur;
 };
 function lerpAngle(a, b, t) { var d = Math.atan2(Math.sin(b - a), Math.cos(b - a)); return a + d * Math.min(1, t); }
 
@@ -324,10 +348,10 @@ Game.prototype.updateMonsters = function (dt) {
   this.monsters = this.monsters.filter(function (m) {
     var d = Math.hypot(m.x - px, m.z - pz);
     if (d > 420 && !m.aggro && !m.inBattle) { self.scene.remove(m.c.root); delete self.spawnedCells[m.cell]; if (self.target === m) self.target = null; return false; }
-    if (m.dead) { m.deadT = (m.deadT || 0) + dt; animateCreature(m.c, adt, { dead: true }); if (m.deadT > 240 || (d > 300)) { self.scene.remove(m.c.root); return false; } return true; }
+    if (m.dead) { m.deadT = (m.deadT || 0) + dt; m.c.root.visible = true; animateCreature(m.c, adt, { dead: true }); if (m.deadT > 240 || (d > 300)) { self.scene.remove(m.c.root); return false; } return true; }
     // in a turn-based fight the battle scripts move this creature; here it is only posed
     if (m.inBattle) {
-      m.air += ((m.airT || 0) - m.air) * Math.min(1, dt * 3.5); m.y = self.terrain.groundAt(m.x, m.z) + (m.c.arch === "wisp" ? 0.2 : 0) + (m.fly ? m.air * 3.2 : 0); m.c.root.position.set(m.x, m.y, m.z); m.c.root.rotation.y = lerpAngle(m.c.root.rotation.y, m.yaw, dt * 14);
+      m.c.root.visible = true; m.air += ((m.airT || 0) - m.air) * Math.min(1, dt * 3.5); m.y = self.terrain.groundAt(m.x, m.z) + (m.c.arch === "wisp" ? 0.2 : 0) + (m.fly ? m.air * 3.2 : 0); m.c.root.position.set(m.x, m.y, m.z); m.c.root.rotation.y = lerpAngle(m.c.root.rotation.y, m.yaw, dt * 14);
       if (m.hitT > 0) m.hitT -= dt; if (m.attackT > 0) m.attackT -= adt;
       animateCreature(m.c, adt, { speed: (m.gait || 0) / 6, attack: m.attackT > 0, attackT: (m.attackDur || 0.6) - (m.attackT || 0), attackDur: m.attackDur || 0.6, hitT: m.hitT || 0, combat: true, flying: m.fly && m.air > 0.35 });
       return true;
@@ -340,7 +364,7 @@ Game.prototype.updateMonsters = function (dt) {
     if (speed) { var nx = m.x + Math.sin(m.yaw) * speed * dt, nz = m.z + Math.cos(m.yaw) * speed * dt; if (landSD(nx / MILE, -nz / MILE) > 0.02 && !insideTown(nx, nz)) { m.x = nx; m.z = nz; } else m.state = "return"; }
     m.air += ((m.fly ? 0.4 : 0) - m.air) * Math.min(1, dt * 2); m.y = self.terrain.groundAt(m.x, m.z) + (m.c.arch === "wisp" ? 0.2 : 0) + (m.fly ? m.air * 3.2 : 0); m.c.root.position.set(m.x, m.y, m.z); m.c.root.rotation.y = m.yaw;
     if (m.hitT > 0) m.hitT -= dt;
-    if (d < 180) animateCreature(m.c, adt, { speed: speed / 6, combat: false, flying: m.fly && speed > 0 });
+    var adt2 = self.charLod(m.c.root, m.x, m.y, m.z, d, adt, m); if (adt2 > 0) animateCreature(m.c, adt2, { speed: speed / 6, combat: false, flying: m.fly && speed > 0 });
     return true;
   });
   function insideTown(x, z) { var p = insidePlace(x / MILE, -z / MILE); return p && !/ruin|dungeon|landmark|shrine|tower|camp/.test(p.kind); }
@@ -916,6 +940,8 @@ Game.prototype.frame = function (dt) {
   this.writeClock(false); this.writePosition(false);
   if (this.dirtyFog && (!this.fogWriteT || this.time - this.fogWriteT > 12)) { this.fogWriteT = this.time; this.dirtyFog = false; this.write3d(); }
   var now = performance.now(); if ((this.flushAt && now > this.flushAt) || now - this.lastFlush > 5000) { this.flushAt = 0; if (Object.keys(this.dirty).length) this.flush(); else this.lastFlush = now; }
+  if (this.q.shadows) { this.shadowN = ((this.shadowN || 0) + 1) % (this.q.shadowEvery || 1); this.renderer.shadowMap.autoUpdate = false; if (!this.shadowN) this.renderer.shadowMap.needsUpdate = true; }
+  this.camera.updateMatrixWorld(); if (this._fr) { this._pm.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse); this._fr.setFromProjectionMatrix(this._pm); this._frOk = true; }
   this.renderer.render(this.scene, this.camera);
   // minimap + HUD snapshot
   if (this.minimap) this.drawMinimap();

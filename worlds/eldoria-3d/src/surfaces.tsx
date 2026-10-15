@@ -9,6 +9,9 @@
 import { T } from "./three";
 
 export var CLS = { none: 0, stone: 1, plaster: 2, wood: 3, roof: 4 };
+// "lite" (the Low tier): one texture fetch along the dominant axis and no derivative bump, for phones
+var LITE = false;
+export function setSurfaceQuality(q) { LITE = q === "lite"; }
 var TILE = 512; // pixels per texture tile; buildings: 4 m per tile, terrain: 6 m per tile
 
 function rngOf(seed) { var s = seed >>> 0; return function () { s = (s + 0x6D2B79F5) >>> 0; var t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -100,7 +103,7 @@ var VS_BODY = [
 
 // building materials: material class per vertex, roofs laid in horizontal courses whatever their orientation
 export function patchBuildings(mat, opts) {
-  opts = opts || {}; var tex = buildingTex(); mat.extensions = mat.extensions || {}; mat.extensions.derivatives = true;
+  opts = opts || {}; var tex = buildingTex(), lite = LITE; mat.extensions = mat.extensions || {}; mat.extensions.derivatives = true;
   mat.userData.tpMap = { value: tex };
   mat.onBeforeCompile = function (sh) {
     sh.uniforms.tpMap = mat.userData.tpMap;
@@ -112,23 +115,30 @@ export function patchBuildings(mat, opts) {
         "{ vec3 n = normalize(vTpN); vec3 w = pow(abs(n), vec3(4.0)); w /= (w.x + w.y + w.z);",
         "  vec2 uy = vTpPos.xz; vec2 hn = n.xz / max(length(n.xz), 1e-3);",
         "  uy = mix(uy, vec2(dot(vTpPos.xz, vec2(-hn.y, hn.x)), vTpPos.y), vTpMask.w * step(0.08, length(n.xz)));", // roof courses follow the eaves
-        "  float k = 0.25; vec4 t = texture2D(tpMap, vTpPos.zy * k) * w.x + texture2D(tpMap, uy * k) * w.y + texture2D(tpMap, vTpPos.xy * k) * w.z;",
+        "  float k = 0.25;",
+        "#ifdef TP_LITE",
+        "  vec2 uv1 = w.y > max(w.x, w.z) ? uy : (w.x > w.z ? vTpPos.zy : vTpPos.xy); vec4 t = texture2D(tpMap, uv1 * k);",
+        "#else",
+        "  vec4 t = texture2D(tpMap, vTpPos.zy * k) * w.x + texture2D(tpMap, uy * k) * w.y + texture2D(tpMap, vTpPos.xy * k) * w.z;",
+        "#endif",
         "  tpOn = dot(vTpMask, vec4(1.0)); tpH = dot(t, vTpMask);",
         "  float macro = texture2D(tpMap, vTpPos.xz * 0.021 + vec2(vTpPos.y * 0.013)).g;",
         "  float lum = mix(1.0, (0.34 + 0.8 * tpH) * (0.78 + 0.4 * macro), tpOn);",
-        "  float soot = mix(1.0, 0.86 + 0.14 * smoothstep(0.25, 0.75, texture2D(tpMap, vec2(vTpPos.x + vTpPos.z, vTpPos.y * 3.0) * 0.07).r), tpOn);", // streaks
+        "#ifdef TP_LITE", "  float soot = 1.0;", "#else",
+        "  float soot = mix(1.0, 0.86 + 0.14 * smoothstep(0.25, 0.75, texture2D(tpMap, vec2(vTpPos.x + vTpPos.z, vTpPos.y * 3.0) * 0.07).r), tpOn);", "#endif", // streaks
         "  diffuseColor.rgb *= lum * soot; }"
       ].join("\n"))
       .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, clamp(1.05 - tpH * 0.35, 0.55, 1.0), tpOn * 0.8);")
-      .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\nif (tpOn > 0.5) normal = tpBump(normal, tpH, 0.035 * clamp(1.0 - length(vViewPosition) / 70.0, 0.0, 1.0), faceDirection);");
+      .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n#ifndef TP_LITE\nif (tpOn > 0.5) normal = tpBump(normal, tpH, 0.035 * clamp(1.0 - length(vViewPosition) / 70.0, 0.0, 1.0), faceDirection);\n#endif");
+    if (lite) sh.fragmentShader = "#define TP_LITE\n" + sh.fragmentShader;
   };
-  mat.customProgramCacheKey = function () { return "tp-buildings"; };
+  mat.customProgramCacheKey = function () { return "tp-buildings" + (lite ? "-lite" : ""); };
   mat.needsUpdate = true; return mat;
 }
 
 // terrain: grass where the vertex color is green, rock on steep ground, sand/snow on pale ground, earth elsewhere
 export function patchTerrain(mat) {
-  var tex = terrainTex(); mat.extensions = mat.extensions || {}; mat.extensions.derivatives = true; mat.map = null;
+  var tex = terrainTex(), lite = LITE; mat.extensions = mat.extensions || {}; mat.extensions.derivatives = true; mat.map = null;
   mat.userData.tpMap = { value: tex };
   mat.onBeforeCompile = function (sh) {
     sh.uniforms.tpMap = mat.userData.tpMap;
@@ -143,17 +153,24 @@ export function patchTerrain(mat) {
         "  float grass = (1.0 - rock) * smoothstep(0.0, 0.05, c.g - max(c.r, c.b) * 0.92);",
         "  float pale = (1.0 - rock) * (1.0 - grass) * smoothstep(0.32, 0.55, lum);",
         "  vec4 wgt = vec4(grass, max(0.0, 1.0 - rock - grass - pale), rock, pale);",
-        "  vec2 p = vTpPos.xz / 6.0; vec4 t0 = texture2D(tpMap, p), t1 = texture2D(tpMap, p * 0.23 + 0.37);",
+        "  vec2 p = vTpPos.xz / 6.0; vec4 t0 = texture2D(tpMap, p);",
+        "#ifdef TP_LITE",
+        "  vec4 t = t0;",
+        "#else",
+        "  vec4 t1 = texture2D(tpMap, p * 0.23 + 0.37);",
         "  vec2 side = (abs(n.x) > abs(n.z) ? vTpPos.zy : vTpPos.xy) / 6.0; vec4 ts = texture2D(tpMap, side);",
         "  vec4 t = mix(t0 * 0.65 + t1 * 0.35, ts, rock * 0.7);",
+        "#endif",
         "  tpH = dot(t, wgt);",
         "  float far = clamp(length(vViewPosition) / 160.0, 0.0, 1.0);",
-        "  float var = 0.86 + 0.28 * texture2D(tpMap, vTpPos.xz / 97.0).g;", // large scale tone variation breaks tiling
+        "#ifdef TP_LITE", "  float var = 1.0;", "#else",
+        "  float var = 0.86 + 0.28 * texture2D(tpMap, vTpPos.xz / 97.0).g;", "#endif", // large scale tone variation breaks tiling
         "  diffuseColor.rgb *= mix(0.5 + 0.95 * tpH, 1.0, far * 0.6) * var;",
         "  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.06, 1.0, 0.9), grass * (1.0 - t0.r) * 0.6); }" // sun-bleached tips
       ].join("\n"))
-      .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\nnormal = tpBump(normal, tpH, 0.06 * clamp(1.0 - length(vViewPosition) / 50.0, 0.0, 1.0), faceDirection);");
+      .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n#ifndef TP_LITE\nnormal = tpBump(normal, tpH, 0.06 * clamp(1.0 - length(vViewPosition) / 50.0, 0.0, 1.0), faceDirection);\n#endif");
+    if (lite) sh.fragmentShader = "#define TP_LITE\n" + sh.fragmentShader;
   };
-  mat.customProgramCacheKey = function () { return "tp-terrain"; };
+  mat.customProgramCacheKey = function () { return "tp-terrain" + (lite ? "-lite" : ""); };
   mat.needsUpdate = true; return mat;
 }

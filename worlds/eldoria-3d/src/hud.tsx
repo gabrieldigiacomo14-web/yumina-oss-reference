@@ -13,9 +13,9 @@ var MENU = [["inventory", "Inventory", "I", "Backpack"], ["equipment", "Equipmen
 var KEYMAP = { i: "inventory", k: "equipment", p: "skills", t: "techniques", l: "spells", c: "callings", j: "journal", q: "quests", o: "party", n: "codex", h: "crafting", b: "bank", m: "map" };
 var SLOT_ICON = { sword: ["Sword", "steel"], bow: ["Crosshair", "steel"], staff: ["Wand", "arcane"], dagger: ["Slice", "steel"], fist: ["Hand", "steel"], hammer: ["Hammer", "steel"], tech: ["Flame", "fire"], fire: ["Flame", "fire"], ice: ["Snowflake", "ice"], bolt: ["Zap", "ice"], magic: ["Sparkles", "arcane"], heal: ["HeartPulse", "holy"], "potion-red": ["FlaskConical", "red"], "potion-blue": ["FlaskRound", "blue"], herb: ["Leaf", "green"], dodge: ["Wind", "steel"], hand: ["Hand", "wood"], dash: ["ChevronsRight", "wood"], end: ["Hourglass", "holy"] };
 export var QUALITY = {
-  low: { name: "Low", pixelRatio: 1, shadows: false, shadowMap: 1024, far: 900, radius: 3, particles: 0, aa: false, genBudget: 5, townRange: 450, crowd: 0.35 },
-  medium: { name: "Medium", pixelRatio: 1.25, shadows: true, shadowMap: 1024, far: 1300, radius: 4, particles: 1400, aa: true, genBudget: 7, townRange: 650, crowd: 0.75 },
-  high: { name: "High", pixelRatio: 2, shadows: true, shadowMap: 2048, far: 1700, radius: 5, particles: 2800, aa: true, genBudget: 9, townRange: 850, crowd: 1 }
+  low: { name: "Low", pixelRatio: 1, shadows: false, shadowMap: 1024, far: 900, radius: 3, particles: 0, aa: false, genBudget: 5, townRange: 450, crowd: 0.35, fpsCap: 30, minScale: 0.6, charRange: 90, shadowChars: 0, veg: 0.4, surface: "lite" },
+  medium: { name: "Medium", pixelRatio: 1.25, shadows: true, shadowMap: 1024, far: 1300, radius: 4, particles: 1400, aa: true, genBudget: 7, townRange: 650, crowd: 0.75, fpsCap: 60, minScale: 0.75, charRange: 130, shadowChars: 25, shadowEvery: 2, shadowSize: 60, veg: 0.75 },
+  high: { name: "High", pixelRatio: 2, shadows: true, shadowMap: 2048, far: 1700, radius: 5, particles: 2800, aa: true, genBudget: 9, townRange: 850, crowd: 1, fpsCap: 0, minScale: 0.9, charRange: 160, shadowChars: 40, shadowEvery: 1, shadowSize: 80, veg: 1 }
 };
 function isTouch() { try { return window.matchMedia("(pointer: coarse)").matches; } catch (e) { return false; } }
 function weatherIcon(w) { w = String(w || "").toLowerCase(); return /storm|thunder/.test(w) ? "CloudLightning" : /snow|sleet|blizzard/.test(w) ? "CloudSnow" : /rain|drizzle|shower/.test(w) ? "CloudRain" : /fog|mist|haze|ash/.test(w) ? "CloudFog" : /cloud|overcast/.test(w) ? "Cloud" : "Sun"; }
@@ -311,7 +311,7 @@ function ModelsSetting(p) {
 function Settings(p) {
   var api = p.api; var [ts, setTs] = React.useState(false);
   return <div className="screen">
-    <section className="card"><div className="cardTitle"><b>Graphics</b></div><div className="eSeg">{Object.keys(QUALITY).map(function (k) { return <button key={k} className={p.q === k ? "on" : ""} onClick={function () { p.setQ(k); }}>{QUALITY[k].name}</button>; })}</div><p className="muted">Low suits phones and older laptops: no shadows, shorter view distance.</p></section>
+    <section className="card"><div className="cardTitle"><b>Graphics</b></div><div className="eSeg">{Object.keys(QUALITY).map(function (k) { return <button key={k} className={p.q === k ? "on" : ""} onClick={function () { p.setQ(k); }}>{QUALITY[k].name}</button>; })}</div><p className="muted">Low suits phones and older laptops: 30 fps cap, no shadows, simpler surfaces, fewer townsfolk and less grass. Every tier lowers its render resolution while frames run long and restores it when there is headroom.</p></section>
     <ModelsSetting api={api} />
     <section className="card"><div className="cardTitle"><b>Game Master</b></div><div className="eBtnRow">
       <button className="eBtn small" onClick={function () { api.sendMessage("[sync]"); p.close(); }}><Icon n="RefreshCw" s={14} /> Sync state</button>

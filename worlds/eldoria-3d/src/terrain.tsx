@@ -167,7 +167,7 @@ Terrain.prototype.decorate = function (chunk, lod) {
     var slope = Math.abs(this.groundAtChunk(chunk, x + 2, z) - h) + Math.abs(this.groundAtChunk(chunk, x, z + 2) - h);
     if (r3 < veg.trees && slope < 3.2) { var s = veg.style; (inst[s] = inst[s] || []).push([x, h, z, 0.8 + hash2(gx, gz, 5) * 0.7, hash2(gx, gz, 9) * 6.28, Math.floor(hash2(gx, gz, 13) * 3)]); }
     else if (r3 > 0.985 || (slope > 4 && r3 > 0.8)) rocks.push([x, h, z, 0.8 + r1 * 2.6, r2 * 6.28]);
-    else if (lod === 0 && r3 > 1 - veg.grass * 0.55) { for (var q = 0; q < 3; q++) { var gx2 = x + (hash2(gx, gz, 50 + q) - 0.5) * cell, gz2 = z + (hash2(gx, gz, 70 + q) - 0.5) * cell; grass.push([gx2, this.groundAtChunk(chunk, gx2, gz2), gz2, 0.8 + hash2(gx, gz, 90 + q) * 0.8, hash2(gx, gz, 99 + q) * 6.28]); } }
+    else if (lod === 0 && r3 > 1 - veg.grass * 0.55 && hash2(gx, gz, 61) < (self.opts.veg == null ? 1 : self.opts.veg)) { for (var q = 0; q < 3; q++) { var gx2 = x + (hash2(gx, gz, 50 + q) - 0.5) * cell, gz2 = z + (hash2(gx, gz, 70 + q) - 0.5) * cell; grass.push([gx2, this.groundAtChunk(chunk, gx2, gz2), gz2, 0.8 + hash2(gx, gz, 90 + q) * 0.8, hash2(gx, gz, 99 + q) * 6.28]); } }
   }
   var m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e4 = new THREE.Euler(), v4 = new THREE.Vector3(), s4 = new THREE.Vector3(), colr = new THREE.Color();
   function addInst(geo, list, mat, shadow) { if (!list.length) return; var im = new THREE.InstancedMesh(geo, mat, list.length); for (var i = 0; i < list.length; i++) { var it = list[i]; e4.set(0, it[4], 0); q4.setFromEuler(e4); v4.set(it[0], it[1], it[2]); s4.set(it[3], it[3], it[3]); m4.compose(v4, q4, s4); im.setMatrixAt(i, m4); var k = 0.85 + hash2(i, list.length, 3) * 0.3; colr.setRGB(k, k, k); im.setColorAt && im.setColorAt(i, colr); } im.instanceMatrix.needsUpdate = true; im.castShadow = shadow; im.receiveShadow = true; im.frustumCulled = false; chunk.group.add(im); }
@@ -249,7 +249,7 @@ export function Environment(scene, renderer, quality) {
   this.sky = new THREE.Mesh(new THREE.SphereGeometry(2000, 32, 16), new THREE.ShaderMaterial({ uniforms: this.uniforms, vertexShader: SKY_VS, fragmentShader: SKY_FS, side: THREE.BackSide, depthWrite: false }));
   this.sky.frustumCulled = false; this.sky.renderOrder = -10; scene.add(this.sky);
   this.hemi = new THREE.HemisphereLight(0xc8dcff, 0x4a4030, 0.65); scene.add(this.hemi);
-  this.sun = new THREE.DirectionalLight(0xfff0d8, 1.6); this.sun.castShadow = quality.shadows; var sz = 80;
+  this.sun = new THREE.DirectionalLight(0xfff0d8, 1.6); this.sun.castShadow = quality.shadows; var sz = quality.shadowSize || 80;
   this.sun.shadow.mapSize.set(quality.shadowMap, quality.shadowMap); var sc = this.sun.shadow.camera; sc.left = -sz; sc.right = sz; sc.top = sz; sc.bottom = -sz; sc.near = 1; sc.far = 600; this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 0.6;
   scene.add(this.sun); scene.add(this.sun.target);
   scene.fog = new THREE.Fog(0xbcd0de, 300, quality.far);
