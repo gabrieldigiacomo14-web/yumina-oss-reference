@@ -144,8 +144,31 @@ var RIVER_DEF = [
   { name: "The Ashen", pts: [P("black-spire"), [760, 280], P("greyhollow"), [840, -110], [878, -282]], w0: 0.06, w1: 0.22, ashen: true },
   { name: "Zahir's Vein", pts: [[-470, -770], [-500, -520], P("oasis-of-zahir"), [-430, -150], [-420, -95]], w0: 0.08, w1: 0.16, dry: true }
 ];
+// A river that passes a settlement flows around its centre (the lore routes rivers "through" towns by waypoint), so the
+// plaza, streets and the player's spawn point are never under water. Points inside the keep-out circle are pushed out to it.
+function avoidSettlements(pts, w) {
+  PLACES.forEach(function (pl) {
+    if (pl.kind === "landmark") return; var minD = pl.r * MILE <= 70 ? pl.r + 3.6 * w + 0.1 : pl.r * 0.62 + 3.4 * w; /* small towns: the river and its banks stay outside the walls; cities keep it inside, where the streets bridge it */ var cx = pl.x, cy = pl.y;
+    // densify the stretch near the settlement so the pushed-out points follow its circle and no chord cuts through the plaza
+    var dense = [pts[0]]; for (var i = 1; i < pts.length; i++) { var a = pts[i - 1], b = pts[i]; var vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy; var t = L2 > 0 ? Math.max(0, Math.min(1, ((cx - a[0]) * vx + (cy - a[1]) * vy) / L2)) : 0; var dd = Math.hypot(a[0] + vx * t - cx, a[1] + vy * t - cy); var n = dd < minD * 1.6 ? Math.max(1, Math.ceil(Math.sqrt(L2) / (minD * 0.18))) : 1; for (var k = 1; k <= n; k++) dense.push([a[0] + vx * k / n, a[1] + vy * k / n]); }
+    // each stretch of the river that falls inside the keep-out circle is replaced by an arc round it, from the angle where
+    // the river arrived to the angle where it leaves (the shorter way; a river going straight through takes the left bank)
+    var out = []; var i = 0;
+    while (i < dense.length) {
+      var d0 = Math.hypot(dense[i][0] - cx, dense[i][1] - cy); if (d0 >= minD) { out.push(dense[i]); i++; continue; }
+      var j = i; while (j + 1 < dense.length && Math.hypot(dense[j + 1][0] - cx, dense[j + 1][1] - cy) < minD) j++;
+      var pin = i > 0 ? dense[i - 1] : null, pout = j + 1 < dense.length ? dense[j + 1] : null;
+      var a1 = Math.atan2((pin || dense[i])[1] - cy, (pin || dense[i])[0] - cx), a2 = Math.atan2((pout || dense[j])[1] - cy, (pout || dense[j])[0] - cx);
+      var df = Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1)); if (Math.abs(df) > Math.PI - 0.25) df = Math.PI; if (!pin || !pout) df = 0;
+      var na = Math.max(1, Math.ceil(Math.abs(df) / 0.12)); for (var k = 0; k <= na; k++) out.push([cx + Math.cos(a1 + df * k / na) * minD, cy + Math.sin(a1 + df * k / na) * minD]);
+      i = j + 1;
+    }
+    pts = out;
+  });
+  return pts;
+}
 export var RIVERS = RIVER_DEF.map(function (r, i) {
-  var pts = meander(r.pts, 1.5, 3.5, 40 + i * 13);
+  var pts = avoidSettlements(meander(r.pts, 1.5, 3.5, 40 + i * 13), r.w1);
   return { name: r.name, pts: pts, w0: r.w0, w1: r.w1, dry: !!r.dry, ashen: !!r.ashen, level: null };
 });
 export var riverIndex = new SegIndex(4);
@@ -182,7 +205,6 @@ export var ROADS = [];
 })();
 var ROAD_W = { paved: 0.035, gravel: 0.03, track: 0.025, trail: 0.02, cairn: 0.02 };
 export var roadIndex = new SegIndex(4);
-ROADS.forEach(function (r, ri) { for (var i = 0; i < r.pts.length - 1; i++) roadIndex.add({ ax: r.pts[i][0], ay: r.pts[i][1], bx: r.pts[i + 1][0], by: r.pts[i + 1][1], w: ROAD_W[r.kind] || 0.03, road: r, i: i }); });
 
 // ------------------------------------------------------------------ height
 function preHeight(x, y, sd) {
@@ -229,20 +251,63 @@ function flattened(x, y) {
   });
 })();
 
+// Roads that wander along a river would end up inside its channel for hundreds of metres. Keep every road vertex that
+// is not inside a settlement clear of the carved bank (on whichever side of the river it is already on), so a road
+// meets a river only where it genuinely crosses it, and the crossing gets a proper bridge.
+var BANK_CLEAR = 3.5;
+(function rerouteRoads() {
+  ROADS.forEach(function (rd) {
+    var side = 0, last = rd.pts.length - 1;
+    rd.pts = rd.pts.map(function (p, i) {
+      if (i === 0 || i === last || insidePlace(p[0], p[1])) { side = 0; return p; }
+      var rv = riverAt(p[0], p[1]); if (!rv || rv.river.dry || rv.level <= 0.25) { side = 0; return p; }
+      var s = rv.seg, vx = s.bx - s.ax, vy = s.by - s.ay, L = Math.hypot(vx, vy) || 1; var cr = (vx * (p[1] - s.ay) - vy * (p[0] - s.ax)) / L; var lim = BANK_CLEAR * rv.w;
+      var own = Math.abs(cr) > 0.08 * rv.w ? (cr > 0 ? 1 : -1) : (side || 1); side = own;
+      if (Math.abs(cr) >= lim && rv.d >= lim) return p;
+      var t = Math.max(0, Math.min(1, ((p[0] - s.ax) * vx + (p[1] - s.ay) * vy) / (L * L))); var qx = s.ax + vx * t, qy = s.ay + vy * t; var nx = -vy / L * own, ny = vx / L * own;
+      return [qx + nx * lim * 1.02, qy + ny * lim * 1.02];
+    });
+  });
+})();
+ROADS.forEach(function (r, ri) { for (var i = 0; i < r.pts.length - 1; i++) roadIndex.add({ ax: r.pts[i][0], ay: r.pts[i][1], bx: r.pts[i + 1][0], by: r.pts[i + 1][1], w: ROAD_W[r.kind] || 0.03, road: r, i: i }); });
+
 export function riverAt(x, y) {
   var n = riverIndex.near(x, y); if (!n) return null;
   var s = n.seg, r = s.river; var level = lerp(r.level[s.i], r.level[s.i + 1], n.t);
   return { d: n.d, w: s.w, level: level, river: r, seg: s };
 }
-export function roadAt(x, y) { var n = roadIndex.near(x, y); if (!n) return null; return { d: n.d, w: n.seg.w, road: n.seg.road, seg: n.seg }; }
+export function roadAt(x, y) { var n = roadIndex.near(x, y); if (!n) return null; return { d: n.d, w: n.seg.w, road: n.seg.road, seg: n.seg, t: n.t }; }
 
+// Every road follows a graded profile instead of the raw terrain: the natural ground along it is smoothed and then limited
+// to a gentle grade, and heightAt cuts and fills the ground around the road to that profile. Cliffs and ridges that cross a
+// road get a cutting or an embankment rather than a wall the walker cannot climb.
+var ROAD_GRADE = 0.4, ROAD_DS = 10, ROAD_CORE = 6.5, ROAD_BLEND = 22; // metres
+function roadProfile(rd) {
+  if (rd.prof) return rd.prof; var n = rd.pts.length, cum = [0], len = [];
+  for (var i = 1; i < n; i++) { var l = Math.hypot(rd.pts[i][0] - rd.pts[i - 1][0], rd.pts[i][1] - rd.pts[i - 1][1]) * MILE; len.push(l); cum.push(cum[i - 1] + l); }
+  var total = cum[n - 1], N = Math.max(2, Math.ceil(total / ROAD_DS) + 1), nat = new Float32Array(N), seg = 0;
+  for (var k = 0; k < N; k++) { var sd = Math.min(total, k * ROAD_DS); while (seg < n - 2 && cum[seg + 1] < sd) seg++; var t = len[seg] > 0 ? (sd - cum[seg]) / len[seg] : 0; var px = rd.pts[seg][0] + (rd.pts[seg + 1][0] - rd.pts[seg][0]) * t, py = rd.pts[seg][1] + (rd.pts[seg + 1][1] - rd.pts[seg][1]) * t; nat[k] = Math.max(1, flattened(px, py)); }
+  var sm = new Float32Array(N); for (var k = 0; k < N; k++) { var a = 0, c = 0; for (var q = -3; q <= 3; q++) { var j = k + q; if (j < 0 || j >= N) continue; a += nat[j]; c++; } sm[k] = a / c; }
+  var g = ROAD_GRADE * ROAD_DS; for (var pass = 0; pass < 3; pass++) { for (var k = 1; k < N; k++) sm[k] = Math.max(sm[k - 1] - g, Math.min(sm[k - 1] + g, sm[k])); for (var k = N - 2; k >= 0; k--) sm[k] = Math.max(sm[k + 1] - g, Math.min(sm[k + 1] + g, sm[k])); }
+  return rd.prof = { cum: cum, len: len, h: sm, N: N };
+}
+function roadHeight(hit) {
+  var pr = roadProfile(hit.road), s = pr.cum[hit.seg.i] + hit.t * pr.len[hit.seg.i], f = Math.max(0, Math.min(pr.N - 1.001, s / ROAD_DS)), k = Math.floor(f);
+  return pr.h[k] + (pr.h[k + 1] - pr.h[k]) * (f - k);
+}
 // Final terrain height in WORLD UNITS for a point in miles.
 export function heightAt(x, y) {
   var h = flattened(x, y);
   var rv = riverAt(x, y);
-  if (rv && rv.d < rv.w * 3.2) { var bed = rv.level - (rv.river.dry ? 0.6 : 1.6); var t = smooth(rv.w * 0.9, rv.w * 3.2, rv.d); h = Math.min(h, lerp(bed, Math.max(h, rv.level + 0.9), t)); }
+  if (rv && rv.d < rv.w * 6) {
+    // banks never sit below the water: land beside a river is raised to just above its level, fading out with distance
+    var top = h; if (!rv.river.dry && h < rv.level + 0.9 && landSD(x, y) > 0) top = rv.level + 0.9;
+    var base = top > h ? lerp(top, h, smooth(rv.w * 3.2, rv.w * 6, rv.d)) : h;
+    if (rv.d < rv.w * 3.2 && !(rv.river.dry && insidePlace(x, y))) { var bed = rv.level - (rv.river.dry ? 0.6 : 1.6); var t = smooth(rv.w * 0.9, rv.w * 3.2, rv.d); h = lerp(bed, top, t); }
+    else h = base;
+  }
   var rd = roadAt(x, y);
-  if (rd && rd.d < rd.w * 4 && h > 0.4 && !(rv && rv.d < rv.w * 1.4)) { var s2 = rd.seg; var ah = flattened(s2.ax, s2.ay), bh = flattened(s2.bx, s2.by); var cap = capsule(x, y, s2.ax, s2.ay, s2.bx, s2.by); var lh = lerp(ah, bh, cap.t); var t2 = smooth(rd.w, rd.w * 4, rd.d); if (Math.abs(lh - h) < 12) h = lerp(lerp(h, lh, 0.55), h, t2); }
+  if (rd && rd.d < ROAD_BLEND / MILE && h > 0.4 && !(rv && rv.d < rv.w * 1.4)) { var lh = roadHeight(rd); if (rv && !rv.river.dry && rv.d < rv.w * 6 && lh < rv.level + 0.9) lh = lerp(rv.level + 0.9, lh, smooth(rv.w * 3.2, rv.w * 6, rv.d)); h = lerp(lh, h, smooth(ROAD_CORE / MILE, ROAD_BLEND / MILE, rd.d)); } // the flat bench is wider than two terrain cells, so the mesh can represent it
   return h;
 }
 
@@ -459,4 +524,131 @@ export function paintMap(ctx, view, style, onDone, rowsPerSlice) {
   }
   slice();
   return function () { cancelled = true; };
+}
+
+// ------------------------------------------------------------------ walkable surface, bridges and road geometry
+// Everything that has to agree about "where the ground is" (terrain mesh, roads, streets, building foundations, the
+// player's feet) goes through these pure functions of world coordinates, so they give the same answer before and after
+// a chunk streams in and after a reload.
+export var CHUNK = 320;      // world units per terrain chunk (8 miles)
+export var LOD0_SEGS = 64;   // the full-detail terrain mesh has 64 x 64 quads per chunk
+// Height of the full-detail terrain mesh at (x, z): the same samples and the same triangulation the mesh uses.
+export function meshHeight(x, z) {
+  var step = CHUNK / LOD0_SEGS, cx = Math.floor(x / CHUNK) * CHUNK, cz = Math.floor(z / CHUNK) * CHUNK;
+  var fx = (x - cx) / step, fz = (z - cz) / step; var k = Math.min(LOD0_SEGS - 1, Math.max(0, Math.floor(fx))), r = Math.min(LOD0_SEGS - 1, Math.max(0, Math.floor(fz))); var tx = fx - k, tz = fz - r;
+  function H(i, j) { return heightAt((cx + i * step) / MILE, -(cz + j * step) / MILE); }
+  var ha = H(k, r), hb = H(k, r + 1), hc = H(k + 1, r + 1), hd = H(k + 1, r);
+  return tx + tz <= 1 ? ha + (hd - ha) * tx + (hb - ha) * tz : hc + (hb - hc) * (1 - tx) + (hd - hc) * (1 - tz);
+}
+// A river channel: the carved valley around a river's water. A road that comes within CORE_K widths of the centre line
+// is crossing the water and needs a bridge; the bridge then reaches back to dry, level ground on each side.
+export var CORE_K = 1.3, BANK_K = 3.2;
+export function riverDist(x, z) { var rv = riverAt(x / MILE, -z / MILE); return rv && !rv.river.dry && rv.level > 0.25 ? rv.d / rv.w : 1e9; }
+export function inChannel(x, z) { return riverDist(x, z) < CORE_K; }
+// Finds every place a polyline (world units, [[x, z], ...]) crosses a river and returns a bridge for it. Both ends sit
+// outside the carved bank and the deck is anchored to the walkable surface there, so the road meets the bridge flush on
+// both banks, whatever the bank heights are. surf(x, z) is the walkable ground (default: the terrain mesh).
+export function planSpans(pts, surf) {
+  surf = surf || meshHeight; var S = [];
+  for (var i = 0; i < pts.length - 1; i++) { var ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1]; var L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L)); for (var k = 0; k < n; k++) { var t = k / n; S.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t }); } }
+  if (pts.length) S.push({ x: pts[pts.length - 1][0], z: pts[pts.length - 1][1] });
+  var rd = S.map(function (s) { return riverDist(s.x, s.z); }); var out = []; var i = 0;
+  while (i < S.length) {
+    if (rd[i] >= CORE_K) { i++; continue; }
+    var a = i, b = i; for (var j = i; j < S.length; j++) { if (rd[j] < CORE_K) b = j; else if (j - b > 8) break; } // a road that meanders across the same river is one bridge
+    var s0 = a, s1 = b; while (s0 > 0 && rd[s0] < BANK_K && a - s0 < 250) s0--; while (s1 < S.length - 1 && rd[s1] < BANK_K && s1 - b < 250) s1++;
+    s0 = Math.max(0, s0 - 1); s1 = Math.min(S.length - 1, s1 + 1); i = b + 1;
+    var p0 = S[s0], p1 = S[s1]; var y1 = surf(p0.x, p0.z), y2 = surf(p1.x, p1.z); if (Math.max(y1, y2) < 0.9) continue; // estuary at sea level: the road fords it
+    var lvl = 0; for (var q = a; q <= b; q++) { var rv = riverAt(S[q].x / MILE, -S[q].z / MILE); if (rv) lvl = Math.max(lvl, rv.level); }
+    out.push({ x1: p0.x, z1: p0.z, x2: p1.x, z2: p1.z, y1: y1, y2: y2, level: lvl, len: Math.hypot(p1.x - p0.x, p1.z - p0.z), openStart: rd[s0] < BANK_K, openEnd: rd[s1] < BANK_K });
+  }
+  return out;
+}
+// The deck's walking surface at parameter t in [0, 1] along the bridge (linear between the two bank heights).
+export function deckY(b, t) { return b.y1 + (b.y2 - b.y1) * Math.max(0, Math.min(1, t)); }
+// Where a point is relative to a bridge: { t, lat } along/across the deck, or null when it is off the deck.
+export function onDeck(b, x, z, pad) {
+  var vx = b.x2 - b.x1, vz = b.z2 - b.z1, L2 = vx * vx + vz * vz; if (L2 < 1e-6) return null; var t = ((x - b.x1) * vx + (z - b.z1) * vz) / L2; if (t < 0 || t > 1) return null;
+  var lat = ((x - b.x1) * -vz + (z - b.z1) * vx) / Math.sqrt(L2); if (Math.abs(lat) > b.w / 2 + (pad || 0)) return null; return { t: t, lat: lat };
+}
+// Places where a polyline runs into the sea: a short gap gets a causeway bridge (both ends flush with dry ground at least
+// 1.2 m above the water); a long one is a ferry crossing, and each shore gets a jetty (see roadBridges).
+export function planSea(pts, surf) {
+  surf = surf || meshHeight; var S = [], cum = 0;
+  for (var i = 0; i < pts.length - 1; i++) { var ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1]; var L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L)); for (var k = 0; k < n; k++) { var t = k / n; S.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, s: cum + L * t }); } cum += L; }
+  if (pts.length) S.push({ x: pts[pts.length - 1][0], z: pts[pts.length - 1][1], s: cum });
+  var h = S.map(function (q) { return surf(q.x, q.z); }); var out = []; var i = 0;
+  while (i < S.length) {
+    if (h[i] >= -1.3) { i++; continue; }
+    var a = i, b = i; for (var j = i; j < S.length; j++) { if (h[j] < -1.3) b = j; else if (j - b > 20) break; }
+    var s0 = a, s1 = b; function steep(q) { var a = Math.max(0, q - 3), c = Math.min(S.length - 1, q + 3); return Math.abs(h[c] - h[a]) / Math.max(1, c - a) > 0.6; }
+    while (s0 > 0 && (h[s0] < 1.2 || steep(s0)) && a - s0 < 120) s0--; while (s1 < S.length - 1 && (h[s1] < 1.2 || steep(s1)) && s1 - b < 120) s1++; i = b + 1;
+    var p0 = S[s0], p1 = S[s1]; out.push({ x1: p0.x, z1: p0.z, x2: p1.x, z2: p1.z, y1: h[s0], y2: h[s1], level: 0, len: Math.hypot(p1.x - p0.x, p1.z - p0.z), sea: true, sa: p0.s, sb: p1.s, open: h[s0] < 1.2 || h[s1] < 1.2 });
+  }
+  return out;
+}
+var roadBridgeCache = null, ferryCache = [];
+// Every road bridge on the continent, planned once from the road polylines (independent of which chunks are loaded):
+// river bridges, causeways over short stretches of sea, and a jetty on each shore of a ferry crossing.
+export function roadBridges() {
+  if (roadBridgeCache) return roadBridgeCache; var list = [];
+  ROADS.forEach(function (rd, ri) {
+    var w = { paved: 4.2, gravel: 3.4, track: 2.6, trail: 1.8, cairn: 1.6 }[rd.kind] || 2.4; var pts = rd.pts.map(function (p) { return [p[0] * MILE, -p[1] * MILE]; });
+    planSpans(pts).forEach(function (b, bi) { if (inCut((b.x1 + b.x2) / 2, (b.z1 + b.z2) / 2)) return; b.w = w + 1.2; b.road = ri; b.id = "r" + ri + "." + bi; list.push(b); });
+    planSea(pts).forEach(function (b, bi) {
+      if (inCut((b.x1 + b.x2) / 2, (b.z1 + b.z2) / 2)) return; b.road = ri; b.w = w + 1.2;
+      if (b.len <= 260 && !b.open) { b.id = "r" + ri + ".c" + bi; list.push(b); return; }
+      var f = { road: ri, sa: b.sa, sb: b.sb, x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, len: b.len, id: "r" + ri + ".f" + bi }; ferryCache.push(f);
+      var ux = (b.x2 - b.x1) / b.len, uz = (b.z2 - b.z1) / b.len;
+      [[b.x1, b.z1, b.y1, ux, uz, "a"], [b.x2, b.z2, b.y2, -ux, -uz, "b"]].filter(function (e) { return e[2] >= 1.19; }).forEach(function (e) { list.push({ id: "f" + ri + "." + bi + e[5], ferry: true, road: ri, w: 4.2, level: 0, len: 16, x1: e[0], z1: e[1], x2: e[0] + e[3] * 16, z2: e[1] + e[4] * 16, y1: e[2], y2: e[2] }); });
+    });
+  });
+  return roadBridgeCache = list;
+}
+export function roadFerries() { roadBridges(); return ferryCache; }
+// Splits a road into the pieces that lie outside every settlement (the settlements draw their own streets).
+export function clipOutside(ax, az, bx, bz, cx, cz, R) {
+  var dx = bx - ax, dz = bz - az, A = dx * dx + dz * dz, B = 2 * (dx * (ax - cx) + dz * (az - cz)), Cc = (ax - cx) * (ax - cx) + (az - cz) * (az - cz) - R * R;
+  var disc = B * B - 4 * A * Cc; if (A < 1e-9 || disc <= 0) return [[0, 1]]; var s = Math.sqrt(disc), t1 = (-B - s) / (2 * A), t2 = (-B + s) / (2 * A); var out = [];
+  if (t1 > 0) out.push([0, Math.min(1, t1)]); if (t2 < 1) out.push([Math.max(0, t2), 1]); return out.filter(function (r) { return r[1] - r[0] > 1e-4; });
+}
+// Roads run up to the edge of a settlement; inside, the settlement's own streets take over. The cut circle is shared by the
+// road ribbons (terrain) and the street layout (settlements) so the two always meet at exactly the same point.
+export function isSmallPlace(p) { return /tower|ruin|dungeon|camp|shrine|landmark/.test(p.kind); }
+export function townCut(p) { return p.kind === "landmark" ? 0 : isSmallPlace(p) ? p.r * MILE * 0.5 : p.r * MILE; }
+var CUTS = null;
+export function townCuts() { return CUTS || (CUTS = PLACES.filter(function (p) { return townCut(p) > 0; }).map(function (p) { return { id: p.id, x: p.x * MILE, z: -p.y * MILE, R: townCut(p) }; })); }
+export function inCut(x, z) { var c = townCuts(); for (var i = 0; i < c.length; i++) if (Math.hypot(x - c[i].x, z - c[i].z) < c[i].R) return true; return false; }
+// Pieces of the segment a-b (world units) that lie outside every settlement's cut circle, as [t0, t1] pairs.
+export function outsideTowns(ax, az, bx, bz) {
+  var pieces = [[0, 1]], cuts = townCuts(); var minx = Math.min(ax, bx), maxx = Math.max(ax, bx), minz = Math.min(az, bz), maxz = Math.max(az, bz);
+  for (var i = 0; i < cuts.length && pieces.length; i++) {
+    var c = cuts[i]; if (c.x + c.R < minx || c.x - c.R > maxx || c.z + c.R < minz || c.z - c.R > maxz) continue;
+    var next = []; pieces.forEach(function (pc) { var x1 = ax + (bx - ax) * pc[0], z1 = az + (bz - az) * pc[0], x2 = ax + (bx - ax) * pc[1], z2 = az + (bz - az) * pc[1]; clipOutside(x1, z1, x2, z2, c.x, c.z, c.R).forEach(function (r) { next.push([pc[0] + (pc[1] - pc[0]) * r[0], pc[0] + (pc[1] - pc[0]) * r[1]]); }); }); pieces = next;
+  }
+  return pieces;
+}
+// Where the roads enter and leave a settlement: { x, z, ang, w, kind } on its cut circle (world units; ang from the centre).
+export function roadExits(p) {
+  var cx = p.x * MILE, cz = -p.y * MILE, R = townCut(p), out = []; if (R <= 0) return out;
+  ROADS.forEach(function (rd, ri) {
+    var w = { paved: 4.2, gravel: 3.4, track: 2.6, trail: 1.8, cairn: 1.6 }[rd.kind] || 2.4;
+    for (var i = 0; i < rd.pts.length - 1; i++) {
+      var ax = rd.pts[i][0] * MILE, az = -rd.pts[i][1] * MILE, bx = rd.pts[i + 1][0] * MILE, bz = -rd.pts[i + 1][1] * MILE; if (Math.hypot((ax + bx) / 2 - cx, (az + bz) / 2 - cz) > R + Math.hypot(bx - ax, bz - az)) continue;
+      var dx = bx - ax, dz = bz - az, A = dx * dx + dz * dz, B = 2 * (dx * (ax - cx) + dz * (az - cz)), Cc = (ax - cx) * (ax - cx) + (az - cz) * (az - cz) - R * R; var disc = B * B - 4 * A * Cc; if (A < 1e-9 || disc <= 0) continue;
+      var s = Math.sqrt(disc); [(-B - s) / (2 * A), (-B + s) / (2 * A)].forEach(function (t) { if (t > 0 && t < 1) { var x = ax + dx * t, z = az + dz * t; out.push({ x: x, z: z, ang: Math.atan2(z - cz, x - cx), w: w, kind: rd.kind, road: ri }); } });
+    }
+  });
+  return out;
+}
+// Safe places to stand. A point is fine when it is dry, out of any river channel and not on a cliff face; safeSpawn spirals
+// outward from a requested point to the nearest fine one (ok can add game-side rules such as "not inside a building").
+export function spawnOK(x, z) {
+  var y = meshHeight(x, z); if (y < 0.5) return false; if (riverDist(x, z) < CORE_K + 0.3) return false;
+  return Math.abs(meshHeight(x + 2, z) - y) + Math.abs(meshHeight(x, z + 2) - y) <= 3.2;
+}
+export function safeSpawn(x, z, ok) {
+  ok = ok || spawnOK; if (ok(x, z)) return { x: x, z: z, moved: 0 };
+  for (var r = 3; r <= 150; r += 3) { var n = Math.max(8, Math.round(r * 0.5)); for (var k = 0; k < n; k++) { var a = k / n * Math.PI * 2 + r * 0.37, cx = x + Math.cos(a) * r, cz = z + Math.sin(a) * r; if (ok(cx, cz)) return { x: cx, z: cz, moved: r }; } }
+  return { x: x, z: z, moved: -1 };
 }

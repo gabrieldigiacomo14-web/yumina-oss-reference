@@ -3,11 +3,11 @@
 // around the player at three levels of detail, with instanced vegetation, road and
 // river ribbons, bridges, the sea, sky, day/night lighting and weather.
 import { T, GeoBuilder, prim, M, hex, cobbleTex, noiseTex, glowTex, cloudTex } from "./three";
-import { MILE, heightAt, groundColor, vegetation, biomeAt, riverAt, roadAt, ROADS, RIVERS, landSD, placesNear, hash2, rng, insidePlace, smooth } from "./worldgen";
+import { MILE, heightAt, groundColor, vegetation, biomeAt, riverAt, roadAt, ROADS, RIVERS, landSD, placesNear, hash2, rng, insidePlace, smooth, CHUNK, LOD0_SEGS, meshHeight, roadBridges, onDeck, deckY, outsideTowns } from "./worldgen";
 import { addTree, addRock, addBridge, ribbon, styleOf } from "./settlements";
 
-export var CH = 320; // chunk size in world units (8 miles)
-var LOD_SEGS = [64, 32, 12];
+export var CH = CHUNK; // chunk size in world units (8 miles)
+var LOD_SEGS = [LOD0_SEGS, 32, 12];
 
 // ------------------------------------------------------------------ vegetation templates (instanced)
 var TEMPLATES = null;
@@ -27,7 +27,7 @@ function grassTex() { var THREE = T(); var c = document.createElement("canvas");
 
 // ------------------------------------------------------------------ terrain chunk manager
 export function Terrain(scene, opts) {
-  this.scene = scene; this.chunks = {}; this.queue = []; this.job = null; this.opts = opts || {}; this.bridges = []; this.radius = opts.radius || 4;
+  this.scene = scene; this.chunks = {}; this.queue = []; this.job = null; this.opts = opts || {}; this.bridges = []; this.bidx = {}; this.addBridges(roadBridges()); this.radius = opts.radius || 4;
   var THREE = T();
   this.mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0, map: noiseTex() });
   this.waterMat = new THREE.MeshStandardMaterial({ color: 0x2c5d70, roughness: 0.12, metalness: 0.15, transparent: true, opacity: 0.86, polygonOffset: true, polygonOffsetFactor: -1 });
@@ -102,7 +102,7 @@ Terrain.prototype.finish = function (job) {
   var skirt = this.skirt(job); if (skirt) group.add(skirt);
   var minH = 1e9; for (var i = 0; i < heights.length; i++) if (heights[i] < minH) minH = heights[i];
   if (minH < 0.4 && this.seaMat) { var sea = new THREE.Mesh(this.seaGeo || (this.seaGeo = new THREE.PlaneGeometry(CH, CH).rotateX(-Math.PI / 2).translate(CH / 2, 0, CH / 2)), this.seaMat); sea.position.set(job.x0, 0.05, job.z0); sea.receiveShadow = true; group.add(sea); }
-  var chunk = { k: q.k, i: q.i, j: q.j, lod: q.lod, group: group, heights: heights, n: n, step: step, x0: job.x0, z0: job.z0, bridges: [] };
+  var chunk = { k: q.k, i: q.i, j: q.j, lod: q.lod, group: group, heights: heights, n: n, step: step, x0: job.x0, z0: job.z0 };
   if (q.lod <= 1) this.decorate(chunk, q.lod);
   var old = this.chunks[q.k]; if (old) this.dispose(old);
   this.chunks[q.k] = chunk; this.scene.add(group);
@@ -116,16 +116,40 @@ Terrain.prototype.skirt = function (job) {
   var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals();
   var m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })); m.position.set(job.x0, 0, job.z0); return m;
 };
-// sample the chunk's own height grid so feet match the rendered surface
-Terrain.prototype.groundAt = function (x, z) {
-  var c = this.chunks[this.key(Math.floor(x / CH), Math.floor(z / CH))]; var h;
-  if (c) { var fx = (x - c.x0) / c.step, fz = (z - c.z0) / c.step; var k = Math.min(c.n - 2, Math.max(0, Math.floor(fx))), r = Math.min(c.n - 2, Math.max(0, Math.floor(fz))); var tx = fx - k, tz = fz - r; var H = c.heights, n = c.n;
+// The walkable ground height at (x, z). The terrain surface is the chunk's own height grid (or, until that chunk has
+// streamed in, the same grid computed on the spot), so feet match the rendered mesh. Bridge decks stand on top of it;
+// refY (the walker's current feet height) lets someone standing in the river bed pass under a bridge deck.
+Terrain.prototype.surfaceAt = function (x, z) {
+  var c = this.chunks[this.key(Math.floor(x / CH), Math.floor(z / CH))];
+  if (c && c.lod === 0) {
+    var fx = (x - c.x0) / c.step, fz = (z - c.z0) / c.step; var k = Math.min(c.n - 2, Math.max(0, Math.floor(fx))), r = Math.min(c.n - 2, Math.max(0, Math.floor(fz))); var tx = fx - k, tz = fz - r; var H = c.heights, n = c.n;
     // PlaneGeometry triangulation: (a=r,k) (b=r+1,k) (c=r+1,k+1) (d=r,k+1); tris a-b-d and b-c-d
     var ha = H[r * n + k], hb = H[(r + 1) * n + k], hc = H[(r + 1) * n + k + 1], hd = H[r * n + k + 1];
-    if (tx + tz <= 1) h = ha + (hd - ha) * tx + (hb - ha) * tz; else h = hc + (hb - hc) * (1 - tx) + (hd - hc) * (1 - tz);
-  } else h = heightAt(x / MILE, -z / MILE);
-  for (var i = 0; i < this.bridges.length; i++) { var b = this.bridges[i]; var vx = b.x2 - b.x1, vz = b.z2 - b.z1, L2 = vx * vx + vz * vz; var t = ((x - b.x1) * vx + (z - b.z1) * vz) / L2; if (t < -0.02 || t > 1.02) continue; var d = Math.hypot(x - b.x1 - vx * t, z - b.z1 - vz * t); if (d < b.w / 2 + 0.3 && b.y > h - 0.5) h = Math.max(h, b.y); }
+    return tx + tz <= 1 ? ha + (hd - ha) * tx + (hb - ha) * tz : hc + (hb - hc) * (1 - tx) + (hd - hc) * (1 - tz);
+  }
+  return meshHeight(x, z);
+};
+Terrain.prototype.groundAt = function (x, z, refY) {
+  var h = this.surfaceAt(x, z); var list = this.bidx[Math.floor(x / 32) + "," + Math.floor(z / 32)]; if (!list) return h;
+  for (var i = 0; i < list.length; i++) { var b = list[i]; var od = onDeck(b, x, z, 0.25); if (!od) continue; var y = deckY(b, od.t); if (y > h && (refY === undefined || refY > y - 1.2)) h = y; }
   return h;
+};
+// Bridge registry: a spatial hash of 32 m cells so ground queries only look at the few decks nearby.
+Terrain.prototype.addBridges = function (list) {
+  list.forEach(function (b) {
+    this.bridges.push(b); var r = b.w / 2 + 1; var x0 = Math.floor((Math.min(b.x1, b.x2) - r) / 32), x1 = Math.floor((Math.max(b.x1, b.x2) + r) / 32), z0 = Math.floor((Math.min(b.z1, b.z2) - r) / 32), z1 = Math.floor((Math.max(b.z1, b.z2) + r) / 32);
+    for (var i = x0; i <= x1; i++) for (var j = z0; j <= z1; j++) { var k = i + "," + j; (this.bidx[k] = this.bidx[k] || []).push(b); }
+  }, this);
+};
+Terrain.prototype.removeBridges = function (list) {
+  var set = {}; list.forEach(function (b) { set[b.id] = 1; }); this.bridges = this.bridges.filter(function (b) { return !set[b.id]; });
+  for (var k in this.bidx) { this.bidx[k] = this.bidx[k].filter(function (b) { return !set[b.id]; }); if (!this.bidx[k].length) delete this.bidx[k]; }
+};
+// The deck a point stands on (if any) with its position along and across it; used for rail collision.
+Terrain.prototype.deckAt = function (x, z, refY) {
+  var list = this.bidx[Math.floor(x / 32) + "," + Math.floor(z / 32)]; if (!list) return null; var h = this.surfaceAt(x, z);
+  for (var i = 0; i < list.length; i++) { var b = list[i]; var od = onDeck(b, x, z, 0.25); if (!od) continue; var y = deckY(b, od.t); if (y > h + 0.4 && (refY === undefined || refY > y - 1.2)) return { b: b, t: od.t, lat: od.lat, y: y }; }
+  return null;
 };
 Terrain.prototype.loaded = function (x, z) { var c = this.chunks[this.key(Math.floor(x / CH), Math.floor(z / CH))]; return !!c && c.lod === 0; };
 Terrain.prototype.decorate = function (chunk, lod) {
@@ -152,7 +176,11 @@ Terrain.prototype.decorate = function (chunk, lod) {
   // rivers and roads
   this.ribbons(chunk, lod);
 };
-Terrain.prototype.groundAtChunk = function (c, x, z) { var fx = Math.max(0, Math.min(c.n - 1.001, (x - c.x0) / c.step)), fz = Math.max(0, Math.min(c.n - 1.001, (z - c.z0) / c.step)); var k = Math.floor(fx), r = Math.floor(fz), tx = fx - k, tz = fz - r, H = c.heights, n = c.n; var a = H[r * n + k], b = H[r * n + k + 1], cc = H[(r + 1) * n + k], d = H[(r + 1) * n + k + 1]; return (a * (1 - tx) + b * tx) * (1 - tz) + (cc * (1 - tx) + d * tx) * tz; };
+Terrain.prototype.groundAtChunk = function (c, x, z) {
+  var fx = (x - c.x0) / c.step, fz = (z - c.z0) / c.step; var k = Math.min(c.n - 2, Math.max(0, Math.floor(fx))), r = Math.min(c.n - 2, Math.max(0, Math.floor(fz))); var tx = Math.min(1, Math.max(0, fx - k)), tz = Math.min(1, Math.max(0, fz - r)); var H = c.heights, n = c.n;
+  var ha = H[r * n + k], hb = H[(r + 1) * n + k], hc = H[(r + 1) * n + k + 1], hd = H[r * n + k + 1];
+  return tx + tz <= 1 ? ha + (hd - ha) * tx + (hb - ha) * tz : hc + (hb - hc) * (1 - tx) + (hd - hc) * (1 - tz);
+};
 Terrain.prototype.ribbons = function (chunk, lod) {
   var THREE = T(); var self = this; var minx = chunk.x0 - 10, maxx = chunk.x0 + CH + 10, minz = chunk.z0 - 10, maxz = chunk.z0 + CH + 10;
   function inBox(ax, az, bx, bz) { return !(Math.max(ax, bx) < minx || Math.min(ax, bx) > maxx || Math.max(az, bz) < minz || Math.min(az, bz) > maxz); }
@@ -161,7 +189,7 @@ Terrain.prototype.ribbons = function (chunk, lod) {
     if (r.dry) return;
     for (var i = 0; i < r.pts.length - 1; i++) {
       var ax = r.pts[i][0] * MILE, az = -r.pts[i][1] * MILE, bx = r.pts[i + 1][0] * MILE, bz = -r.pts[i + 1][1] * MILE; if (!inBox(ax, az, bx, bz)) continue;
-      var t0 = r.len[i] / r.total, t1 = r.len[i + 1] / r.total; var w0 = (r.w0 + (r.w1 - r.w0) * t0) * MILE * 2.1, la = r.level[i] + 0.12, lb = r.level[i + 1] + 0.12;
+      var t0 = r.len[i] / r.total, t1 = r.len[i + 1] / r.total; var w0 = (r.w0 + (r.w1 - r.w0) * t0) * MILE * 4.4, la = r.level[i] + 0.12, lb = r.level[i + 1] + 0.12;
       if (la < 0.3 && lb < 0.3) continue;
       // overlap segments slightly so joints have no gaps
       var L = Math.hypot(bx - ax, bz - az), ex = (bx - ax) / L * w0 * 0.3, ez = (bz - az) / L * w0 * 0.3;
@@ -173,29 +201,28 @@ Terrain.prototype.ribbons = function (chunk, lod) {
   if (lod > 1) return;
   var RB = new GeoBuilder(), DB = new GeoBuilder(), BB = new GeoBuilder();
   var stp = STYLE_FALLBACK;
+  // Road ribbons lie 5 cm above the walkable surface (including bridge decks), so feet and road agree. Stretches inside a
+  // settlement are left to its streets: the cut is a circle shared with the street layout, so the two always meet.
+  function surf(x, z) { return self.groundAt(x, z) + ROAD_LIFT; }
   ROADS.forEach(function (rd) {
     var paved = rd.kind === "paved"; var w = { paved: 4.2, gravel: 3.4, track: 2.6, trail: 1.8, cairn: 1.6 }[rd.kind] || 2.4;
+    var col = paved ? [0.95, 0.93, 0.9] : rd.kind === "gravel" ? [0.62, 0.55, 0.42] : rd.kind === "cairn" ? [0.38, 0.36, 0.35] : [0.46, 0.38, 0.27];
     for (var i = 0; i < rd.pts.length - 1; i++) {
       var ax = rd.pts[i][0] * MILE, az = -rd.pts[i][1] * MILE, bx = rd.pts[i + 1][0] * MILE, bz = -rd.pts[i + 1][1] * MILE; if (!inBox(ax, az, bx, bz)) continue;
-      // skip inside settlements (the town streets take over)
-      var mid = insidePlace((ax + bx) / 2 / MILE, -(az + bz) / 2 / MILE); if (mid) continue;
-      var col = paved ? [0.95, 0.93, 0.9] : rd.kind === "gravel" ? [0.62, 0.55, 0.42] : rd.kind === "cairn" ? [0.38, 0.36, 0.35] : [0.46, 0.38, 0.27];
-      ribbon(paved ? RB : DB, ax, az, bx, bz, w, function (x, z) { var c2 = self.chunks[self.key(Math.floor(x / CH), Math.floor(z / CH))]; return (c2 && c2.heights ? self.groundAtChunk(c2, x, z) : chunk.x0 <= x && x <= chunk.x0 + CH && chunk.z0 <= z && z <= chunk.z0 + CH ? self.groundAtChunk(chunk, x, z) : heightAt(x / MILE, -z / MILE)) + 0.22; }, col);
-      // bridges where the road meets a river
-      var L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / 2), inW = false, sx = 0, sz = 0;
-      for (var k = 0; k <= n; k++) { var t = k / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t; if (x < chunk.x0 || x >= chunk.x0 + CH || z < chunk.z0 || z >= chunk.z0 + CH) { inW = false; continue; } var rv = riverAt(x / MILE, -z / MILE); var wet = rv && !rv.river.dry && rv.d < rv.w * 1.25; if (wet && !inW) { inW = true; sx = x; sz = z; } if (!wet && inW) { inW = false; var ux = (bx - ax) / L, uz = (bz - az) / L; var x1 = sx - ux * 5, z1 = sz - uz * 5, x2 = x + ux * 5, z2 = z + uz * 5; var y = Math.max(heightAt(x1 / MILE, -z1 / MILE), heightAt(x2 / MILE, -z2 / MILE)) + 0.3; chunk.bridges.push(addBridge(BB, x1, z1, x2, z2, y, w + 1.2, stp)); } }
+      outsideTowns(ax, az, bx, bz).forEach(function (pc) { ribbon(paved ? RB : DB, ax + (bx - ax) * pc[0], az + (bz - az) * pc[0], ax + (bx - ax) * pc[1], az + (bz - az) * pc[1], w, surf, col); });
     }
   });
+  // bridges: each one is built by the chunk that holds its middle, from the continent-wide plan
+  this.bridges.forEach(function (b) { if (b.settlement) return; var mx = (b.x1 + b.x2) / 2, mz = (b.z1 + b.z2) / 2; if (mx < chunk.x0 || mx >= chunk.x0 + CH || mz < chunk.z0 || mz >= chunk.z0 + CH) return; addBridge(BB, b, stp); });
   if (!RB.empty()) { var rm = new THREE.Mesh(RB.build(), this.roadMat); rm.receiveShadow = true; chunk.group.add(rm); }
   if (!DB.empty()) { var dm = new THREE.Mesh(DB.build(), this.dirtMat); dm.receiveShadow = true; chunk.group.add(dm); }
   if (!BB.empty()) { var bm = new THREE.Mesh(BB.build(), this.propMat); bm.castShadow = true; bm.receiveShadow = true; chunk.group.add(bm); }
-  chunk.bridges.forEach(function (b) { self.bridges.push(b); });
 };
+var ROAD_LIFT = 0.05;
 var STYLE_FALLBACK = { stone: "#8e8a83", wallStone: "#77746e" };
 Terrain.prototype.dispose = function (c) {
   var self = this; this.scene.remove(c.group);
   c.group.traverse(function (o) { if (o.geometry && !o.isInstancedMesh && o.geometry !== self.seaGeo) o.geometry.dispose(); if (o.isInstancedMesh) o.dispose && o.dispose(); });
-  if (c.bridges.length) this.bridges = this.bridges.filter(function (b) { return c.bridges.indexOf(b) < 0; });
 };
 Terrain.prototype.disposeAll = function () { for (var k in this.chunks) this.dispose(this.chunks[k]); this.chunks = {}; this.queue = []; this.job = null; };
 

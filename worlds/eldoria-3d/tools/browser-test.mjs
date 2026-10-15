@@ -38,6 +38,103 @@ window.T = {
 `;
 // ---------------------------------------------------------------- scenarios (run inside the page)
 export const SCENARIOS = {
+  movement: { fx: () => fixture(), fn: `
+    const g = T.g(); T.noRender(); T.clear(); g.inCombat = false; await T.sleep(1500);
+    // camera-relative movement: displacement projected on the camera's own right/forward axes (camera looks from +(sin,cos)*d toward the player)
+    async function push(yaw, mx, my, how) {
+      g.camYaw = yaw; g.camF = null; await T.sleep(200); const x0 = g.pos.x, z0 = g.pos.z;
+      if (how === "stick") { g.setMove(mx, my); await T.sleep(450); g.setMove(0, 0); }
+      else { const ks = []; if (my > 0) ks.push("w"); if (my < 0) ks.push("s"); if (mx > 0) ks.push("d"); if (mx < 0) ks.push("a"); ks.forEach((k) => g.keys[k] = true); await T.sleep(450); ks.forEach((k) => g.keys[k] = false); }
+      await T.sleep(120); const dx = g.pos.x - x0, dz = g.pos.z - z0; const fwd = -(Math.sin(yaw) * dx + Math.cos(yaw) * dz), right = Math.cos(yaw) * dx - Math.sin(yaw) * dz; return { fwd, right, d: Math.hypot(dx, dz) };
+    }
+    for (const how of ["stick", "keys"]) for (const deg of [0, 90, 180, 270]) {
+      const yaw = deg * Math.PI / 180; g.pos.x += 0; const R = await push(yaw, 1, 0, how), L = await push(yaw, -1, 0, how), F = await push(yaw, 0, 1, how), Bk = await push(yaw, 0, -1, how);
+      const lab = how + " @" + deg + "deg";
+      T.check(lab + ": right moves to the camera's right", R.d > 0.3 && R.right > R.d * 0.9, JSON.stringify(R));
+      T.check(lab + ": left moves to the camera's left", L.d > 0.3 && L.right < -L.d * 0.9, JSON.stringify(L));
+      T.check(lab + ": forward moves away from the camera", F.d > 0.3 && F.fwd > F.d * 0.9, JSON.stringify(F));
+      T.check(lab + ": back moves toward the camera", Bk.d > 0.3 && Bk.fwd < -Bk.d * 0.9, JSON.stringify(Bk));
+    }
+  ` },
+  world: { fx: () => fixture(), fn: `
+    const g = T.g(); const X = T.X(); const WG = X.WG, SET = X.SET; const THREE = window.THREE; T.noRender(); T.clear(); g.inCombat = false; g.spawnMonsters = function () {}; await T.sleep(800);
+    const MILE = WG.MILE;
+    async function tp(x, z) { g.pos.x = x; g.pos.z = z; g.vy = 0; g.autoMove = null; g.terrain.warm(x, z, 1); g.loadSettlements(true); g.pos.y = g.terrain.groundAt(x, z); g.camF = null; await T.sleep(150); }
+    function chunkMesh(x, z) { const c = g.terrain.chunks[Math.floor(x / 320) + "," + Math.floor(z / 320)]; return c && c.lod === 0 ? c.group.children[0] : null; }
+    const rc = new THREE.Raycaster(); const down = new THREE.Vector3(0, -1, 0);
+    function meshesOf(root) { const l = []; root.traverse((o) => { if (o.isMesh && !o.isInstancedMesh && !o.isSprite && o.geometry) l.push(o); }); return l; }
+    function meshY(x, z) { const m = chunkMesh(x, z); if (!m) return null; rc.set(new THREE.Vector3(x, 600, z), down); const h = rc.intersectObject(m, false); return h.length ? h[0].point.y : null; }
+    // ---- 1. the walkable surface is the rendered surface, everywhere including chunk borders
+    await tp(0, 0); g.scene.updateMatrixWorld(true);
+    let worst = 0, n = 0, miss = 0; const pts = [];
+    for (let i = 0; i < 120; i++) pts.push([g.pos.x + (Math.sin(i * 12.9898) * 43758.5453 % 1) * 500 - 250, g.pos.z + (Math.sin(i * 78.233) * 12345.678 % 1) * 500 - 250]);
+    for (const k of [-320, 0, 320]) for (let t = -300; t <= 300; t += 40) { pts.push([k + 0.3, t + 7.1], [k - 0.3, t + 3.9], [t + 5.5, k + 0.2], [t + 1.7, k - 0.2]); } // right on the chunk borders
+    for (const [x, z] of pts) { const my = meshY(x, z); if (my == null) { miss++; continue; } const gy = g.terrain.surfaceAt(x, z); worst = Math.max(worst, Math.abs(my - gy)); n++; }
+    T.check("groundAt follows the rendered terrain mesh to within 2 cm at " + n + " points (including chunk borders)", n > 100 && worst < 0.02, "worst " + worst.toFixed(4) + " m, " + miss + " points outside the loaded chunks");
+    // ---- 2. feet rest on the ground
+    function hipsAbove() { g.scene.updateMatrixWorld(true); const v = new THREE.Vector3(); g.player.hips.getWorldPosition(v); return v.y - g.pos.y; }
+    await tp(60, 40); await T.sleep(300); const f0 = hipsAbove(); T.check("the character stands on the ground: root on the surface, hips one leg-length above it", Math.abs(g.player.root.position.y - g.terrain.groundAt(g.pos.x, g.pos.z)) < 0.001 && f0 > 0.9 && f0 < 1.06, f0.toFixed(3));
+    // ---- 3. cross the road bridges on foot
+    const bridges = g.terrain.bridges.filter((b) => !b.settlement && !b.sea && !b.ferry && !b.dock).slice(0, 6); T.check("the road network has river bridges to cross", bridges.length >= 3, bridges.length);
+    let crossed = 0; const bad = [];
+    for (const b of bridges) {
+      const L = Math.hypot(b.x2 - b.x1, b.z2 - b.z1), ux = (b.x2 - b.x1) / L, uz = (b.z2 - b.z1) / L;
+      await tp(b.x1 - ux * 14, b.z1 - uz * 14); const gx = b.x2 + ux * 14, gz = b.z2 + uz * 14; g.autoMove = { x: gx, z: gz, stop: 0 };
+      let minAbove = 1e9, maxJump = 0, lastY = g.pos.y, onDeckFrames = 0, t0 = performance.now();
+      while (g.autoMove && performance.now() - t0 < 30000) { await T.sleep(40); const above = g.pos.y - g.terrain.surfaceAt(g.pos.x, g.pos.z); minAbove = Math.min(minAbove, above); maxJump = Math.max(maxJump, Math.abs(g.pos.y - lastY)); lastY = g.pos.y; if (g.terrain.deckAt(g.pos.x, g.pos.z, g.pos.y)) onDeckFrames++; }
+      const d = Math.hypot(g.pos.x - gx, g.pos.z - gz); if (d < 3) crossed++; else bad.push(b.id + " stopped " + d.toFixed(1) + " m short at y " + g.pos.y.toFixed(1)); if (maxJump > 0.9) bad.push(b.id + " height jump " + maxJump.toFixed(2)); if (minAbove < -0.05) bad.push(b.id + " sank " + minAbove.toFixed(2)); if (L > 20 && onDeckFrames < 3) bad.push(b.id + " never stood on the deck");
+    }
+    T.check("walked across " + bridges.length + " bridges end to end without stopping, sinking or jumping", crossed === bridges.length && bad.length === 0, crossed + "/" + bridges.length + " " + bad.join("; "));
+    // the rails keep a walker on the deck
+    { const raised = (q) => { const L2 = Math.hypot(q.x2 - q.x1, q.z2 - q.z1), ux2 = (q.x2 - q.x1) / L2, uz2 = (q.z2 - q.z1) / L2, mx = q.x1 + ux2 * L2 / 2, mz = q.z1 + uz2 / 1 * L2 / 2; return (q.y1 + q.y2) / 2 - g.terrain.surfaceAt(mx - uz2 * (q.w / 2 + 0.8), mz + ux2 * (q.w / 2 + 0.8)); }; const b = bridges.find((q) => q.len > 25 && raised(q) > 1.5) || bridges[0]; const L = Math.hypot(b.x2 - b.x1, b.z2 - b.z1), ux = (b.x2 - b.x1) / L, uz = (b.z2 - b.z1) / L, vx = -uz, vz = ux; await tp(b.x1 + ux * L * 0.5, b.z1 + uz * L * 0.5); g.camYaw = Math.atan2(-vx, -vz) + Math.PI; g.autoMove = { x: g.pos.x + vx * 12, z: g.pos.z + vz * 12, stop: 0 }; await T.sleep(1800); const od = g.terrain.deckAt(g.pos.x, g.pos.z, g.pos.y + 0.2); T.check("rails stop a walker leaving the deck sideways", !!od && Math.abs(od.lat) <= b.w / 2, od ? od.lat.toFixed(2) + " of " + (b.w / 2).toFixed(2) : "fell off at y " + g.pos.y.toFixed(1)); g.autoMove = null; }
+    // ---- 4. walk in through a settlement's gate along its road
+    const towns = WG.PLACES.filter((p) => !WG.isSmallPlace(p) && p.kind !== "landmark" && WG.roadExits(p).length).slice(0, 8); let entered = 0; const stuck = [];
+    for (const p of towns) {
+      const ex = WG.roadExits(p)[0]; const cx = p.x * MILE, cz = -p.y * MILE; const ux = Math.cos(ex.ang), uz = Math.sin(ex.ang);
+      await tp(ex.x + ux * 45, ex.z + uz * 45); const s0 = g.settlements[p.id]; const gx = cx + ux * 24, gz = cz + uz * 24; g.autoMove = { x: gx, z: gz, stop: 0 }; let t0 = performance.now();
+      while (g.autoMove && performance.now() - t0 < 40000) await T.sleep(50);
+      const d = Math.hypot(g.pos.x - gx, g.pos.z - gz); if (d < 4) entered++; else { const near = (g.settlements[p.id] ? g.settlements[p.id].colliders : []).filter((c) => Math.hypot(c.x - g.pos.x, c.z - g.pos.z) < c.r + 4).map((c) => c.x.toFixed(0) + "," + c.z.toFixed(0) + " r" + c.r.toFixed(1) + (c.box ? "box" : "")); stuck.push(p.id + " stopped " + d.toFixed(0) + " m from the plaza edge (exit " + (ex.ang * 57.3).toFixed(0) + "deg) at " + g.pos.x.toFixed(0) + "," + g.pos.z.toFixed(0) + " centre " + cx.toFixed(0) + "," + cz.toFixed(0) + " near " + near.join(";")); }
+    }
+    T.check("walked from the road along the street through the gate to the plaza edge of " + towns.length + " settlements", entered === towns.length, entered + "/" + towns.length + " " + stuck.join("; "));
+    // ---- 5. settlements: buildings on level lots, streets on the ground, nothing in the river
+    let lotBad = 0, lots = 0, onStreet = 0, streetLift = 0, streetPts = 0, streetBad = [], water = 0;
+    for (const p of towns.concat(WG.PLACES.filter((q) => q.id === "aurelia-city" || q.id === "port-valor"))) {
+      const s = g.settlements[p.id] || SET.buildSettlement(p); const cx = p.x * MILE, cz = -p.y * MILE;
+      for (const c of s.colliders) { if (!c.box) continue; lots++; const cs = Math.cos(c.box.rot), sn = Math.sin(c.box.rot); let lo = 1e9, hi = -1e9; for (const [a, b2] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const lx = a * c.box.hw, lz = b2 * c.box.hd; const h = WG.meshHeight(c.x + lx * cs + lz * sn, c.z - lx * sn + lz * cs); lo = Math.min(lo, h); hi = Math.max(hi, h); } if (hi - lo > 2.0) lotBad++; if (WG.riverDist(c.x, c.z) < 1.2) water++; for (const st of s.streets) { const vx = st.x2 - st.x1, vz = st.z2 - st.z1, tt = Math.max(0, Math.min(1, ((c.x - st.x1) * vx + (c.z - st.z1) * vz) / (vx * vx + vz * vz))); if (Math.hypot(c.x - st.x1 - vx * tt, c.z - st.z1 - vz * tt) < st.w / 2 + Math.min(c.box.hw, c.box.hd) * 0.8) { onStreet++; break; } } }
+      if (!g.settlements[p.id]) continue; g.scene.updateMatrixWorld(true);
+      for (const st of s.streets) { const L = Math.hypot(st.x2 - st.x1, st.z2 - st.z1); for (let t = 6; t < L; t += 6) { const x = st.x1 + (st.x2 - st.x1) * t / L, z = st.z1 + (st.z2 - st.z1) * t / L; g.terrain.warm(x, z, 0); const base = g.terrain.groundAt(x, z); rc.set(new THREE.Vector3(x, base + 3, z), down); const hits = rc.intersectObjects(meshesOf(s.group), false).filter((h) => !h.object.userData.banner); streetPts++; if (!hits.length) continue; const dy = hits[0].point.y - base; if (dy > 0.16 || dy < -0.06) { streetLift++; if (streetBad.length < 4) streetBad.push(p.id + " " + dy.toFixed(2) + " " + hits[0].object.geometry.type + " @" + x.toFixed(0) + "," + z.toFixed(0) + " base " + base.toFixed(2)); } } }
+    }
+    T.check("every house stands on a lot whose corners differ by under 2 m (" + lots + " lots)", lots > 50 && lotBad === 0, lotBad + " bad lots");
+    T.check("no house footprint overlaps a street", onStreet === 0, onStreet);
+    T.check("no house stands in a river", water === 0, water);
+    T.check("streets lie within 16 cm above the walkable ground at " + streetPts + " points", streetPts > 10 && streetLift === 0, streetLift + " off: " + streetBad.join(", "));
+    // ---- 6. every settlement has a safe place to stand near its centre
+    let farSpawn = [], noSpawn = 0; for (const p of WG.PLACES) { if (p.kind === "landmark") continue; const sp = WG.safeSpawn(p.x * MILE, -p.y * MILE); if (sp.moved < 0) noSpawn++; else if (sp.moved > 90) farSpawn.push(p.id + ":" + sp.moved); if (sp.moved < 0) farSpawn.push("NONE " + p.id + " h" + WG.meshHeight(p.x * MILE, -p.y * MILE).toFixed(1)); }
+    T.check("every place has a safe spawn point within 90 m of its centre", noSpawn === 0 && farSpawn.length === 0, noSpawn + " none; far " + farSpawn.join(","));
+    // ---- 7. the same coordinates give the same geometry after a reload of the terrain
+    const probe = [[10, 10], [333, -250], [-640, 77], [1500, 900], [-2200, -3100]]; const before = probe.map(([x, z]) => g.terrain.groundAt(x, z).toFixed(5)); g.terrain.disposeAll(); await tp(0, 0); await tp(10, 10); const after = probe.map(([x, z]) => g.terrain.groundAt(x, z).toFixed(5));
+    T.check("ground heights are identical after the terrain streams out and back in", before.join() === after.join(), before.join() + " | " + after.join());
+    const ap = WG.PLACE_BY_ID["aurelia-city"]; const sa = SET.buildSettlement(ap), sb = SET.buildSettlement(ap); const sig = (q) => q.colliders.length + ":" + q.bridges.length + ":" + q.colliders.slice(0, 30).map((c) => c.x.toFixed(3) + "," + c.z.toFixed(3)).join(";");
+    T.check("a settlement rebuilds to exactly the same layout", sig(sa) === sig(sb));
+  ` },
+  "shot-world": { fx: () => fixture(), viewport: { width: 844, height: 390 }, touch: true, run: async (ctx) => {
+    const { page } = ctx; await page.waitForTimeout(800);
+    const shots = [];
+    async function look(name, setup) { await page.evaluate(setup); await page.waitForTimeout(2500); await page.screenshot({ path: path.join(ctx.shots || "/tmp", name + ".png") }); }
+    await page.evaluate(() => { T.clear(); const g = T.g(); g.spawnMonsters = function () {}; });
+    // a river bridge seen from the road, then from the deck
+    const b0 = await page.evaluate(() => { const g = T.g(); const b = g.terrain.bridges.find((q) => !q.settlement && !q.sea && !q.ferry && q.len > 50 && q.w > 5) || g.terrain.bridges[0]; return { x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, y1: b.y1 }; });
+    const tpjs = (x, z, yaw, dist, pitch) => "(() => { const g = T.g(); g.pos.x = " + x + "; g.pos.z = " + z + "; g.terrain.warm(g.pos.x, g.pos.z, 1); g.loadSettlements(true); g.pos.y = g.terrain.groundAt(g.pos.x, g.pos.z); g.camYaw = " + yaw + "; g.camDist = " + dist + "; g.camPitch = " + pitch + "; g.camF = null; g.autoMove = null; })()";
+    const L = Math.hypot(b0.x2 - b0.x1, b0.z2 - b0.z1), ux = (b0.x2 - b0.x1) / L, uz = (b0.z2 - b0.z1) / L; const yaw = Math.atan2(-ux, -uz) + Math.PI; // camera behind the walker, looking along the bridge
+    await look("bridge-approach", tpjs(b0.x1 - ux * 12, b0.z1 - uz * 12, yaw, 7, 0.22));
+    await look("bridge-deck", tpjs(b0.x1 + ux * L * 0.5, b0.z1 + uz * L * 0.5, yaw, 6, 0.2));
+    await look("bridge-side", tpjs(b0.x1 + ux * L * 0.5, b0.z1 + uz * L * 0.5, yaw + 1.5, 26, 0.12));
+    // a gate and street
+    const t0 = await page.evaluate(() => { const WG = T.X().WG; const p = WG.PLACE_BY_ID["silverstream"]; const e = WG.roadExits(p)[0]; return { x: e.x, z: e.z, ang: e.ang, cx: p.x * WG.MILE, cz: -p.y * WG.MILE }; });
+    await look("town-gate", tpjs(t0.x + Math.cos(t0.ang) * 14, t0.z + Math.sin(t0.ang) * 14, Math.atan2(-Math.cos(t0.ang), -Math.sin(t0.ang)) + Math.PI, 7, 0.2));
+    await look("town-street", tpjs(t0.cx + Math.cos(t0.ang) * 20, t0.cz + Math.sin(t0.ang) * 20, Math.atan2(-Math.cos(t0.ang), -Math.sin(t0.ang)) + Math.PI, 7, 0.2));
+    await look("capital-street", tpjs(0, -62, Math.PI, 8, 0.2));
+  } },
   spellbook: { fx: () => fixture(), fn: `
     const g = T.g(); const list = g.listSpells(); T.check("every learned spell is listed", list.length >= 45, list.length);
     T.check("only learned spells are listed", list.every((s) => !!g.v["known-spells"][s.id]));
@@ -456,7 +553,7 @@ for (const [name, sc] of Object.entries(SCENARIOS)) {
     else out = await page.evaluate(`(async () => { try { ${sc.fn} } catch (e) { T.results.push({ name: "scenario threw", ok: false, detail: String(e && e.stack || e).slice(0, 700) }); } return T.results; })()`);
     if (sc.fn2) { await page.reload(); await page.waitForFunction(() => window.__ready, null, { timeout: 60000 }); await page.waitForFunction(() => window.__eldoriaGame && window.__eldoriaGame.time > 1, null, { timeout: 120000 }); const o2 = await page.evaluate(`(async () => { T.results = []; try { ${sc.fn2} } catch (e) { T.results.push({ name: "reload phase threw", ok: false, detail: String(e && e.stack || e).slice(0, 700) }); } return T.results; })()`); out = out.concat(o2); }
   } catch (e) { out = [{ name: "scenario setup failed", ok: false, detail: String(e.message).slice(0, 500) }]; }
-  console.log("\n== " + name); for (const r of out) { total++; if (!r.ok) failed++; console.log((r.ok ? "  PASS " : "  FAIL ") + r.name + (r.ok && !r.detail ? "" : r.detail ? "  [" + r.detail.slice(0, 260) + "]" : "")); }
+  console.log("\n== " + name); for (const r of out) { total++; if (!r.ok) failed++; console.log((r.ok ? "  PASS " : "  FAIL ") + r.name + (r.ok && !r.detail ? "" : r.detail ? "  [" + r.detail.slice(0, 1500) + "]" : "")); }
   if (errors.length) { failed++; total++; console.log("  FAIL page errors:\n    " + errors.slice(0, 5).join("\n    ")); }
   await page.close();
 }

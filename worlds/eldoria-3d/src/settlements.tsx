@@ -3,7 +3,7 @@
 // canonical atlas entry: kind sets the size and walls, realm sets architecture,
 // and its fixed-interior districts become real landmark buildings with doors.
 import { T, GeoBuilder, prim, M, hex, shadeC, bannerTex, cobbleTex, textSprite, REALM_BANNER } from "./three";
-import { MILE, heightAt, riverAt, roadAt, rng, hashStr, districtsOf, ROADS, PLACE_BY_ID, WALLED, PORTS, landSD, hash2 } from "./worldgen";
+import { MILE, heightAt, riverAt, roadAt, rng, hashStr, districtsOf, ROADS, PLACE_BY_ID, WALLED, PORTS, landSD, hash2, meshHeight, planSpans, onDeck, deckY, roadExits, townCut, isSmallPlace } from "./worldgen";
 
 var STYLE = {
   "Aurelia": { stone: "#7f7b74", plaster: "#c4b9a2", timber: "#4a3626", roof: "#4b5868", roof2: "#6e4a3a", trim: "#c8b27a", roofKind: "gable", accent: "#1d3360", wallStone: "#77746e" },
@@ -165,32 +165,38 @@ function landmark(B, W, name, x, y, z, rot, st, r, out, p) {
 
 // ------------------------------------------------------------------ settlement assembly
 // Returns { group, colliders, doors, boards, vendors, spots, lamps, bridges, banners, smoke, plazas, center:{x,y,z}, radius }
-export function buildSettlement(p) {
+export function buildSettlement(p, surf) {
+  surf = surf || meshHeight; /* the walkable terrain surface: buildings, streets and the player's feet all use this one function */
   var THREE = T(); var st = styleOf(p); var r = rng(hashStr(p.id));
-  var cx = p.x * MILE, cz = -p.y * MILE, R = p.r * MILE; var baseY = heightAt(p.x, p.y);
+  var cx = p.x * MILE, cz = -p.y * MILE, R = p.r * MILE; var baseY = surf(cx, cz);
   var B = new GeoBuilder(), W = new GeoBuilder(), P = new GeoBuilder();
   var out = { colliders: [], doors: [], boards: [], vendors: [], spots: [], lamps: [], bridges: [], banners: [], smoke: [], plazas: [], segs: [], streets: [] };
-  function gy(x, z) { return heightAt((cx + x) / MILE, -(cz + z) / MILE); }
+  function gy(x, z) { return surf(cx + x, cz + z); }
   function inRiver(x, z, pad) { var rv = riverAt((cx + x) / MILE, -(cz + z) / MILE); return rv && rv.d * MILE < rv.w * MILE * 1.6 + (pad || 0); }
   function inSea(x, z) { return landSD((cx + x) / MILE, -(cz + z) / MILE) < 0.05; }
   var occupied = [];
   function free(x, z, rad) { for (var i = 0; i < occupied.length; i++) { var o = occupied[i]; if (Math.hypot(o.x - x, o.z - z) < o.r + rad) return false; } return !inRiver(x, z, rad) && !inSea(x, z) && Math.hypot(x, z) < R * 0.93; }
   function occupy(x, z, rad) { occupied.push({ x: x, z: z, r: rad }); }
+  function freeS(x, z, rad) { return free(x, z, rad) && streets.every(function (st) { return segDist(x, z, st) >= st.w / 2 + rad * 0.9; }); }
+  // a building lot: the ground under its four corners must not differ much, and it gets a foundation down to the lowest corner
+  function lotRange(x, z, w, d, rot) { var cs = Math.cos(rot), sn = Math.sin(rot), lo = 1e9, hi = -1e9; [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0]].forEach(function (q) { var lx = q[0] * w / 2, lz = q[1] * d / 2; var h = gy(x + lx * cs + lz * sn, z - lx * sn + lz * cs); lo = Math.min(lo, h); hi = Math.max(hi, h); }); return { lo: lo, hi: hi }; }
+  function boxCollider(x, z, w, d, rot) { out.colliders.push({ x: x, z: z, r: Math.hypot(w, d) / 2, box: { hw: w / 2 + 0.1, hd: d / 2 + 0.1, rot: rot } }); }
 
-  // exits: toward each connected road, plus cardinal fallbacks for walled towns
-  var exits = [];
-  ROADS.forEach(function (rd) { var i = rd.ids.indexOf(p.id); if (i < 0) return; var other = PLACE_BY_ID[rd.ids[i === 0 ? 1 : i - 1]] ; [i - 1, i + 1].forEach(function (j) { if (j < 0 || j >= rd.ids.length) return; var o = PLACE_BY_ID[rd.ids[j]]; exits.push(Math.atan2(-(o.y - p.y), o.x - p.x)); }); });
-  if (WALLED[p.kind] && exits.length < 2) [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(function (a) { if (!exits.some(function (e) { return Math.abs(Math.atan2(Math.sin(e - a), Math.cos(e - a))) < 0.6; })) exits.push(a); });
-  if (!exits.length) exits.push(r() * Math.PI * 2);
+  // exits: where each connected road actually crosses the settlement's edge (so streets, gates and roads line up),
+  // plus cardinal fallbacks for walled towns
+  var exits = [], exitW = {};
+  roadExits(p).forEach(function (e) { var dup = exits.findIndex(function (a) { return Math.abs(Math.atan2(Math.sin(a - e.ang), Math.cos(a - e.ang))) < 0.2; }); if (dup >= 0) { exitW[dup] = Math.max(exitW[dup], e.w); return; } exitW[exits.length] = e.w; exits.push(e.ang); });
+  if (WALLED[p.kind] && exits.length < 2) [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(function (a) { if (!exits.some(function (e) { return Math.abs(Math.atan2(Math.sin(e - a), Math.cos(e - a))) < 0.6; })) { exitW[exits.length] = 3; exits.push(a); } });
+  if (!exits.length) { exitW[0] = 3; exits.push(r() * Math.PI * 2); }
 
-  var small = /tower|ruin|dungeon|camp|shrine|landmark/.test(p.kind);
+  var small = isSmallPlace(p); var CUT = townCut(p) || R;
   var plazaR = p.kind === "capital" ? 26 : p.kind === "city" ? 18 : 10;
   // ---- ground: cobbled plaza and streets (textured mesh) for proper towns
   var paved = !small && /Aurelia|Velkar|Sunscar|Stonehold|Umbral Reach/.test(p.realm) && /capital|city|town|fort-town|stronghold/.test(p.kind);
   var streets = [];
   if (!small) {
-    exits.forEach(function (a) { streets.push({ a: a, x1: 0, z1: 0, x2: Math.cos(a) * R * 1.02, z2: Math.sin(a) * R * 1.02, w: p.kind === "capital" ? 6 : 4.5 }); });
-    if (p.kind === "capital" || p.kind === "city") { var ringR = R * 0.55; for (var i = 0; i < 16; i++) { var a1 = i / 16 * Math.PI * 2, a2 = (i + 1) / 16 * Math.PI * 2; streets.push({ x1: Math.cos(a1) * ringR, z1: Math.sin(a1) * ringR, x2: Math.cos(a2) * ringR, z2: Math.sin(a2) * ringR, w: 4 }); } }
+    exits.forEach(function (a, ei) { streets.push({ a: a, x1: 0, z1: 0, x2: Math.cos(a) * CUT, z2: Math.sin(a) * CUT, w: p.kind === "capital" ? 6 : Math.max(3.4, Math.min(4.5, exitW[ei] || 4.5)) }); });
+    if (p.kind === "capital" || p.kind === "city") { var ringR = R * 0.55; for (var i = 0; i < 16; i++) { var a1 = i / 16 * Math.PI * 2, a2 = (i + 1) / 16 * Math.PI * 2; streets.push({ ring: i, x1: Math.cos(a1) * ringR, z1: Math.sin(a1) * ringR, x2: Math.cos(a2) * ringR, z2: Math.sin(a2) * ringR, w: 4 }); } }
   }
   out.streets = streets.map(function (s) { return { x1: s.x1 + cx, z1: s.z1 + cz, x2: s.x2 + cx, z2: s.z2 + cz, w: s.w }; });
   occupy(0, 0, plazaR);
@@ -216,9 +222,13 @@ export function buildSettlement(p) {
   var ds = districtsOf(p);
   ds.forEach(function (d, i) {
     var lx = d.x * MILE - cx, lz = -d.y * MILE - cz; var rot = Math.atan2(lx, lz) + Math.PI; // face the plaza
-    var tries = 0; while (!free(lx, lz, 9) && tries++ < 14) { var a = Math.atan2(lz, lx) + 0.25 * (tries % 2 ? 1 : -1) * Math.ceil(tries / 2); var rr = Math.hypot(lx, lz) * (tries > 7 ? 0.85 : 1); lx = Math.cos(a) * rr; lz = Math.sin(a) * rr; rot = Math.atan2(lx, lz) + Math.PI; }
+    // landmarks never stand on a street or another building: search outward from the preferred spot in rings until one fits
+    var lmR = Math.min(20, R * 0.2); var placed = freeS(lx, lz, lmR);
+    if (!placed) { var a0 = Math.atan2(lz, lx), r0 = Math.hypot(lx, lz); search: for (var ring = 1; ring <= 14; ring++) { var rr = r0 + (ring % 2 ? 1 : -1) * Math.ceil(ring / 2) * lmR * 0.5; if (rr < R * 0.25 || rr > R * 0.88) continue; for (var kk = 0; kk < 24; kk++) { var aa = a0 + (kk % 2 ? 1 : -1) * Math.ceil(kk / 2) * 0.16; var tx = Math.cos(aa) * rr, tz = Math.sin(aa) * rr; if (freeS(tx, tz, lmR)) { lx = tx; lz = tz; placed = true; break search; } } } }
+    rot = Math.atan2(lx, lz) + Math.PI;
     if (/gate/.test(d.name.toLowerCase()) && WALLED[p.kind]) { var a0 = Math.atan2(lz, lx); var best = exits.reduce(function (b, e) { return Math.abs(Math.atan2(Math.sin(e - a0), Math.cos(e - a0))) < Math.abs(Math.atan2(Math.sin(b - a0), Math.cos(b - a0))) ? e : b; }, exits[0]); var gd = out.doors.find(function (q) { return q.kind === "gate" && Math.abs(Math.atan2(q.z - cz, q.x - cx) - best) < 0.3; }); if (gd) { gd.name = d.name; out.spots.push({ name: d.name, x: gd.x - Math.cos(best) * 8, z: gd.z - Math.sin(best) * 8, y: gd.y }); return; } }
     var y0 = gy(lx, lz); var rad = landmark(B, W, d.name, cx + lx, y0, cz + lz, rot, st, r, out, p);
+    var lo = y0; for (var qa = 0; qa < 8; qa++) lo = Math.min(lo, gy(lx + Math.cos(qa * 0.785) * rad * 0.85, lz + Math.sin(qa * 0.785) * rad * 0.85)); if (y0 - lo > 0.4) B.add(prim("cyl16"), M(cx + lx, lo - 0.5, cz + lz, 0, 0, 0, rad * 1.9, y0 - lo + 0.5, rad * 1.9), C(st.stone, 0.1), true); /* plinth under the landmark */
     occupy(lx, lz, Math.max(rad, 6)); out.spots.push({ name: d.name, x: cx + lx + Math.sin(rot) * (rad + 3), z: cz + lz + Math.cos(rot) * (rad + 3), y: y0 });
   });
   // ---- central plaza: statue / fountain / lion pillars and the quest board
@@ -240,19 +250,20 @@ export function buildSettlement(p) {
       var w = 5 + r() * 3, d = 5 + r() * 2.5, off = s.w / 2 + d / 2 + 0.8;
       var hx = s.x1 + Math.cos(a) * t + Math.cos(a + Math.PI / 2) * sd * off, hz = s.z1 + Math.sin(a) * t + Math.sin(a + Math.PI / 2) * sd * off;
       if (!free(hx, hz, Math.max(w, d) * 0.55)) continue;
-      var rot = -a + (sd > 0 ? Math.PI : 0) + Math.PI / 2 * 0; var face = Math.atan2(-(Math.cos(a + Math.PI / 2) * sd), -(Math.sin(a + Math.PI / 2) * sd));
       var hgt = (p.kind === "capital" ? 6 : 4.5) + r() * (p.kind === "capital" ? 5 : 3);
-      buildHouse(B, W, P, p, st, cx + hx, gy(hx, hz), cz + hz, Math.atan2(Math.cos(a + Math.PI / 2) * -sd, Math.sin(a + Math.PI / 2) * -sd), w, d, hgt, r);
-      occupy(hx, hz, Math.max(w, d) * 0.55); out.colliders.push({ x: cx + hx, z: cz + hz, r: Math.max(w, d) * 0.55 }); houseCount++;
+      var hrot = Math.atan2(Math.cos(a + Math.PI / 2) * -sd, Math.sin(a + Math.PI / 2) * -sd); var fw = p.realm === "Drakmor" ? w * 1.7 : w; var lot = lotRange(hx, hz, fw, d, hrot); if (lot.hi - lot.lo > 1.8 || streets.some(function (s2) { return s2 !== s && segDist(hx, hz, s2) < s2.w / 2 + Math.max(fw, d) * 0.6; })) continue;
+      buildHouse(B, W, P, p, st, cx + hx, gy(hx, hz), cz + hz, hrot, w, d, hgt, r, lot.lo);
+      occupy(hx, hz, Math.max(w, d) * 0.55); boxCollider(cx + hx, cz + hz, fw, d, hrot); houseCount++;
     } }
   });
   var guard = 0;
   while (houseCount < target && guard++ < target * 12) {
     var a = r() * Math.PI * 2, rr = Math.sqrt(r()) * R * 0.9; var hx = Math.cos(a) * rr, hz = Math.sin(a) * rr;
     var w = 5 + r() * 3, d = 5 + r() * 2.5; if (!free(hx, hz, Math.max(w, d) * 0.6)) continue;
-    if (streets.some(function (s) { return segDist(hx, hz, s) < s.w / 2 + 3.5; })) continue;
-    buildHouse(B, W, P, p, st, cx + hx, gy(hx, hz), cz + hz, Math.round(r() * 4) * Math.PI / 2 + a * 0.2, w, d, 4 + r() * (p.kind === "capital" ? 7 : 3), r);
-    occupy(hx, hz, Math.max(w, d) * 0.6); out.colliders.push({ x: cx + hx, z: cz + hz, r: Math.max(w, d) * 0.55 }); houseCount++;
+    var irot = Math.round(r() * 4) * Math.PI / 2 + a * 0.2; var fw = p.realm === "Drakmor" ? w * 1.7 : w; var lot = lotRange(hx, hz, fw, d, irot);
+    if (streets.some(function (s) { return segDist(hx, hz, s) < s.w / 2 + Math.max(fw, d) * 0.62 + 0.5; }) || lot.hi - lot.lo > 1.8) continue;
+    buildHouse(B, W, P, p, st, cx + hx, gy(hx, hz), cz + hz, irot, w, d, 4 + r() * (p.kind === "capital" ? 7 : 3), r, lot.lo);
+    occupy(hx, hz, Math.max(w, d) * 0.6); boxCollider(cx + hx, cz + hz, fw, d, irot); houseCount++;
   }
   // ---- special sites
   if (p.kind === "ruin" || p.kind === "dungeon") ruinSite(B, p, st, cx, cz, gy, r, out);
@@ -261,11 +272,15 @@ export function buildSettlement(p) {
   if (p.kind === "shrine") { for (var i = 0; i < 9; i++) { var a = i / 9 * Math.PI * 2; B.add(prim("cyl6"), M(cx + Math.cos(a) * 10, gy(0, 0), cz + Math.sin(a) * 10, 0, 0, 0, 1, 4 + (i % 3), 1), C(st.stone)); } tree(B, cx, gy(0, 0), cz, 2.4, "giant", r); out.doors.push({ name: p.name, kind: "shrine", x: cx, z: cz + 6, y: gy(0, 6) }); }
   if (p.kind === "monastery") { landmark(B, W, "Great Chapel", cx, gy(0, 0), cz, 0, st, r, out, p); }
   if (p.kind === "landmark") { landmarkSite(B, p, st, cx, cz, gy, r, out); }
-  if (p.realm === "Sylvanor" && !small) { for (var i = 0; i < (p.kind === "capital" ? 9 : 4); i++) { var a = i / (p.kind === "capital" ? 9 : 4) * Math.PI * 2 + 0.3, rr = R * (0.35 + 0.35 * (i % 2)); var tx = Math.cos(a) * rr, tz = Math.sin(a) * rr; if (!free(tx, tz, 8)) continue; treeHall(B, W, cx + tx, gy(tx, tz), cz + tz, p.kind === "capital" ? 1.4 : 1, r); occupy(tx, tz, 8); out.colliders.push({ x: cx + tx, z: cz + tz, r: 3.4 * (p.kind === "capital" ? 1.4 : 1) }); } }
+  if (p.realm === "Sylvanor" && !small) { for (var i = 0; i < (p.kind === "capital" ? 9 : 4); i++) { var a = i / (p.kind === "capital" ? 9 : 4) * Math.PI * 2 + 0.3, rr = R * (0.35 + 0.35 * (i % 2)); var tx = Math.cos(a) * rr, tz = Math.sin(a) * rr; if (!freeS(tx, tz, 8)) continue; treeHall(B, W, cx + tx, gy(tx, tz), cz + tz, p.kind === "capital" ? 1.4 : 1, r); occupy(tx, tz, 8); out.colliders.push({ x: cx + tx, z: cz + tz, r: 3.4 * (p.kind === "capital" ? 1.4 : 1) }); } }
   // ---- docks for ports
-  if (PORTS[p.id]) { for (var i = 0; i < 24; i++) { var a = i / 24 * Math.PI * 2; var ex = Math.cos(a) * R * 1.05, ez = Math.sin(a) * R * 1.05; if (inSea(ex, ez)) { var px = Math.cos(a) * R * 0.85, pz = Math.sin(a) * R * 0.85; pier(B, cx + px, cz + pz, -a, st); out.doors.push({ name: "Harbor", kind: "docks", x: cx + px, z: cz + pz, y: 1.2 }); out.bridges.push({ x1: cx + px, z1: cz + pz, x2: cx + px + Math.cos(a) * 30, z2: cz + pz + Math.sin(a) * 30, w: 4, y: 1.3 }); break; } } }
-  // ---- bridges where streets cross the river (Aurelia City has four)
-  streets.forEach(function (s) { var L = Math.hypot(s.x2 - s.x1, s.z2 - s.z1), n = Math.ceil(L / 2), inW = false, sx = 0, sz = 0; for (var k = 0; k <= n; k++) { var t = k / n, x = s.x1 + (s.x2 - s.x1) * t, z = s.z1 + (s.z2 - s.z1) * t; var w = inRiver(x, z, 0); if (w && !inW) { inW = true; sx = x; sz = z; } if (!w && inW) { inW = false; var bx1 = sx - (s.x2 - s.x1) / L * 4, bz1 = sz - (s.z2 - s.z1) / L * 4, bx2 = x + (s.x2 - s.x1) / L * 4, bz2 = z + (s.z2 - s.z1) / L * 4; out.bridges.push(addBridge(B, cx + bx1, cz + bz1, cx + bx2, cz + bz2, Math.max(gy(bx1 , bz1), gy(bx2, bz2)) + 0.3, s.w + 1, st)); } } });
+  if (PORTS[p.id]) { for (var i = 0; i < 24; i++) { var a = i / 24 * Math.PI * 2; var ex = Math.cos(a) * R * 1.05, ez = Math.sin(a) * R * 1.05; if (inSea(ex, ez)) { var px = Math.cos(a) * R * 0.85, pz = Math.sin(a) * R * 0.85; pier(B, cx + px, cz + pz, -a, st); out.doors.push({ name: "Harbor", kind: "docks", x: cx + px, z: cz + pz, y: 1.2 }); out.bridges.push({ id: "d" + p.id, dock: true, x1: cx + px, z1: cz + pz, x2: cx + px + Math.cos(a) * 30, z2: cz + pz + Math.sin(a) * 30, w: 4, y1: 1.3, y2: 1.3, level: 0 }); break; } } }
+  // ---- bridges where streets cross a river (Aurelia City has several): the same planner as the roads, so each deck is
+  // anchored to the bank heights at both ends. The ring street is one closed polyline, not sixteen unrelated pieces.
+  var bridgeN = 0; var lines = [];
+  streets.forEach(function (s) { if (s.ring == null) lines.push({ pts: [[s.x1 + cx, s.z1 + cz], [s.x2 + cx, s.z2 + cz]], w: s.w }); });
+  var ringPts = streets.filter(function (s) { return s.ring != null; }).map(function (s) { return [s.x1 + cx, s.z1 + cz]; }); if (ringPts.length) { ringPts.push(ringPts[0]); lines.push({ pts: ringPts, w: 4 }); }
+  lines.forEach(function (ln) { planSpans(ln.pts, surf).forEach(function (b) { b.w = ln.w + 1.2; b.settlement = true; b.id = "s" + p.id + "." + (bridgeN++); out.bridges.push(addBridge(B, b, st)); }); });
 
   // ---- materials and meshes
   var group = new THREE.Group();
@@ -277,8 +292,10 @@ export function buildSettlement(p) {
   // streets (cobble ribbons) and plaza disks
   if (!small) {
     var SB = new GeoBuilder(); var sc = paved ? [0.95, 0.93, 0.9] : [0.55, 0.45, 0.33];
-    streets.forEach(function (s) { ribbon(SB, s.x1 + cx, s.z1 + cz, s.x2 + cx, s.z2 + cz, s.w, function (x, z) { return heightAt(x / MILE, -z / MILE) + 0.12; }, sc); });
-    var pd = new THREE.CircleGeometry(plazaR, 28); pd.rotateX(-Math.PI / 2); var puv = pd.attributes.uv, ppos = pd.attributes.position; for (var ui = 0; ui < puv.count; ui++) puv.setXY(ui, ppos.getX(ui) / 4, ppos.getZ(ui) / 4); SB.add(pd, M(cx, gy(0, 0) + 0.1, cz), sc);
+    function streetY(x, z) { var h = surf(x, z) + 0.05; for (var bi = 0; bi < out.bridges.length; bi++) { var bb = out.bridges[bi]; var od = onDeck(bb, x, z, 0.25); if (od) h = Math.max(h, deckY(bb, od.t) + 0.05); } return h; }
+    streets.forEach(function (s) { ribbon(SB, s.x1 + cx, s.z1 + cz, s.x2 + cx, s.z2 + cz, s.w, streetY, sc); });
+    // the plaza disk follows the ground it sits on (rings of vertices, each set to the terrain surface)
+    var pd = new THREE.RingGeometry(0.001, plazaR, 28, 6); pd.rotateX(-Math.PI / 2); var puv = pd.attributes.uv, ppos = pd.attributes.position; for (var ui = 0; ui < puv.count; ui++) { puv.setXY(ui, ppos.getX(ui) / 4, ppos.getZ(ui) / 4); ppos.setY(ui, surf(cx + ppos.getX(ui), cz + ppos.getZ(ui)) + 0.05); } pd.computeVertexNormals(); SB.add(pd, M(cx, 0, cz), sc);
     var smat = new THREE.MeshStandardMaterial({ vertexColors: true, map: paved ? cobbleTex() : null, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     var sm = new THREE.Mesh(SB.build(), smat); sm.receiveShadow = true; group.add(sm);
   }
@@ -302,7 +319,8 @@ export function buildSettlement(p) {
 function segDist(x, z, s) { var vx = s.x2 - s.x1, vz = s.z2 - s.z1, t = Math.max(0, Math.min(1, ((x - s.x1) * vx + (z - s.z1) * vz) / (vx * vx + vz * vz))); return Math.hypot(x - s.x1 - vx * t, z - s.z1 - vz * t); }
 function gateName(p, a) { var deg = ((a * 180 / Math.PI) % 360 + 360) % 360; var dir = deg < 45 || deg > 315 ? "East" : deg < 135 ? "South" : deg < 225 ? "West" : "North"; if (p.id === "aurelia-city") return { North: "Kingsgate", East: "Eastgate", West: "Rivergate", South: "South Coach Gate" }[dir]; return dir + " Gate"; }
 
-function buildHouse(B, W, P, p, st, x, y, z, rot, w, d, h, r) {
+function buildHouse(B, W, P, p, st, x, y, z, rot, w, d, h, r, lowY) {
+  if (lowY != null && y - lowY > 0.3) B.add(prim("boxb"), M(x, lowY - 0.4, z, 0, rot, 0, (p.realm === "Drakmor" ? w * 1.7 : w) + 0.12, y - lowY + 0.9, d + 0.12), C(st.stone, 0.1), true); /* foundation down to the lowest corner */
   if (p.realm === "Drakmor" && r() < 0.6) { longhouse(B, x, y, z, rot, w * 1.6, d, st, r); return; }
   if (p.realm === "Stonehold" && r() < 0.5) { B.add(prim("boxb"), M(x, y - 0.6, z, 0, rot, 0, w, h * 0.7 + 0.6, d), C(st.stone, 0.1), true); roof(B, x, y + h * 0.7, z, rot, w, d, st, r, "flat"); W.add(prim("boxb"), M(x + Math.sin(rot) * (d / 2 + 0.05), y + 1.5, z + Math.cos(rot) * (d / 2 + 0.05), 0, rot, 0, 0.6, 0.8, 0.06), [1, 1, 1]); return; }
   if (p.realm === "Sylvanor") { B.add(prim("cyl16"), M(x, y - 0.4, z, 0, 0, 0, w, h * 0.7, w), C(st.plaster, 0.1), true); B.add(prim("cone8"), M(x, y + h * 0.7 - 0.4, z, 0, r(), 0, w * 1.3, h * 0.6, w * 1.3), C(st.roof, 0.1), true); W.add(prim("boxb"), M(x + Math.sin(rot) * w * 0.5, y + 1.4, z + Math.cos(rot) * w * 0.5, 0, rot, 0, 0.6, 0.8, 0.06), [1, 1, 1]); return; }
@@ -313,7 +331,30 @@ function longhouse(B, x, y, z, rot, w, d, st, r) { B.add(prim("boxb"), M(x, y - 
 function treeHall(B, W, x, y, z, s, r) { B.add(prim("cyl6"), M(x, y - 1, z, 0, 0, 0, 5 * s, 34 * s, 5 * s), C("#6a5236", 0.08), true); for (var i = 0; i < 3; i++) { var hy = y + (9 + i * 8) * s; B.add(prim("cyl16"), M(x, hy, z, 0, 0, 0, (14 - i * 3) * s, 0.6, (14 - i * 3) * s), C("#8a6a40"), true); B.add(prim("cone8"), M(x + 4 * s, hy + 0.6, z, 0, 0, 0, 5 * s, 4 * s, 5 * s), C("#3e6a3a"), true); W.add(prim("boxb"), M(x + 4 * s, hy + 1.4, z + 2.3 * s, 0, 0, 0, 0.6, 0.8, 0.06), [1, 1, 1]); } for (var i = 0; i < 5; i++) B.add(prim("sphere1"), M(x + (r() - 0.5) * 18 * s, y + (36 + r() * 6) * s, z + (r() - 0.5) * 18 * s, 0, 0, 0, 16 * s, 10 * s, 16 * s), C(r() < 0.5 ? "#3a6a2e" : "#4c7a34", 0.15), true); }
 function pier(B, x, z, a, st) { var L = 30; var cs = Math.cos(a), sn = Math.sin(a); for (var t = 0; t < L; t += 4) { var px = x + Math.cos(-a) * t, pz = z + Math.sin(-a) * t; [-1, 1].forEach(function (sd) { B.add(prim("cyl6"), M(px + Math.sin(-a) * sd * 1.8, -3, pz - Math.cos(-a) * sd * 1.8, 0, 0, 0, 0.4, 4.4, 0.4), C("#3a2a1c")); }); } B.add(prim("boxb"), M(x + Math.cos(-a) * L / 2, 1.0, z + Math.sin(-a) * L / 2, 0, a, 0, L, 0.3, 4.2), C("#6a5038", 0.1), true); var bx = x + Math.cos(-a) * (L - 6) + Math.sin(-a) * 6, bz = z + Math.sin(-a) * (L - 6) - Math.cos(-a) * 6; ship(B, bx, bz, a); }
 function ship(B, x, z, a) { B.add(prim("sphere"), M(x, 0.2, z, 0, a, 0, 12, 3.4, 4), C("#4a3424", 0.06), true); B.add(prim("boxb"), M(x, 1.0, z, 0, a, 0, 10, 0.3, 3.4), C("#7a5a3a")); B.add(prim("cyl6"), M(x, 1.0, z, 0, 0, 0, 0.4, 12, 0.4), C("#3a2a1c")); B.add(prim("boxb"), M(x, 4.5, z, 0, a + Math.PI / 2, 0, 0.1, 6, 5), C("#e8e0cc", 0.05)); }
-function addBridge(B, x1, z1, x2, z2, y, w, st) { var L = Math.hypot(x2 - x1, z2 - z1), a = Math.atan2(-(z2 - z1), x2 - x1); B.add(prim("boxb"), M((x1 + x2) / 2, y - 0.6, (z1 + z2) / 2, 0, a, 0, L, 0.8, w), C(st.stone, 0.08), true); [-1, 1].forEach(function (sd) { var ox = Math.sin(a) * sd * (w / 2), oz = Math.cos(a) * sd * (w / 2); B.add(prim("boxb"), M((x1 + x2) / 2 + ox, y + 0.2, (z1 + z2) / 2 + oz, 0, a, 0, L, 0.9, 0.5), C(st.stone)); }); var n = Math.max(1, Math.floor(L / 10)); for (var i = 1; i < n + 1; i++) { var t = i / (n + 1); B.add(prim("cyl6"), M(x1 + (x2 - x1) * t, y - 8, z1 + (z2 - z1) * t, 0, 0, 0, 2.2, 7.6, 2.2), C(st.stone)); } return { x1: x1, z1: z1, x2: x2, z2: z2, w: w, y: y + 0.2 }; }
+// A bridge b = { x1, z1, x2, z2, y1, y2, w, level } from planSpans: a deck that runs straight between the two bank heights
+// (so it meets the road flush at both ends), stone rails, and piers down to the river bed. The deck's walking surface is
+// deckY(b, t); the slab is 0.9 m thick below it.
+function addBridge(B, b, st) {
+  var THREE = T(); var L = Math.hypot(b.x2 - b.x1, b.z2 - b.z1); if (L < 0.5) return b; var ux = (b.x2 - b.x1) / L, uz = (b.z2 - b.z1) / L, vx = -uz, vz = ux; var n = Math.max(1, Math.ceil(L / 2));
+  function deck(t) { return b.y1 + (b.y2 - b.y1) * t; }
+  function strip(o0, o1, dyBot, dyTop, col) {
+    var P = [], N = []; function quad(a, bb, c, d, nx, ny, nz) { var e1 = [bb[0] - a[0], bb[1] - a[1], bb[2] - a[2]], e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]]; var cx = e1[1] * e2[2] - e1[2] * e2[1], cy = e1[2] * e2[0] - e1[0] * e2[2], cz = e1[0] * e2[1] - e1[1] * e2[0]; var tri = (cx * nx + cy * ny + cz * nz) >= 0 ? [a, bb, c, a, c, d] : [a, c, bb, a, d, c]; tri.forEach(function (q) { P.push(q[0], q[1], q[2]); N.push(nx, ny, nz); }); }
+    for (var i = 0; i < n; i++) {
+      var t0 = i / n, t1 = (i + 1) / n; var ax = b.x1 + (b.x2 - b.x1) * t0, az = b.z1 + (b.z2 - b.z1) * t0, bx = b.x1 + (b.x2 - b.x1) * t1, bz = b.z1 + (b.z2 - b.z1) * t1; var y0 = deck(t0), y1 = deck(t1);
+      var T00 = [ax + vx * o0, y0 + dyTop, az + vz * o0], T01 = [bx + vx * o0, y1 + dyTop, bz + vz * o0], T10 = [ax + vx * o1, y0 + dyTop, az + vz * o1], T11 = [bx + vx * o1, y1 + dyTop, bz + vz * o1];
+      var B00 = [T00[0], y0 + dyBot, T00[2]], B01 = [T01[0], y1 + dyBot, T01[2]], B10 = [T10[0], y0 + dyBot, T10[2]], B11 = [T11[0], y1 + dyBot, T11[2]];
+      quad(T00, T01, T11, T10, 0, 1, 0); quad(B00, B01, B11, B10, 0, -1, 0); quad(T00, T01, B01, B00, -vx, 0, -vz); quad(T10, T11, B11, B10, vx, 0, vz);
+    }
+    var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(N, 3)); B.add(g, new THREE.Matrix4(), col); g.dispose();
+  }
+  var hw = b.w / 2; strip(-hw, hw, -0.9, 0, C(st.stone, 0.08));
+  [-1, 1].forEach(function (sd) { strip(sd === -1 ? -hw : hw - 0.5, sd === -1 ? -hw + 0.5 : hw, 0, 0.95, C(st.stone, 0.06)); });
+  // end posts and piers
+  [0, 1].forEach(function (t) { [-1, 1].forEach(function (sd) { var x = b.x1 + (b.x2 - b.x1) * t + vx * sd * (hw - 0.25), z = b.z1 + (b.z2 - b.z1) * t + vz * sd * (hw - 0.25); B.add(prim("boxb"), M(x, deck(t), z, 0, Math.atan2(ux, uz), 0, 0.8, 1.35, 0.8), C(st.stone, 0.05)); }); });
+  var np = L > 16 ? Math.floor(L / 12) : 0;
+  for (var i = 1; i <= np; i++) { var t = i / (np + 1); var x = b.x1 + (b.x2 - b.x1) * t, z = b.z1 + (b.z2 - b.z1) * t; var bed = Math.min(b.level - 3, deck(t) - 6); B.add(prim("cyl6"), M(x, bed, z, 0, 0, 0, Math.min(2.4, b.w * 0.5), deck(t) - 0.9 - bed, Math.min(2.4, b.w * 0.5)), C(st.stone)); }
+  return b;
+}
 export { addBridge };
 export function ribbon(B, x1, z1, x2, z2, w, hfn, col) {
   var THREE = T(); var L = Math.hypot(x2 - x1, z2 - z1); var n = Math.max(1, Math.ceil(L / 3)); var nx = -(z2 - z1) / L * w / 2, nz = (x2 - x1) / L * w / 2;

@@ -16,6 +16,8 @@ import * as SC from "./spellcast";
 import * as S from "./spells";
 import * as I from "./items";
 import * as RIG from "./rig";
+import * as WG from "./worldgen";
+import * as SET from "./settlements";
 import { Fx } from "./vfx";
 
 // ------------------------------------------------------------------ calendar (Concord Reckoning, mirrors the original sheet)
@@ -63,7 +65,7 @@ export function Game(container, bridge, quality) {
 }
 
 Game.prototype.start = function (v) {
-  var THREE = T(); var self = this; this.v = v || {}; window.__eldoriaRules = R; window.__eldoria = { R: R, B: B, SC: SC, S: S, I: I, C: C, RIG: RIG, M: { makeHumanoid: makeHumanoid, makeCreature: makeCreature }, A: { animateHumanoid: animateHumanoid, playAction: playAction } }; /* debugging hooks for the test harness */
+  var THREE = T(); var self = this; this.v = v || {}; window.__eldoriaRules = R; window.__eldoria = { WG: WG, SET: SET, R: R, B: B, SC: SC, S: S, I: I, C: C, RIG: RIG, M: { makeHumanoid: makeHumanoid, makeCreature: makeCreature }, A: { animateHumanoid: animateHumanoid, playAction: playAction } }; /* debugging hooks for the test harness */
   var r = new THREE.WebGLRenderer({ antialias: this.q.aa, powerPreference: "high-performance" });
   r.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.q.pixelRatio)); r.setSize(this.container.clientWidth, this.container.clientHeight);
   if (THREE.sRGBEncoding) r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
@@ -78,6 +80,7 @@ Game.prototype.start = function (v) {
   this.terrain.warm(this.pos.x, this.pos.z, 1);
   this.pos.y = this.terrain.groundAt(this.pos.x, this.pos.z);
   this.loadSettlements(true);
+  var sp0 = this.safeSpot(this.pos.x, this.pos.z); this.pos.x = sp0.x; this.pos.z = sp0.z; this.pos.y = this.terrain.groundAt(this.pos.x, this.pos.z);
   this.syncAllies(true);
   this.bindInput();
   this.onResize = function () { if (!self.renderer) return; var w = self.container.clientWidth, h = self.container.clientHeight; self.renderer.setSize(w, h); self.camera.aspect = w / h; self.camera.updateProjectionMatrix(); };
@@ -99,14 +102,23 @@ Game.prototype.buildPlayer = function (v) {
   // the arcane light orb (spell) follows the player
 };
 
+// The nearest place to (x, z) where the player can stand: dry, out of the river, off cliff faces, outside every building.
+Game.prototype.safeSpot = function (x, z) {
+  var self = this;
+  function ok(px, pz) {
+    if (self.terrain && self.terrain.deckAt(px, pz)) return true; if (!WG.spawnOK(px, pz)) return false;
+    var c = self.collide(px, pz, 0.7); return Math.hypot(c.x - px, c.z - pz) < 0.02;
+  }
+  var r = WG.safeSpawn(x, z, ok); return { x: r.x, z: r.z };
+};
+
 // ------------------------------------------------------------------ state sync
 function num(x, d) { var n = Number(x); return isFinite(n) ? n : d; }
 Game.prototype.adoptState = function (v, initial) {
   var x = num(v["player-x"], 0), y = num(v["player-y"], 0);
   this.pos.x = x * MILE; this.pos.z = -y * MILE;
-  // never stand in the sea or a building: step toward the settlement plaza edge if needed
-  var p = insidePlace(x, y); if (p) { var d = Math.hypot(x - p.x, y - p.y); if (d < 0.05) { this.pos.x = p.x * MILE + 18; this.pos.z = -p.y * MILE + 30; } }
-  if (landSD(this.pos.x / MILE, -this.pos.z / MILE) < 0) { var np = nearestPlace(x, y); if (np) { this.pos.x = np.place.x * MILE + 20; this.pos.z = -np.place.y * MILE + 20; } }
+  // never stand in the sea, a river, a cliff face or a building: move to the nearest safe spot (bridge decks count as safe)
+  var sp = this.safeSpot(this.pos.x, this.pos.z); this.pos.x = sp.x; this.pos.z = sp.z;
   this.pos.y = this.terrain ? this.terrain.groundAt(this.pos.x, this.pos.z) : heightAt(x, y);
   this.lastSynced["player-x"] = x; this.lastSynced["player-y"] = y;
   var day = parseDate(v["world-date"]); if (day == null) day = Math.floor(Date.UTC(1247, 2, 3) / 86400000); this.clock = day * 1440 + parseTime(v["world-time"]); this.lastSynced.clock = this.clock; this.lastClockWrite = this.clock;
@@ -202,13 +214,13 @@ Game.prototype.loadSettlements = function (sync) {
   var x = this.pos.x / MILE, y = -this.pos.z / MILE, built = 0;
   for (var i = 0; i < PLACES.length; i++) {
     var p = PLACES[i]; var d = Math.hypot(p.x - x, p.y - y) * MILE; var have = this.settlements[p.id];
-    if (!have && d < p.r * MILE + this.q.townRange && (sync || built < 1)) { var s = buildSettlement(p); this.scene.add(s.group); this.settlements[p.id] = s; s.bridges.forEach(function (b) { this.terrain.bridges.push(b); }, this); built++; }
+    if (!have && d < p.r * MILE + this.q.townRange && (sync || built < 1)) { var s = buildSettlement(p); this.scene.add(s.group); this.settlements[p.id] = s; this.terrain.addBridges(s.bridges); built++; }
     else if (have && d > p.r * MILE + this.q.townRange + 500) { this.unloadSettlement(p.id); }
   }
 };
 Game.prototype.unloadSettlement = function (id) {
   var s = this.settlements[id]; if (!s) return; this.scene.remove(s.group); s.group.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map && o.isSprite) { o.material.map.dispose(); o.material.dispose(); } });
-  this.terrain.bridges = this.terrain.bridges.filter(function (b) { return s.bridges.indexOf(b) < 0; }); delete this.settlements[id];
+  this.terrain.removeBridges(s.bridges); delete this.settlements[id];
   this.npcs = this.npcs.filter(function (n) { if (n.home === id) { this.scene.remove(n.h.root); return false; } return true; }, this);
 };
 
@@ -490,7 +502,7 @@ Game.prototype.technique = function (t) {
 Game.prototype.dodge = function (free) {
   if (this.battle) { C.dodgeAction(this); return; }
   if (!free) { if (this.stats.sp < 2) { this.toast("Too winded to dodge.", "info"); return; } this.stats.sp -= 2; }
-  this.dodgeT = this.time + 0.5; this.cooldowns.dodge = this.time + 0.9; playAction(this.player, "dodge"); var mx = this.move.x, my = this.move.y; var a = (mx || my) ? this.camYaw + Math.atan2(mx, my) + Math.PI : this.yaw + Math.PI; this.dash = { vx: Math.sin(a) * 18, vz: Math.cos(a) * 18, t: 0.28 }; this.fx.dust(this.pos.x, this.pos.y + 0.1, this.pos.z); this.writeStats();
+  this.dodgeT = this.time + 0.5; this.cooldowns.dodge = this.time + 0.9; playAction(this.player, "dodge"); var mx = this.move.x, my = this.move.y; var a = (mx || my) ? this.camYaw + Math.PI - Math.atan2(mx, my) : this.yaw + Math.PI; this.dash = { vx: Math.sin(a) * 18, vz: Math.cos(a) * 18, t: 0.28 }; this.fx.dust(this.pos.x, this.pos.y + 0.1, this.pos.z); this.writeStats();
 };
 Game.prototype.useItem = function (ref) {
   var inv = (this.cur("inventory") || []).slice(); var ix = inv.findIndex(function (x) { return x && (x.id === ref.id); }); if (ix < 0) { this.toast("You no longer have that.", "info"); return; }
@@ -811,10 +823,22 @@ Game.prototype.setMove = function (x, y) { this.move.x = x; this.move.y = y; };
 Game.prototype.collide = function (x, z, rad, only) {
   var list = only ? [only] : Object.values(this.settlements);
   for (var i = 0; i < list.length; i++) { var s = list[i]; if (Math.hypot(s.center.x - x, s.center.z - z) > s.radius + 30) continue;
-    for (var j = 0; j < s.colliders.length; j++) { var c = s.colliders[j]; var dx = x - c.x, dz = z - c.z, d = Math.hypot(dx, dz), m = c.r + rad; if (d < m && d > 1e-4) { x = c.x + dx / d * m; z = c.z + dz / d * m; } }
+    for (var j = 0; j < s.colliders.length; j++) { var c = s.colliders[j]; var dx = x - c.x, dz = z - c.z, d = Math.hypot(dx, dz), m = c.r + rad; if (d >= m) continue;
+      if (c.box) { // oriented rectangle (a building's real footprint): push out along the axis of least penetration
+        var cs = Math.cos(c.box.rot), sn = Math.sin(c.box.rot); var lx = dx * cs - dz * sn, lz = dx * sn + dz * cs; var px = c.box.hw + rad - Math.abs(lx), pz = c.box.hd + rad - Math.abs(lz);
+        if (px > 0 && pz > 0) { if (px < pz) lx += (lx >= 0 ? 1 : -1) * px; else lz += (lz >= 0 ? 1 : -1) * pz; x = c.x + lx * cs + lz * sn; z = c.z - lx * sn + lz * cs; }
+      } else if (d > 1e-4) { x = c.x + dx / d * m; z = c.z + dz / d * m; } }
     for (var j = 0; j < s.segs.length; j++) { var g = s.segs[j]; var vx = g.x2 - g.x1, vz = g.z2 - g.z1, L2 = vx * vx + vz * vz; var t = Math.max(0, Math.min(1, ((x - g.x1) * vx + (z - g.z1) * vz) / L2)); var qx = g.x1 + vx * t, qz = g.z1 + vz * t; var dx = x - qx, dz = z - qz, d = Math.hypot(dx, dz), m = 1.4 + rad; if (d < m && d > 1e-4) { x = qx + dx / d * m; z = qz + dz / d * m; } }
   }
-  return { x: x, z: z };
+  return this.railClamp(x, z, rad);
+};
+// Bridge rails: on a deck that stands clear of the ground, keep the walker between the rails. Near the ends, where the deck
+// is level with the bank, there is no rail to stop anyone.
+Game.prototype.railClamp = function (x, z, rad) {
+  var dk = this.terrain.deckAt(x, z, this.pos.y); if (!dk || dk.t < 0.04 || dk.t > 0.96) return { x: x, z: z };
+  var lim = dk.b.w / 2 - 0.5 - rad; if (Math.abs(dk.lat) <= lim) return { x: x, z: z };
+  var L = Math.hypot(dk.b.x2 - dk.b.x1, dk.b.z2 - dk.b.z1), vx = -(dk.b.z2 - dk.b.z1) / L, vz = (dk.b.x2 - dk.b.x1) / L; var over = dk.lat - (dk.lat > 0 ? lim : -lim);
+  return { x: x - vx * over, z: z - vz * over };
 };
 
 // ------------------------------------------------------------------ frame
@@ -829,13 +853,13 @@ Game.prototype.frame = function (dt) {
   var speed = 0; var talkingLock = !!this.talking; var mine = b && C.myTurn(this);
   var free = !this.down && !talkingLock && (!b || (mine && !C.busy(this)));
   var a = null, mag = 0, run = false, left = 1e9;
-  if (free && ml > 0.05) { a = this.camYaw + Math.atan2(mx, my) + Math.PI; mag = ml; run = !b && (this.running || ml > 0.95 && this.move.run); if (this.autoMove && !this.autoMove.script) this.autoMove = null; }
+  if (free && ml > 0.05) { a = this.camYaw + Math.PI - Math.atan2(mx, my); mag = ml; run = !b && (this.running || ml > 0.95 && this.move.run); if (this.autoMove && !this.autoMove.script) this.autoMove = null; }
   else if (this.autoMove && !this.down && !talkingLock && (!b || mine)) { var am = this.autoMove; var adx = am.x - this.pos.x, adz = am.z - this.pos.z; left = Math.hypot(adx, adz) - (am.stop || 0); if (left < 0.12 || (b && b.econ.move < 0.02)) this.autoMove = null; else { a = Math.atan2(adx, adz); mag = 1; run = !b && left > 10; } }
   if (a !== null) {
     var exhausted = this.stats.sp <= 0; var enc = this.v.encumbrance === "Overloaded" ? 0.5 : this.v.encumbrance === "Heavily Encumbered" ? 0.7 : 1;
     var sp = (b ? 4.6 : (run && !exhausted ? 13 : 7.2) * enc) * mag; var stepLen = Math.min(sp * dt, left); if (b) stepLen = Math.min(stepLen, b.econ.move);
     if (stepLen > 0.0005) {
-      var vx = Math.sin(a), vz = Math.cos(a); var nx = this.pos.x + vx * stepLen, nz = this.pos.z + vz * stepLen; var gh = this.terrain.groundAt(nx, nz);
+      var vx = Math.sin(a), vz = Math.cos(a); var nx = this.pos.x + vx * stepLen, nz = this.pos.z + vz * stepLen; var gh = this.terrain.groundAt(nx, nz, this.pos.y);
       var climb = (gh - this.pos.y) / Math.max(0.001, stepLen);
       if (gh > -1.3 && climb < 1.9) { var c = this.collide(nx, nz, 0.45); var ox = this.pos.x, oz = this.pos.z; var dist = Math.hypot(c.x - ox, c.z - oz); this.pos.x = c.x; this.pos.z = c.z; speed = sp;
         if (b) C.afterPlayerStep(this, ox, oz, dist); else { this.walked += dist / MILE; this.clock += dist / MILE * 20; }
@@ -848,7 +872,7 @@ Game.prototype.frame = function (dt) {
   if (this.dash && this.dash.t > 0) { var c2 = this.collide(this.pos.x + this.dash.vx * dt, this.pos.z + this.dash.vz * dt, 0.45); if (this.terrain.groundAt(c2.x, c2.z) > -1.3) { this.pos.x = c2.x; this.pos.z = c2.z; } this.dash.t -= dt; }
   if (this.target && !this.target.dead && this.inCombat && a === null) this.yaw = lerpAngle(this.yaw, Math.atan2(this.target.x - this.pos.x, this.target.z - this.pos.z), dt * 6);
   // gravity
-  var ground = this.terrain.groundAt(this.pos.x, this.pos.z); this.vy -= 22 * dt; this.pos.y += this.vy * dt; if (this.pos.y <= ground) { this.pos.y = ground; this.vy = 0; this.grounded = true; }
+  var ground = this.terrain.groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6); this.vy -= 22 * dt; this.pos.y += this.vy * dt; if (this.pos.y <= ground) { this.pos.y = ground; this.vy = 0; this.grounded = true; }
   // idle time: half a game minute per real second out of combat; in combat each round is six seconds
   if (!b) this.clock += Math.max(dt, this.wall || 0) * 0.5;
   // stamina & mana trickle back out of combat
