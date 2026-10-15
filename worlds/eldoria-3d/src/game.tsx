@@ -15,6 +15,7 @@ import * as B from "./cbase";
 import * as SC from "./spellcast";
 import * as S from "./spells";
 import * as I from "./items";
+import * as RIG from "./rig";
 import { Fx } from "./vfx";
 
 // ------------------------------------------------------------------ calendar (Concord Reckoning, mirrors the original sheet)
@@ -62,7 +63,7 @@ export function Game(container, bridge, quality) {
 }
 
 Game.prototype.start = function (v) {
-  var THREE = T(); var self = this; this.v = v || {}; window.__eldoriaRules = R; window.__eldoria = { R: R, B: B, SC: SC, S: S, I: I, C: C }; /* debugging hooks for the test harness */
+  var THREE = T(); var self = this; this.v = v || {}; window.__eldoriaRules = R; window.__eldoria = { R: R, B: B, SC: SC, S: S, I: I, C: C, RIG: RIG, M: { makeHumanoid: makeHumanoid, makeCreature: makeCreature }, A: { animateHumanoid: animateHumanoid, playAction: playAction } }; /* debugging hooks for the test harness */
   var r = new THREE.WebGLRenderer({ antialias: this.q.aa, powerPreference: "high-performance" });
   r.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.q.pixelRatio)); r.setSize(this.container.clientWidth, this.container.clientHeight);
   if (THREE.sRGBEncoding) r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;

@@ -14,13 +14,24 @@
   "name": "3D World State",
   "type": "json",
   "category": "custom",
-  "description": "Fog-of-war bitmap (run-length encoded, 5-mile cells) and recently slain monster populations.",
+  "description": "Fog-of-war bitmap (run-length encoded, 5-mile cells), recently slain monster populations and the saved turn-based encounter, if one is in progress.",
   "defaultValue": {
    "v": 1,
    "fog": "",
-   "slain": {}
+   "slain": {},
+   "battle": null
   },
   "behaviorRules": "Client-owned engine bookkeeping. Never write this variable.",
+  "aiAccess": "none"
+ },
+ {
+  "id": "world3d-models",
+  "name": "3D Character Models",
+  "type": "json",
+  "category": "custom",
+  "description": "Optional glTF/GLB character and creature models for the 3D client: a map from a model slot to a world asset, for example {\"humanoid\": {\"asset\": \"@asset:<uuid>\"}, \"creature:canine\": {\"asset\": \"@asset:<uuid>\"}}. Empty means the built-in procedural characters are used.",
+  "defaultValue": {},
+  "behaviorRules": "Client-owned. Never write this variable.",
   "aiAccess": "none"
  }
 ]

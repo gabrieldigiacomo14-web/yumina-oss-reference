@@ -7,5 +7,6 @@ const [outDir, threePath] = process.argv.slice(2);
 await build({ entryPoints: [path.join(HERE, "harness-entry.tsx")], bundle: true, outfile: path.join(outDir, "harness.js"), format: "iife", jsx: "automatic", alias: { "@": path.join(REPO, "packages/app/src") }, nodePaths: [path.join(REPO, "packages/app/node_modules")], define: { "process.env.NODE_ENV": '"production"' }, logLevel: "error" });
 fs.copyFileSync(threePath, path.join(outDir, "three.min.js"));
 fs.copyFileSync(path.join(ROOT, "dist/eldoria-3d.json"), path.join(outDir, "eldoria-3d.json"));
+fs.mkdirSync(path.join(outDir, "models"), { recursive: true }); for (const f of fs.readdirSync(path.join(ROOT, "assets/models")).filter((f) => f.endsWith(".glb"))) fs.copyFileSync(path.join(ROOT, "assets/models", f), path.join(outDir, "models", f));
 fs.writeFileSync(path.join(outDir, "index.html"), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;height:100%}</style><script src="three.min.js"></script></head><body><div id="root"></div><script>window.__presetVars = JSON.parse(localStorage.getItem("preset") || "null") || {};</script><script src="harness.js"></script></body></html>`);
 console.log("harness ready in", outDir);

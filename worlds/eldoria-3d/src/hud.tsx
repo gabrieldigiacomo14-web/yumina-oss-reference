@@ -7,6 +7,7 @@ import { WorldMap, ensureBaseMap } from "./worldmap";
 import { Icon, Bar, Win, cleanGM, stripReport } from "./ui";
 import { Character, Skills, Inventory, Callings, Banking, Magic, QuestBoards, Quests, Guild, Party, Training, Factions, Crafting, Markets, Shops, Conditions, Journal, Codex, LivingEvents, PoliticsScreen, FaithsScreen, NewsScreen, Chronicle, AudioSettings, money as moneyText, safeObj, safeArr, titleCase } from "./panels";
 import { CALLING_KIT, money } from "./rules";
+import * as RIG from "./rig";
 
 var MENU = [["inventory", "Inventory", "I", "Backpack"], ["equipment", "Equipment", "K", "Shirt"], ["skills", "Skills", "P", "Target"], ["techniques", "Techniques", "T", "Swords"], ["spells", "Known Spells", "L", "Sparkles"], ["callings", "Callings", "C", "Shield"], ["sep"], ["journal", "Journal", "J", "BookOpen"], ["quests", "Quests", "Q", "ScrollText"], ["party", "Party & Companions", "O", "Users"], ["codex", "Codex", "N", "Library"], ["crafting", "Crafting", "H", "Hammer"], ["bank", "Bank", "B", "Landmark"], ["map", "World Map", "M", "Map"]];
 var KEYMAP = { i: "inventory", k: "equipment", p: "skills", t: "techniques", l: "spells", c: "callings", j: "journal", q: "quests", o: "party", n: "codex", h: "crafting", b: "bank", m: "map" };
@@ -90,8 +91,14 @@ export function GameScreen(props) {
             return false;
           }
         };
-        try { var g = new Game(hostRef.current, bridge, QUALITY[qKey]); gameRef.current = g; window.__eldoriaGame = g; g.start(api.variables || {}); g.minimap = miniRef.current; setStatus(null); }
-        catch (err) { console.error(err); if (gameRef.current) { try { gameRef.current.dispose(); } catch (e2) { } gameRef.current = null; } setStatus("The 3D view could not start: " + (err && err.message ? err.message : err) + ". Your chronicle is still available below."); }
+        var startGame = function () {
+          if (!alive || !hostRef.current) return;
+          try { var g = new Game(hostRef.current, bridge, QUALITY[qKey]); gameRef.current = g; window.__eldoriaGame = g; g.start(api.variables || {}); g.minimap = miniRef.current; setStatus(null); }
+          catch (err) { console.error(err); if (gameRef.current) { try { gameRef.current.dispose(); } catch (e2) { } gameRef.current = null; } setStatus("The 3D view could not start: " + (err && err.message ? err.message : err) + ". Your chronicle is still available below."); }
+        };
+        // optional rigged glTF models (world assets named in the world3d-models variable) load first; failures fall back to the procedural bodies
+        var man = (api.variables || {})["world3d-models"]; var gate = man && typeof man === "object" && Object.keys(man).length ? Promise.race([RIG.loadManifest(api, man), new Promise(function (r) { setTimeout(r, 25000); })]) : Promise.resolve(); setStatus(man && Object.keys(man).length ? "Loading character models…" : status);
+        Promise.resolve(gate).catch(function () { }).then(startGame);
         setTimeout(function () { try { ensureBaseMap(); } catch (e) { console.error(e); } }, 4000);
       }, 30);
     }).catch(function (err) { setStatus(String(err && err.message || err)); });
@@ -324,10 +331,12 @@ function TouchControls(p) {
 function TargetBar(p) {
   var t = p.t; var g = p.g;
   var tip = t.sx > -100 && t.list && t.list.length ? <div className="eTip spell" style={{ left: Math.max(6, Math.min(window.innerWidth - 246, t.sx + (t.touch ? -110 : 16))), top: Math.max(6, Math.min(window.innerHeight - 180, t.sy + (t.touch ? -130 : 10))) }}>{t.list.slice(0, 6).map(function (o, i) { return <div key={i} className={"eTipRow2 " + o.side}><b>{o.name}</b><span>{o.heal ? "heals " + o.heal : o.chance != null ? (o.resist ? o.chance + "% to take hold" : o.chance + "% · " + o.dice + (o.brace ? " (half if it braces)" : "")) : ""}</span></div>; })}{t.list.length > 6 ? <small>+{t.list.length - 6} more</small> : null}{!t.ok && t.why ? <div className="eTipNote bad">{t.why}</div> : null}</div> : null;
+  var needCast = t.touch || t.tgt === "self" || t.tgt === "touch";
+  var hint = t.ok || !t.why ? (t.tgt === "foe" ? "Choose an enemy" : t.tgt === "touch" ? "Choose yourself or an ally" : t.tgt === "dir" ? "Choose a direction" : t.tgt === "point" ? "Choose a place" : "Confirm") : t.why;
   return <div><div className="eFrame eTargetBar"><div className="eTBHead"><Icon n="Sparkles" s={16} /><b>{t.name}</b><span>{t.mp} MP · {t.label}{t.range ? " · " + t.range + " m" : ""}{t.area ? " · area " + t.area + " m" : ""}</span></div>
-    <p>{t.ok || !t.why ? (t.tgt === "foe" ? "Choose an enemy." : t.tgt === "touch" ? "Choose yourself or an ally." : t.tgt === "dir" ? "Choose a direction." : t.tgt === "point" ? "Choose a place." : "Confirm.") : t.why}{t.touch && t.ok ? " Tap again to cast." : ""}</p>
+    <p className={t.ok || !t.why ? "" : "bad"}>{hint}{t.touch && t.ok ? " — tap again to cast" : ""}</p>
     {t.choose ? <div className="eChoose">{t.choose.map(function (c) { return <button key={c} className={t.choice === c ? "on" : ""} onClick={function () { var G = g.current; if (G && G.tgt) G.tgt.choice = c; }}>{c}</button>; })}</div> : null}
-    <div className="eBtnRow">{t.touch || t.tgt === "self" || t.tgt === "touch" ? <button className="eBtn small" onClick={function () { var G = g.current; if (!G) return; if (G.tgt && (t.tgt === "touch" || t.tgt === "self") && !G.tgt.aim) G.tgt.aim = { e: G.pe }; SC_confirm(G); }}><Icon n={t.tgt === "touch" ? "User" : "Check"} s={14} /> {t.tgt === "touch" && !t.touch ? "Self" : "Cast"}</button> : null}<button className="eBtn small alt" onClick={function () { var G = g.current; if (G) G.cancelTarget(); }}><Icon n="X" s={14} /> Cancel</button></div></div>{tip}</div>;
+    <div className="eTBBtns">{needCast ? <button className="eBtn small" onClick={function () { var G = g.current; if (!G) return; if (G.tgt && (t.tgt === "touch" || t.tgt === "self") && !G.tgt.aim) G.tgt.aim = { e: G.pe }; SC_confirm(G); }}><Icon n={t.tgt === "touch" ? "User" : "Check"} s={14} /> {t.tgt === "touch" && !t.touch ? "Self" : "Cast"}</button> : null}<button className="eBtn small alt" onClick={function () { var G = g.current; if (G) G.cancelTarget(); }}><Icon n="X" s={14} /> Cancel</button></div></div>{tip}</div>;
 }
 function SC_confirm(G) { if (G.confirmTarget) G.confirmTarget(); }
 function Tray(p) {

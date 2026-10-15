@@ -6,6 +6,7 @@ import { T, hex, glowTex } from "./three";
 import { hashStr, rng } from "./worldgen";
 import { buildBody } from "./body";
 import { animateHumanoid, playAction } from "./anim";
+import * as RIG from "./rig";
 import { makeBeast, animateBeast } from "./creatures";
 
 export var SKIN_TONES = ["#f1d2b6", "#e3b48f", "#c98e64", "#9a6a45", "#5e3d2a"];
@@ -89,6 +90,19 @@ function shadeHex(h, k) { var n = parseInt(String(h).replace("#", ""), 16); var 
 export function makeHumanoid(look) {
   var THREE = T(); look = look || {};
   var cl = CALLING_LOOK[look.calling] || CALLING_LOOK.Fighter;
+  // a rigged glTF character takes over when the world has one for this look; any failure falls back to the procedural body
+  var glbKey = RIG.pick(look);
+  if (glbKey) {
+    try {
+      var gm = look.main || cl.main, gt = look.trim || cl.trim, garmor = look.armor || cl.armor; var gtrim = metal(gt), gmain = garmor === "heavy" || garmor === "medium" ? metal(gm) : mat(gm); var gl = "#4a3322";
+      var gh = RIG.build(Object.assign({}, look, { weapon: look.weapon || cl.weapon, armor: garmor, shield: !!(cl.shield || look.shield) }), glbKey, {
+        quality: look.detail === "lo" ? "low" : "high",
+        buildWeapon: function (kind) { return buildWeapon(kind, gtrim, mat(gl), gmain); },
+        buildShield: function () { var sg = new THREE.Group(); sg.add(mesh(geo("cyl"), gmain, 0, 0, 0, 0.52, 0.05, 0.52)); sg.add(mesh(geo("cyl"), gtrim, 0, 0.03, 0, 0.15, 0.04, 0.15)); return sg; }
+      });
+      if (gh) return gh;
+    } catch (e) { console.error("glTF character failed, using the procedural body:", e); }
+  }
   var main = look.main || cl.main, trim = look.trim || cl.trim, cloth = look.cloth || cl.cloth, capeC = look.cape === null ? null : (look.cape || cl.cape);
   var armor = look.armor || cl.armor, weapon = look.weapon || cl.weapon; var leather = "#4a3322";
   if (look.species === "Orc-Blooded" && !look.skinSet) look = Object.assign({}, look, { skin: "#7d8a5a" });
@@ -178,7 +192,9 @@ var CREATURE_COLOR = [
 export function creatureColor(name) { var n = name.toLowerCase(); for (var i = 0; i < CREATURE_COLOR.length; i++) if (CREATURE_COLOR[i][0].test(n)) return CREATURE_COLOR[i][1]; return "#6a6a6a"; }
 
 export function makeCreature(mon) {
-  var THREE = T(); var arch = creatureArchetype(mon.name); var col = creatureColor(mon.name); var body = mat(col, { roughness: 0.8 }); var dark = mat("#1a1612"); var eye = mat("#ffd060", { emissive: new THREE.Color(/umbral|wight|ghast|lich|draugr|revenant|knight|ghoul|skeleton/.test(mon.name.toLowerCase()) ? "#60ffe0" : "#ffb020"), emissiveIntensity: 1.5 });
+  var THREE = T(); var arch = creatureArchetype(mon.name);
+  var ckey = RIG.pickCreature(mon, arch);
+  if (ckey) { try { var gc = RIG.buildCreature(ckey, mon, {}); if (gc) { var cs = Math.min(3.2, 0.8 + mon.threat * 0.35 + mon.hp / 160); return { root: gc.root, parts: { arch: arch, glb: gc }, arch: arch, size: cs, height: gc.height, glb: gc, kind: "glb", seed: Math.random() * 6 }; } } catch (e) { console.error("glTF creature failed:", e); } } var col = creatureColor(mon.name); var body = mat(col, { roughness: 0.8 }); var dark = mat("#1a1612"); var eye = mat("#ffd060", { emissive: new THREE.Color(/umbral|wight|ghast|lich|draugr|revenant|knight|ghoul|skeleton/.test(mon.name.toLowerCase()) ? "#60ffe0" : "#ffb020"), emissiveIntensity: 1.5 });
   var size = Math.min(3.2, 0.8 + mon.threat * 0.35 + mon.hp / 160);
   var root = new THREE.Group(); var rig = grp(root); var parts = { arch: arch };
   if (arch === "humanoid" || arch === "brute") {
@@ -201,6 +217,7 @@ export function makeCreature(mon) {
 }
 
 export function animateCreature(c, dt, st) {
+  if (c.glb) { var gh2 = c.glb; if (st.attack && !c._atk) { c._atk = true; RIG.mixerPlay(gh2, "slash"); } if (!st.attack) c._atk = false; if (st.hitT > 0 && !c._hit && !st.dead) { c._hit = true; RIG.mixerPlay(gh2, "hit"); } if (!(st.hitT > 0)) c._hit = false; RIG.mixerAnimate(gh2, dt, { speed: st.speed, combat: st.combat, dead: st.dead }); return; }
   var p = c.parts; c.t = (c.t || Math.random() * 10) + dt; var t = c.t; var sp = st.speed || 0; var w = Math.min(1, sp);
   if (p.h) { animateHumanoid(p.h, dt, st); return; }
   if (st.dead) { var r0 = c.root.children[0]; r0.rotation.z = Math.min(Math.PI / 2, (r0.rotation.z || 0) + dt * 3.2); r0.position.z *= 0.9; if (p.legs) p.legs.forEach(function (lg, i) { var o = lg.hip || lg; o.rotation.x += ((i % 2 ? 0.5 : -0.4) - o.rotation.x) * Math.min(1, dt * 4); }); if (p.jaw) p.jaw.rotation.x = Math.min(0.5, p.jaw.rotation.x + dt); if (p.core) { p.core.scale.multiplyScalar(Math.max(0, 1 - dt * 2)); p.glow.material.opacity = Math.max(0, (p.glow.material.opacity == null ? 1 : p.glow.material.opacity) - dt); } return; }

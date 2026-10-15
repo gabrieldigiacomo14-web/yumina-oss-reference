@@ -5,6 +5,7 @@
 // (XP -> level, advancement points, HP/Mana/Stamina maxima, skill rollover, calendar,
 // moon phase, encumbrance) and the adaptive ambience controller the world relies on.
 import { loadThree } from "./three";
+import * as RIG from "./rig";
 import { Creator } from "./creator";
 import { GameScreen } from "./hud";
 import { CSS } from "./styles";
@@ -13,9 +14,13 @@ import { safeObj, safeArr, levelFromXp, skillNeed, formatEldoriaDate, moonFromDa
 function CreatorGate(props) {
   var [ready, setReady] = React.useState(!!(window.THREE && window.THREE.WebGLRenderer));
   var [err, setErr] = React.useState(null);
+  var [modelsReady, setModelsReady] = React.useState(false);
   React.useEffect(function () { if (ready) return; loadThree().then(function () { setReady(true); }).catch(function (e) { setErr(String(e && e.message || e)); }); }, []);
+  /* optional glTF models named in the world3d-models variable are loaded once before the creator shows its preview */
+  React.useEffect(function () { if (!ready) return; var man = (props.api.variables || {})["world3d-models"]; if (!man || typeof man !== "object" || !Object.keys(man).length) { setModelsReady(true); return; } var dead = false; Promise.race([RIG.loadManifest(props.api, man), new Promise(function (r) { setTimeout(r, 25000); })]).catch(function () { }).then(function () { if (!dead) setModelsReady(true); }); return function () { dead = true; }; }, [ready]);
   if (err) return <div className="eLoading"><div className="eLogo big"><b>ELDORIA</b><small>FROM F-RANK TO LEGEND</small></div><p>{err}</p><button className="eBtn small" onClick={function () { setErr(null); loadThree().then(function () { setReady(true); }).catch(function (e) { setErr(String(e && e.message || e)); }); }}>Try again</button></div>;
   if (!ready) return <div className="eLoading"><div className="eLogo big"><b>ELDORIA</b><small>FROM F-RANK TO LEGEND</small></div><p>Loading the 3D engine…</p><div className="eSpinner" /></div>;
+  if (!modelsReady) return <div className="eLoading"><div className="eLogo big"><b>ELDORIA</b><small>FROM F-RANK TO LEGEND</small></div><p>Loading character models…</p><div className="eSpinner" /></div>;
   return <Creator api={props.api} />;
 }
 

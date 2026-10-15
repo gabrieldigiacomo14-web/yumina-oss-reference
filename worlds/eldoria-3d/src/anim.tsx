@@ -1,4 +1,5 @@
 // @ts-nocheck
+import * as RIG from "./rig";
 // Humanoid animation: a procedural locomotion layer (idle, walk, run, combat stance)
 // plus keyframed action clips (slash, smash, thrust, bow, spellcast, hit, dodge, death,
 // cheer, talk) blended over it with eased curves. Clips fire events on their impact
@@ -70,10 +71,13 @@ function clipPose(clip, t, base) {
   ["hipsY", "rigX", "rigY", "wpn"].forEach(function (k) { if (!(k in A) && !(k in B)) return; var va = k in A ? A[k] : base[k], vb = k in B ? B[k] : base[k]; out[k] = va + (vb - va) * u; });
   return out;
 }
+RIG.bindClipTable(CLIPS);
 export function playAction(h, name, onEvent) {
+  if (h.glb && h.mix) { RIG.mixerPlay(h, name, onEvent); return; }
   var c = CLIPS[name]; if (!c) return; h.action = name; h.actionT = 0; h.onEvent = onEvent || null; h.fired = {};
 }
 export function animateHumanoid(h, dt, st) {
+  if (h.glb && h.mix) { RIG.mixerAnimate(h, dt, st); return; }
   st = st || {}; var base = basePose(h, dt, st); var pose = base; var weight = 0, clip = null;
   if (st.dead && h.action !== "death" && !h.deadHeld) { playAction(h, "death"); }
   if (h.action) {

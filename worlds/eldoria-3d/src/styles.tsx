@@ -306,18 +306,19 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .eTrayMain{min-width:0;flex:1;display:flex;flex-direction:column}.eTrayMain b{font:600 15px Cinzel,serif;color:#efe6d0}.eTrayMain small{color:#a8a08e;font-size:12.5px;line-height:1.3}
 .eTrayMeta{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;font:12px Georgia,serif;color:#cfc6b2;max-width:46%}.eTrayMeta .mp{color:#7fb0ff;font-weight:600}.eTrayMeta em{flex-basis:100%;text-align:right;color:#e8967a;font-style:normal}
 .eTrayMeta .cost{padding:1px 7px;border:1px solid #4a515c}.eTrayMeta .cost.action{color:#7ae07a;border-color:#3a7a4a}.eTrayMeta .cost.bonus{color:#f0a040;border-color:#8a5a20}.eTrayMeta .cost.reaction{color:#c08aff;border-color:#6a3a9a}
-.eTargetBar{left:50%;top:96px;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));z-index:9;padding:8px 12px;display:flex;flex-direction:column;gap:5px;border-color:#8a6ad0}
-.eTBHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.eTBHead b{font:600 17px Cinzel,serif;color:#e6d8ff}.eTBHead span{color:#b8aed0;font-size:12.5px}
-.eTargetBar p{margin:0;font-size:14px;color:#e0d8c6}.eChoose{display:flex;gap:5px;flex-wrap:wrap}.eChoose button{padding:4px 10px!important;border:1px solid #5a616c!important;background:rgba(255,255,255,.05)!important;text-transform:capitalize}.eChoose button.on{border-color:#c8a0ff!important;background:rgba(150,100,220,.35)!important}
+.eTargetBar{left:50%;top:92px;transform:translateX(-50%);width:min(520px,calc(100vw - 24px));z-index:9;padding:6px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;border-color:#8a6ad0}
+.eTBHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.eTBHead b{font:600 16px Cinzel,serif;color:#e6d8ff}.eTBHead span{color:#b8aed0;font-size:12.5px}
+.eTargetBar p{margin:0;font-size:14px;color:#e0d8c6;flex:1;min-width:140px}.eTargetBar p.bad{color:#f0a090}.eTBBtns{display:flex;gap:6px;margin-left:auto}
+.eChoose{display:flex;gap:5px;flex-wrap:wrap}.eChoose button{padding:4px 10px!important;border:1px solid #5a616c!important;background:rgba(255,255,255,.05)!important;text-transform:capitalize}.eChoose button.on{border-color:#c8a0ff!important;background:rgba(150,100,220,.35)!important}
 .eBtn.alt{background:transparent!important;border-color:#6a717c!important;color:#d0c8b8!important}
 .eTip.spell{width:auto;min-width:170px;max-width:260px;z-index:13}.eTipRow2{display:flex;justify-content:space-between;gap:10px;font:12.5px Georgia,serif}.eTipRow2.foe b{color:#ffb0a0}.eTipRow2.party b{color:#9fd0ff}.eTipRow2 span{color:#e0d8c6;text-align:right}
 .eAuto{padding:1px 8px!important;font:11px Georgia,serif;border:1px solid #4a515c!important;background:transparent!important;color:#8a8a8a!important;min-height:0!important}.eAuto.on{color:#c8a0ff!important;border-color:#8a6ad0!important}
 .eMate.dead{opacity:.5;filter:grayscale(1)}
 @media (max-width:1100px),(max-height:700px){.eTrayBtns{left:calc(50% - 300px)}.eTrayBtns .eRound{width:40px;height:40px}.eTargetBar{top:84px}}
-@media (max-width:700px),(max-height:500px){.eTrayBtns{left:auto;right:6px;bottom:auto;top:auto;flex-direction:column}.eTray{bottom:6px;width:calc(100vw - 12px);max-height:62vh}.eTargetBar{top:146px;bottom:auto;width:calc(100vw - 12px)}.eTrayMeta{max-width:50%}.eAuto{display:none}}
+@media (max-width:700px),(max-height:500px){.eTrayBtns{left:auto;right:6px;bottom:auto;top:auto;flex-direction:column}.eTray{bottom:6px;width:calc(100vw - 12px);max-height:62vh}.eTargetBar{top:146px;bottom:auto;width:calc(100vw - 12px);padding:5px 8px}.eTrayMeta{max-width:50%}.eAuto{display:none}}
 .touch .eTrayBtns{display:none!important}
 .eActs button.on{border-color:#8fbaf0!important;box-shadow:0 0 12px var(--e-glow)}
-@media (max-height:500px) and (min-width:701px){.eTrayBtns{bottom:4px;right:140px;left:auto;flex-direction:row}.eTargetBar{left:6px;top:72px;transform:none;bottom:auto;width:250px}.eTray{bottom:4px;left:140px;right:140px;transform:none;width:auto;max-height:82vh}}
+@media (max-height:500px) and (min-width:701px){.eTrayBtns{bottom:4px;right:140px;left:auto;flex-direction:row}.eTargetBar{left:6px;top:72px;transform:none;bottom:auto;width:260px}.eTray{bottom:4px;left:140px;right:140px;transform:none;width:auto;max-height:82vh}}
 @media (max-width:1500px){.eDialog{width:min(640px,calc(100vw - 560px));min-width:400px}.eInit{max-width:calc(100vw - 700px)}}
 @media (max-width:1100px),(max-height:700px){
  .ePlayer{width:290px;padding:6px}.ePortrait{width:72px;height:72px}.ePName b{font-size:18px}

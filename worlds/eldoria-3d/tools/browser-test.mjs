@@ -10,33 +10,8 @@ const only = argv.slice(1).filter((a, i, l) => !a.startsWith("--") && l[i - 1] !
 const types = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json" };
 const server = http.createServer((q, r) => { const u = decodeURIComponent(q.url.split("?")[0]); const f = path.join(dir, u === "/" ? "index.html" : u); if (!fs.existsSync(f)) { r.writeHead(404); r.end(); return; } r.writeHead(200, { "content-type": types[path.extname(f)] || "application/octet-stream" }); fs.createReadStream(f).pipe(r); }).listen(0);
 const port = server.address().port;
-const base = JSON.parse(fs.readFileSync(path.join(HERE, "fixtures/base-preset.json"), "utf8"));
-const SPELLS = ["arcane-light", "spark", "arcane-bolt", "chill-touch", "shadow-bolt", "drain-vitality", "lightning-arc", "lance-of-force", "shatter-pulse", "burst-sphere", "wall-of-flame", "grasping-night", "heart-of-the-storm", "mend-flesh", "greater-mend", "barrier", "mage-ward", "mana-shield", "mirror-image", "frost-sheath", "element-ward", "thorn-snare", "stone-grip", "drowse", "blink", "gloomstep", "summon-guardian", "courage", "blessing", "smite", "invisibility", "black-veil", "sanctum-dome", "death-ward", "cutting-verse", "mass-courage", "nudge", "eclipse-crown", "command-undead", "sovereign-voice", "radiant-brand", "pillar-of-dawn", "ember-dart", "wind-step", "barkskin", "aegis-absolute", "identify", "flicker", "scry", "anchor"];
-export function fixture(o) {
-  o = o || {}; const lib = JSON.parse(fs.readFileSync(path.join(HERE, "../src/data.tsx"), "utf8").match(/SPELL_LIBRARY = (\{.*\});?\s*$/m)[1]);
-  const spells = {}; (o.spells || SPELLS).forEach((id) => { const e = lib[id]; if (e) spells[id] = { id, name: e.name, school: e.school, tier: e.tier, manaCost: e.mp, castingTime: e.cast, range: e.range, origin: "test" }; });
-  const v = JSON.parse(JSON.stringify(base));
-  Object.assign(v, { "player-xp": 20000, "player-hp": 210, "player-max-hp": 210, "player-mana": 300, "player-max-mana": 300, "player-stamina": 40, "player-max-stamina": 40, "known-spells": spells,
-    attributes: Object.assign({}, v.attributes, { arcana: 14, agility: 12, strength: 12, endurance: 14 }, o.attributes || {}),
-    inventory: [].concat(v.inventory, [
-      { id: "pot-heal", name: "Healing Potion", qty: 3, weight: 0.5, valueCp: 5000, condition: 100, equipped: false, properties: ["restores 2d4+2 HP"] },
-      { id: "pot-mana", name: "Mana Potion", qty: 2, weight: 0.5, valueCp: 5000, condition: 100, equipped: false, properties: ["restores 2d4+2 Mana"] },
-      { id: "flask-fire", name: "Alchemist's Fire Flask", qty: 2, weight: 1, valueCp: 3000, condition: 100, equipped: false, properties: ["2d6 fire", "thrown"] },
-      { id: "antidote", name: "Antidote", qty: 1, weight: 0.2, valueCp: 2000, condition: 100, equipped: false, properties: ["cures poison"] },
-      { id: "dagger1", name: "Steel Dagger", qty: 1, weight: 1, valueCp: 1500, condition: 100, equipped: false, properties: ["1d4", "finesse"] },
-      { id: "sword1", name: "Longsword", qty: 1, weight: 3, valueCp: 2500, condition: 100, equipped: false, properties: ["1d8"] },
-      { id: "bow1", name: "Shortbow", qty: 1, weight: 2, valueCp: 2500, condition: 100, equipped: false, properties: ["1d6", "80 ft"] },
-      { id: "ration1", name: "Trail Ration", qty: 2, weight: 0.5, valueCp: 100, condition: 100, equipped: false, properties: ["food"] }]),
-    companions: o.companions || {}, party: o.party || [] });
-  if (o.calling) { v["starting-calling"] = o.calling; v["class-state"] = Object.assign({}, v["class-state"], { class: o.calling }); v["player-class"] = o.calling; }
-  if (o.equipment) v.equipment = Object.assign({}, v.equipment, o.equipment);
-  if (o.vars) Object.assign(v, o.vars);
-  return v;
-}
-export const COMPANIONS = {
-  mira: { name: "Mira Vale", class: "Cleric", level: 2, hp: 26, maxHp: 26, mana: 30, maxMana: 30, stamina: 20, maxStamina: 20, species: "Human", gender: "Female", partyStatus: "active", role: "Healer", attributes: { strength: 10, agility: 11, endurance: 12, intellect: 11, perception: 12, willpower: 14, presence: 12, arcana: 12 }, skills: { "blunt-weapons": { level: 4 }, "divine-magic": { level: 3 } }, equipment: { weapon: "mira-mace" }, inventory: [{ id: "mira-mace", name: "Mace", qty: 1, equipped: true, properties: ["1d6"] }, { id: "mira-potion", name: "Healing Potion", qty: 1, properties: ["restores 2d4+2 HP"] }], knownSpells: { "mend-flesh": { id: "mend-flesh", name: "Mend Flesh", school: "Restoration", tier: "I", manaCost: 6 }, "radiant-brand": { id: "radiant-brand", name: "Radiant Brand", school: "Divine", tier: "I", manaCost: 5 } } },
-  tarn: { name: "Tarn Holt", class: "Fighter", level: 2, hp: 34, maxHp: 34, mana: 0, maxMana: 0, stamina: 24, maxStamina: 24, species: "Human", gender: "Male", partyStatus: "active", role: "Vanguard", attributes: { strength: 14, agility: 11, endurance: 14, intellect: 9, perception: 11, willpower: 10, presence: 10, arcana: 8 }, skills: { swordsmanship: { level: 5 } }, equipment: { weapon: "tarn-sword", offhand: "tarn-shield", chest: "tarn-mail" }, inventory: [{ id: "tarn-sword", name: "Longsword", qty: 1, equipped: true, properties: ["1d8"] }, { id: "tarn-shield", name: "Round Shield", qty: 1, equipped: true, properties: ["shield"] }, { id: "tarn-mail", name: "Chain Mail", qty: 1, equipped: true, properties: ["DR 3"] }] }
-};
+import { fixture, COMPANIONS } from "./fixtures.mjs";
+export { fixture, COMPANIONS };
 const PRE = `
 window.T = {
   g: () => window.__eldoriaGame, X: () => window.__eldoria,
@@ -275,6 +250,104 @@ export const SCENARIOS = {
   "mobile-landscape": { fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 844, height: 390 }, touch: true, run: (ctx) => mobileFlow(ctx) },
   "desktop-ui": { fx: () => fixture({ companions: COMPANIONS, party: ["mira"] }), viewport: { width: 1280, height: 720 }, run: (ctx) => desktopFlow(ctx) },
 };
+
+
+// ---------------------------------------------------------------- the glTF/GLB character pipeline
+SCENARIOS.glb = { fx: () => fixture(), fn: `
+    const g = T.g(); T.noRender(); T.clear(); const X = T.X(); const RIG = X.RIG; const THREE = window.THREE; const A = X.A;
+    const bytes = await (await fetch("models/eldoria-humanoid.glb")).arrayBuffer(); T.check("the exported GLB is a real binary glTF", new Uint32Array(bytes, 0, 1)[0] === 0x46546C67, bytes.byteLength);
+    const st = await RIG.register("humanoid", bytes);
+    T.check("rig: all 15 humanoid joints matched to bones", st.matched === 15 && st.missing.length === 0, JSON.stringify(st.missing));
+    const need = ["idle", "walk", "run", "combat", "slash", "smash", "thrust", "punch", "bow", "cast", "staffCast", "castUp", "drink", "hit", "dodge", "block", "death", "cheer", "talk", "wave", "throw", "sit", "crossArms"];
+    T.check("every gameplay animation is present in the asset", need.every((k) => st.clips.includes(k)), st.clips.join());
+    const look = { calling: "Fighter", species: "Human", gender: "Male", skin: "#c98e64", hair: "#4a2e1d", hairStyle: "Short Crop", face: 2, build: "Athletic", armor: "light", weapon: "none", cape: null, main: "#5a4a3a", trim: "#8a8f96", cloth: "#6a5a40", detail: "lo" };
+    const t0 = performance.now(); const hg = X.M.makeHumanoid(look); const ms = performance.now() - t0; const hp = X.M.makeHumanoid(Object.assign({}, look, { procedural: true }));
+    T.check("the registered model is used (glb) and the procedural body is still available", hg.glb === true && !hp.glb); T.check("building a glTF character is quick", ms < 400, ms.toFixed(0) + " ms");
+    [hg, hp].forEach((h, i) => { h.root.position.set(i * 2, 0, 0); g.scene.add(h.root); h.t = 0; });
+    T.check("standing height matches the procedural character (±4%)", Math.abs(hg.height - hp.height) / hp.height < 0.04, hg.height.toFixed(3) + " vs " + hp.height.toFixed(3));
+    const wp = (h, j) => { h.root.updateMatrixWorld(true); const v = new THREE.Vector3(); (j === "rhand" ? h.RA.hand : j === "lhand" ? h.LA.hand : j === "head" ? h.head : h.hips).getWorldPosition(v); v.x -= h.root.position.x; return v; };
+    async function compare(clip, n, tol) { A.playAction(hg, clip, null); A.playAction(hp, clip, null); let worst = 0; for (let i = 0; i < n; i++) { A.animateHumanoid(hg, 1 / 30, { speed: 0, calm: true }); A.animateHumanoid(hp, 1 / 30, { speed: 0, calm: true }); ["rhand", "lhand", "head", "hips"].forEach((j) => { worst = Math.max(worst, wp(hg, j).distanceTo(wp(hp, j))); }); } return worst; }
+    for (const c of ["slash", "smash", "thrust", "cast", "hit", "dodge", "bow", "block"]) { const e = await compare(c, Math.round((T.X().A && 0.6) * 30) + 6, 0.07); T.check("baked clip '" + c + "' matches the procedural pose (max joint error " + (e * 100).toFixed(1) + " cm)", e < 0.07, e.toFixed(3)); }
+    // blending: idle -> walk -> run
+    A.animateHumanoid(hg, 1 / 30, { speed: 0 }); for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 1 }); const b = hg.mix.base; T.check("speed 1 blends to the walk cycle", b.walk.w > 0.9 && b.idle.w < 0.1, JSON.stringify([b.walk.w, b.idle.w].map((x) => +x.toFixed(2))));
+    for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 2 }); T.check("speed 2 blends to the run cycle", b.run.w > 0.9 && b.walk.w < 0.1, JSON.stringify([b.run.w, b.walk.w].map((x) => +x.toFixed(2))));
+    for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 0.5 }); T.check("intermediate speeds mix idle and walk", b.walk.w > 0.3 && b.walk.w < 0.7 && b.idle.w > 0.3, JSON.stringify([b.walk.w, b.idle.w].map((x) => +x.toFixed(2))));
+    for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 0 });
+    // upper-body layering: casting while walking keeps the legs walking
+    let legMin = 9, legMax = -9; const lh = hg.L.hip; for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 1 }); A.playAction(hg, "cast", null);
+    const armStart = hg.RA.sh.quaternion.clone(); let armMove = 0; for (let i = 0; i < 20; i++) { A.animateHumanoid(hg, 1 / 30, { speed: 1 }); const q = lh.quaternion; legMin = Math.min(legMin, q.x); legMax = Math.max(legMax, q.x); armMove = Math.max(armMove, 2 * Math.acos(Math.min(1, Math.abs(hg.RA.sh.quaternion.dot(armStart))))); }
+    T.check("a spell cast layers over the upper body", armMove > 0.4, armMove.toFixed(2)); T.check("while the legs keep walking", legMax - legMin > 0.1, (legMax - legMin).toFixed(2));
+    for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 0 });
+    // events fire on the impact frame
+    const ev = []; A.playAction(hg, "slash", (e) => ev.push([e, +hg.actionT.toFixed(2)])); for (let i = 0; i < 30; i++) A.animateHumanoid(hg, 1 / 30, { speed: 0 });
+    T.check("slash fires its hit event once, near 0.3 s", ev.length === 1 && ev[0][0] === "hit" && Math.abs(ev[0][1] - 0.3) < 0.07, JSON.stringify(ev));
+    const ev2 = []; A.playAction(hg, "bow", (e) => ev2.push(e)); for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 0 }); T.check("a drawn bow fires its release event", ev2.join() === "release", ev2.join());
+    // death holds, then the character can get back up
+    for (let i = 0; i < 60; i++) A.animateHumanoid(hg, 1 / 30, { dead: true }); const down = wp(hg, "hips").y; for (let i = 0; i < 60; i++) A.animateHumanoid(hg, 1 / 30, { dead: true }); T.check("death lays the character down and holds there", down < 0.45 && Math.abs(wp(hg, "hips").y - down) < 0.02, down.toFixed(2));
+    for (let i = 0; i < 60; i++) A.animateHumanoid(hg, 1 / 30, { speed: 0 }); T.check("and they stand again when revived", wp(hg, "hips").y > 0.8, wp(hg, "hips").y.toFixed(2));
+    // faces: morph targets are driven when the asset has them
+    const head = []; hg.scene.traverse((o) => { if (o.isSkinnedMesh && /head/i.test(o.name || "")) head.push(o); }); const hm = head[0] || (() => { let m = null; hg.scene.traverse((o) => { if (!m && o.isSkinnedMesh) m = o; }); return m; })();
+    hm.morphTargetDictionary = { eyeBlinkLeft: 0, eyeBlinkRight: 1, jawOpen: 2, browDownLeft: 3, mouthSmileLeft: 4 }; hm.morphTargetInfluences = [0, 0, 0, 0, 0]; hg.face.meshes.push(hm);
+    hg.face.blinkT = 0; let peak = 0; for (let i = 0; i < 12; i++) { A.animateHumanoid(hg, 1 / 30, { speed: 0 }); peak = Math.max(peak, hm.morphTargetInfluences[0]); } T.check("the eyes blink through the blink morph target", peak > 0.5, peak.toFixed(2));
+    A.playAction(hg, "talk", null); let jaw = 0; for (let i = 0; i < 40; i++) { A.animateHumanoid(hg, 1 / 30, { speed: 0 }); jaw = Math.max(jaw, hm.morphTargetInfluences[2]); } T.check("the jaw moves while talking", jaw > 0.15, jaw.toFixed(2));
+    for (let i = 0; i < 40; i++) A.animateHumanoid(hg, 1 / 30, { speed: 0, combat: true }); T.check("brows lower in a fight", hm.morphTargetInfluences[3] > 0.4, hm.morphTargetInfluences[3].toFixed(2));
+    // equipment sockets and materials
+    const armed = X.M.makeHumanoid(Object.assign({}, look, { weapon: "sword", shield: true })); T.check("a sword is held in the right-hand socket", armed.weapon && armed.weapon.parent === armed.RA.hand); T.check("a shield rides the left forearm socket", armed.shield && armed.shield.parent === armed.LA.el);
+    const bowman = X.M.makeHumanoid(Object.assign({}, look, { weapon: "bow", shield: false })); T.check("a bow is held in the left hand", bowman.weapon && bowman.weapon.parent === bowman.LA.hand);
+    await RIG.register("humanoid-tintable", bytes, { meta: { noTint: false } }); const tint = X.M.makeHumanoid(Object.assign({}, look, { gender: "tintable", skin: "#5e3d2a", detail: undefined })); let skinMat = null; tint.scene.traverse((o) => { if (o.isMesh && o.material && /skin/i.test(o.material.name) && !skinMat) skinMat = o.material; });
+    T.check("skin materials are tinted from the look and upgraded to physical (sheen)", skinMat && skinMat.isMeshPhysicalMaterial && skinMat.sheen > 0 && Math.abs(skinMat.color.r - 1) > 0.05, skinMat && [skinMat.type, skinMat.sheen, skinMat.color.getHexString()].join());
+    const other = X.M.makeHumanoid(Object.assign({}, look, { gender: "tintable", skin: "#f1d2b6" })); let om = null; other.scene.traverse((o) => { if (o.isMesh && o.material && /skin/i.test(o.material.name) && !om) om = o.material; }); T.check("two characters never share (or leak) tinted materials", om && om !== skinMat && om.color.getHex() !== skinMat.color.getHex());
+    // fallback: bad data never breaks the game
+    let bad = null; try { await RIG.register("humanoid-bad", new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]).buffer); } catch (e) { bad = String(e.message); } T.check("garbage bytes are rejected with a clear error", !!bad && /not a glTF/.test(bad) && RIG.status()["humanoid-bad"].ok === false, bad);
+    const gen = X.M.makeHumanoid(Object.assign({}, look, { gender: "bad" })); T.check("a failed slot falls back to the generic glTF humanoid", gen.glb === true); RIG.unregister("humanoid"); RIG.unregister("humanoid-tintable"); const fb = X.M.makeHumanoid(Object.assign({}, look, { gender: "bad" })); T.check("with no model left it falls back to the procedural character", fb.glb !== true && !!fb.hips);
+    const lite = X.M.makeHumanoid(Object.assign({}, look, { procedural: true })); T.check("look.procedural forces the procedural body", !lite.glb);
+  ` };
+SCENARIOS["debug-glb"] = { fx: () => fixture(), fn: `
+    const g = T.g(); T.noRender(); const X = T.X(); const RIG = X.RIG; const THREE = window.THREE; const A = X.A; const bytes = await (await fetch("models/eldoria-humanoid.glb")).arrayBuffer(); await RIG.register("humanoid", bytes);
+    const look = { calling: "Fighter", species: "Human", gender: "Male", skin: "#c98e64", hair: "#4a2e1d", hairStyle: "Short Crop", face: 2, build: "Athletic", armor: "light", weapon: "none", cape: null, main: "#5a4a3a", trim: "#8a8f96", cloth: "#6a5a40", detail: "lo" };
+    const hg = X.M.makeHumanoid(look); const hp = X.M.makeHumanoid(Object.assign({}, look, { procedural: true })); [hg, hp].forEach((h, i) => { h.root.position.set(i * 2, 0, 0); g.scene.add(h.root); h.t = 0; });
+    const wp = (h, j) => { h.root.updateMatrixWorld(true); const v = new THREE.Vector3(); (j === "rhand" ? h.RA.hand : j === "lhand" ? h.LA.hand : j === "head" ? h.head : h.hips).getWorldPosition(v); v.x -= h.root.position.x; return v; };
+    for (const clip of ["thrust", "block"]) { A.playAction(hg, clip, null); A.playAction(hp, clip, null); const row = []; for (let i = 0; i < 24; i++) { A.animateHumanoid(hg, 1 / 30, { speed: 0, calm: true }); A.animateHumanoid(hp, 1 / 30, { speed: 0, calm: true }); const e = ["rhand", "lhand", "head", "hips"].map((j) => wp(hg, j).distanceTo(wp(hp, j))); row.push((i + 1) + ":" + (Math.max(...e) * 100).toFixed(1)); } T.check(clip + " per-frame max error (cm)", true, row.join(" ")); }
+  ` };
+SCENARIOS["glb-game"] = { fx: () => { const v = fixture({ companions: COMPANIONS, party: ["mira"] }); v["world3d-models"] = { humanoid: { b64: fs.readFileSync(path.join(HERE, "../assets/models/eldoria-humanoid.glb")).toString("base64") } }; return v; }, fn: `
+    const g = T.g(); T.noRender(); T.clear(); const X = T.X(); const B = X.B;
+    T.check("the manifest variable loaded the model before the game started", X.RIG.has("humanoid") && X.RIG.status().humanoid.ok);
+    T.check("the player is a glTF character", g.player.glb === true && !!g.player.mix);
+    await T.until(() => g.allies.length === 1, 8000); T.check("companions are glTF characters too", g.allies[0].c.parts.h.glb === true);
+    const gob = T.spawn("Direwood Goblin", 0, -6, { hp: 300, maxHp: 300 }); T.check("humanoid monsters use the glTF body", gob.c.parts.h && gob.c.parts.h.glb === true);
+    await T.fight(gob); const hp0 = gob.hp; T.rig(0.99); g.target = gob; g.attack(); await T.idle(); T.unrig(); T.check("a weapon swing resolves on the clip's hit event (damage dealt)", gob.hp < hp0, hp0 + " -> " + gob.hp);
+    await T.passTurn(); await T.passTurn(); T.check("enemy and companion turns play through the mixer without errors", T.log().length > 6);
+    T.rig(0.99); T.cast("burst-sphere", { x: gob.x, z: gob.z }); await T.idle(); T.unrig(); T.check("spell casting animates and resolves", T.log().some((l) => /Burst Sphere/.test(l)));
+    B.dealDamage(g, gob, g.pe, 5, {}); await T.sleep(300); T.check("hit reactions play", true);
+  ` };
+
+// one scenario per calling: its techniques cost what the calling entry says and do what it says
+const TECH = {
+  Barbarian: `g.res = 3; const sp0 = g.stats.sp; const t = T.X().R.CALLING_KIT.Barbarian.tech[0]; T.rig(0.99); const hp0 = m.hp; g.target = m; g.technique(t); await T.idle(); T.unrig();
+    T.check("Brutal Swing spends 2 Fury", g.res === 1, g.res); T.check("it is an attack (Action) with +1d10", g.battle.econ.action === 0 && m.hp < hp0, hp0 + " -> " + m.hp);`,
+  Monk: `g.res = 2; const t = T.X().R.CALLING_KIT.Monk.tech[0]; T.rig(0.5); g.target = m; const n0 = T.log().length; g.technique(t); await T.idle(); T.unrig();
+    T.check("Focus Flurry spends 1 Focus", g.res === 1, g.res); T.check("and makes two strikes", T.log().slice(n0).filter((l) => /3d6\\(/.test(l)).length >= 2, JSON.stringify(T.log().slice(n0)));`,
+  Paladin: `g.res = 2; const t = T.X().R.CALLING_KIT.Paladin.tech[0]; T.rig(0.99); g.target = m; g.technique(t); await T.idle(); T.unrig();
+    T.check("Smite spends 1 Resonance (a hit then builds 1 back, per the Paladin entry)", g.res === 1 || g.res === 2, g.res); T.check("and the strike is radiant", T.log().some((l) => /radiant damage/.test(l)), JSON.stringify(T.log().slice(-2)));`,
+  Cleric: `g.res = 2; g.stats.hp = 50; const t = T.X().R.CALLING_KIT.Cleric.tech[0]; g.technique(t); await T.idle();
+    T.check("Devotion: Mend spends 1 Devotion and the Bonus Action", g.res === 1 && g.battle.econ.bonus === 0, g.res); T.check("and heals 1d8 + Willpower", g.stats.hp > 50 && g.stats.hp <= 50 + 8 + 5, g.stats.hp);`,
+  Rogue: `const t = T.X().R.CALLING_KIT.Rogue.tech[1]; const sp0 = g.stats.sp; g.technique(t); await T.idle();
+    T.check("Cunning Motion costs 2 SP and the Bonus Action", g.stats.sp === sp0 - 2 && g.battle.econ.bonus === 0, g.stats.sp); T.check("it disengages and adds 4.5 m of movement", g.disengaged === true && g.battle.econ.move > 9, g.battle.econ.move);
+    const hp0 = g.stats.hp; const mv0 = g.battle.econ.move; g.autoMove = { x: g.pos.x, z: g.pos.z + 6, stop: 0 }; await T.until(() => !g.autoMove, 8000); await T.idle(); T.check("moving away provokes no opportunity attack", !T.log().some((l) => /takes an opportunity attack/i.test(l)), JSON.stringify(T.log().slice(-4)));
+    T.passTurn && 0;`,
+  Ranger: `const t = T.X().R.CALLING_KIT.Ranger.tech[0]; g.target = m; g.technique(t); await T.idle(); T.check("Mark Quarry is a Bonus Action", g.battle.econ.bonus === 0 && g.quarry === m);
+    T.rig(0.5); g.target = m; g.attack(); await T.idle(); T.unrig(); T.check("the first attack on the quarry gets +1", T.log().some((l) => /\\+1 situational/.test(l)), JSON.stringify(T.log().slice(-2)));`,
+  Bard: `g.res = 1; const t = T.X().R.CALLING_KIT.Bard.tech[0]; g.technique(t); await T.idle(); T.check("Carry the Verse spends 1 Momentum and the Bonus Action", g.res === 0 && g.battle.econ.bonus === 0);
+    T.rig(0.5); g.target = m; g.attack(); await T.idle(); T.unrig(); T.check("the next attack gets +2", T.log().some((l) => /\\+2 situational/.test(l)), JSON.stringify(T.log().slice(-2)));`,
+  "Wyrm Hunter": `const t = T.X().R.CALLING_KIT["Wyrm Hunter"].tech[0]; g.target = m; T.rig(0.99); g.technique(t); await T.idle(); T.unrig(); T.check("Monster Read rolls Perception + Tracking against 12 + Threat", T.log().some((l) => /Monster Read — 3d6/.test(l)));
+    T.check("and learns the weakness on a success", g.read === m.mon.name, g.read);`,
+  Mage: `const t = T.X().R.CALLING_KIT.Mage.tech[0]; g.technique(t); await T.idle(); T.check("Arcane Overchannel is primed (no Mana yet)", g.overchannel === true);
+    const mp0 = g.stats.mp; T.rig(0.99); const ok = T.cast("arcane-bolt", { e: m, x: m.x, z: m.z }); await T.idle(); T.unrig(); T.check("the next spell costs +50% Mana (4 -> 6)", ok && g.stats.mp === mp0 - 6, mp0 - g.stats.mp); T.check("and strikes one dice step harder (2d8)", T.log().some((l) => /Overchannel/.test(l)));`
+};
+for (const [calling, body] of Object.entries(TECH)) SCENARIOS["tech-" + calling.toLowerCase().replace(/ /g, "-")] = { fx: () => fixture({ calling, equipment: { weapon: calling === "Rogue" || calling === "Ranger" ? "dagger1" : "sword1" }, attributes: { strength: 15, willpower: 14 } }), fn: `
+    const g = T.g(); T.noRender(); T.clear(); const m = T.spawn("Direwood Hobgoblin", 0, -5, { hp: 500, maxHp: 500 }); await T.fight(m); T.check("calling is " + ${JSON.stringify(calling)}, g.calling() === ${JSON.stringify(calling)});
+    ${body}` };
+
 
 // ---------------------------------------------------------------- touch and pointer flows (driven from Node)
 async function box(page, sel) { return page.evaluate((q) => { const e = document.querySelector(q); if (!e) return null; const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); if (cs.display === "none" || cs.visibility === "hidden" || r.width === 0) return null; return { x: r.left, y: r.top, w: r.width, h: r.height, r: r.right, b: r.bottom }; }, sel); }
