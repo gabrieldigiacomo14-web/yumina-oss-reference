@@ -57,6 +57,12 @@ export const SCENARIOS = {
       T.check(lab + ": back moves toward the camera", Bk.d > 0.3 && Bk.fwd < -Bk.d * 0.9, JSON.stringify(Bk));
     }
   ` },
+  // the canonical town layout: Aurelia's building footprints must not move when decoration is added (props draw from their own random streams)
+  layout: { fx: () => fixture(), fn: `
+    const g = T.g(); T.noRender(); T.clear(); await T.sleep(500); const s0 = g.settlements["aurelia-city"];
+    const L = s0.colliders.filter((c) => c.box && c.r > 3).map((c) => c.x.toFixed(2) + "," + c.z.toFixed(2)).sort(); let h = 0; for (const ch of L.join(";")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    T.check("Aurelia City's 187 buildings stand where they always have (footprint signature)", L.length === 187 && h === 3978757722, L.length + " " + h);
+  ` },
   // camera collision: the third-person camera never ends up behind a wall (BVH over each settlement's building shell)
   camera: { fx: () => fixture(), fn: `
     const g = T.g(); const THREE = window.THREE; T.noRender(); T.clear(); g.inCombat = false; g.spawnMonsters = function () {};

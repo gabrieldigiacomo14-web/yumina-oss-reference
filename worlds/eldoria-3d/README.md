@@ -186,6 +186,10 @@ image files: the environment textures are generated in the browser at startup.
   frame; dwarves are short and stocky with a long card beard (other bearded men get a trimmed one, mouth left clear); halflings get a
   larger head. Market stalls now have a timber frame, a striped awning with a valance, heaped produce, crates, a barrel and a sack, and
   city plazas get a ring of them; lamp posts carry lanterns.
+- **Crowd LOD and camera collision from open-source tools** (see `docs/oss-evaluation.md` for the full evaluation of the
+  suggested repositories): anonymous townsfolk use a meshoptimizer-simplified humanoid (≈35 % of the triangles, 256 px
+  textures); the third-person camera collides with buildings through a three-mesh-bvh (0.5.24, the r149-compatible release)
+  hierarchy built per settlement. Poly Haven could not be reached from this build environment; the document lists what is needed.
 - **Fix found on the way**: roads lifted the terrain inside towns; Aurelia's central fountain stood on a 6 m cone. Roads now hand over
   to the town's own streets inside its limits.
 
@@ -197,7 +201,9 @@ image files: the environment textures are generated in the browser at startup.
 | Market stalls, plaza stall ring, lanterns | yes | yes (city screenshots, collision via box colliders) | **no** | — |
 | Per-realm lighting and haze | yes | Aurelia only visually checked | **no** | — |
 | Frame cap, adaptive resolution, shadow cadence, character culling/LOD, grass density | yes | functionally (no errors, scenarios pass); SwiftShader cannot measure GPU speed | **no**, not on an iPhone | — |
-| Character mesh LODs (fewer triangles at distance) | **no** (animation-rate LOD and culling only) | — | — | a decimated GLB per LOD level (buildable with the same pipeline) |
+| Crowd LOD humanoid (meshoptimizer) | yes: anonymous townsfolk; player, companions and named NPCs keep full detail | yes (city screenshots, all scenarios) | **no** | — |
+| Camera collision with buildings (three-mesh-bvh) | yes | yes (`camera` scenario) | **no** | — |
+| Poly Haven PBR textures | **no** | — | — | **blocked**: the build environment cannot reach api.polyhaven.com / dl.polyhaven.org |
 | Vegetation, rivers, bridges, other six realms' architecture | unchanged procedural geometry with the new ground/lighting | — | — | tree/foliage asset library |
 
 "Tested inside Yumina" is **no** throughout: this repository's harness mounts the world through Yumina's own `buildComponent` and

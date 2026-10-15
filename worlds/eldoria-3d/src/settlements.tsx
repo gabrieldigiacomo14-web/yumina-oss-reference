@@ -67,7 +67,10 @@ function wallSeg(B, x1, z1, x2, z2, y, h, th, st) {
 }
 // A market stall: timber frame, counter with a plank top, a striped awning sloping out over the front with a valance,
 // produce heaped on the counter, crates, a barrel and a sack beside it.
-function stall(B, x, y, z, rot, r) {
+function stall(B, x, y, z, rot, r0) {
+  // takes exactly the 9 draws the original stall took from the settlement's sequence, then uses its own stream, so every
+  // building placed after a market keeps its canonical position
+  var seed = Math.floor(r0() * 2147483647); for (var dr = 0; dr < 8; dr++) r0(); var r = rng(seed);
   var cloth = ["#8a2c24", "#2c4a7a", "#b88a30", "#3a6a3a", "#6a2e5a", "#2e5a5a"][Math.floor(r() * 6)], cream = "#e2d6bc";
   var cs = Math.cos(rot), sn = Math.sin(rot); function L(lx, lz) { return [x + lx * cs + lz * sn, z - lx * sn + lz * cs]; } // +lz = front
   [[-1.35, -0.75, 2.75], [1.35, -0.75, 2.75], [-1.35, 0.85, 2.3], [1.35, 0.85, 2.3]].forEach(function (q) { var p = L(q[0], q[1]); B.add(prim("boxb"), M(p[0], y, p[1], 0, rot, 0, 0.13, q[2], 0.13), C("#4a3424", 0.06)); });
@@ -251,9 +254,9 @@ export function buildSettlement(p, surf) {
     if (p.kind === "capital" || p.kind === "city") { fountain(B, cx, py0, cz, st); statue(B, cx + 14, py0, cz - 6, -1.2, st, false); statue(B, cx - 14, py0, cz - 6, 1.2, st, true); out.colliders.push({ x: cx, z: cz, r: 4 }, { x: cx + 14, z: cz - 6, r: 1.8 }, { x: cx - 14, z: cz - 6, r: 1.8 }); }
     else { B.add(prim("cyl16"), M(cx, py0, cz, 0, 0, 0, 3.2, 1.0, 3.2), C(st.stone)); B.add(prim("cyl16"), M(cx, py0 + 0.9, cz, 0, 0, 0, 2.2, 0.2, 2.2), C("#1a2a30", 0)); out.colliders.push({ x: cx, z: cz, r: 2 }); }
     if (p.kind === "capital" || p.kind === "city") { // a ring of stalls around the plaza, clear of the statues, the board and the streets
-      var nS = p.kind === "capital" ? 7 : 4; for (var si = 0; si < nS; si++) { var sa = si / nS * Math.PI * 2 + 0.9, sr = plazaR * 0.7; var sx = Math.cos(sa) * sr, sz = Math.sin(sa) * sr;
+      var rs = rng(hashStr(p.id + ":plaza-stalls")); var nS = p.kind === "capital" ? 7 : 4; for (var si = 0; si < nS; si++) { var sa = si / nS * Math.PI * 2 + 0.9, sr = plazaR * 0.7; var sx = Math.cos(sa) * sr, sz = Math.sin(sa) * sr;
         if (Math.hypot(sx - 14, sz + 6) < 5 || Math.hypot(sx + 14, sz + 6) < 5 || streets.some(function (s3) { return segDist(sx, sz, s3) < s3.w / 2 + 2.2; })) continue;
-        stall(B, cx + sx, gy(sx, sz), cz + sz, Math.atan2(-sx, -sz), r); boxCollider(cx + sx, cz + sz, 4.2, 2.6, Math.atan2(-sx, -sz)); } }
+        stall(B, cx + sx, gy(sx, sz), cz + sz, Math.atan2(-sx, -sz), rs); boxCollider(cx + sx, cz + sz, 4.2, 2.6, Math.atan2(-sx, -sz)); } }
     var bA = r() * Math.PI * 2; out.boards.push({ x: cx + Math.cos(bA) * (plazaR * 0.6), z: cz + Math.sin(bA) * (plazaR * 0.6), y: gy(Math.cos(bA) * plazaR * 0.6, Math.sin(bA) * plazaR * 0.6), rot: -bA - Math.PI / 2, name: "Notice Board" });
     out.plazas.push({ x: cx, z: cz, r: plazaR });
     // lamps around the plaza
