@@ -35,6 +35,17 @@ C={
  'grim_head':('grim',(520,10,935,205)),
  'map_head':('map',(470,10,800,210)),
 }
+# Trim every crop inward so no mockup frame lines, corner ornaments, arrows or lettering ride along.
+EXTRA = {  # (left, top, right, bottom) extra inset in source pixels
+ 'place_detail': (14,10,4,4), 'purse': (4,4,16,6), 'origin_about': (4,4,14,12), 'grim_head': (4,4,16,4), 'tile_grimoire': (4,4,16,4),
+ 'tile_squad': (4,4,12,8), 'bg_head': (4,4,12,8), 'final_portrait': (4,4,12,4), 'tile_character': (4,4,12,4), 'map_head': (4,10,14,4),
+ 'bank_balance': (4,4,10,6), 'bank_head': (4,4,10,6), 'tile_bank': (4,4,10,6), 'act_eat': (4,4,14,12), 'inv_head': (4,4,10,4), 'tile_inventory': (4,4,10,4),
+ 'region_forsaken': (4,4,10,4), 'region_common': (4,4,10,4), 'region_noble': (4,4,10,4), 'story_head': (4,4,12,4), 'place_torren': (8,4,4,4),
+ 'tile_missions': (6,4,4,4), 'tile_relationships': (4,4,4,4), 'ident_appear': (4,4,30,4),
+}
+for k,(im,box) in list(C.items()):
+    e = EXTRA.get(k, (0,0,0,0)); base = 6
+    C[k] = (im, (box[0]+base+e[0], box[1]+base+e[1], box[2]-base-e[2], box[3]-base-e[3]))
 for k,(im,box) in C.items():
     img=Image.open(U+IM[im]+'-image.png').crop(box)
     img.save(f'{OUT}/{k}.jpg',quality=82)

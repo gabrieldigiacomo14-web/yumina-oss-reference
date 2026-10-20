@@ -15,6 +15,12 @@ function MapView(p) {
   var api = p.api; var v = api.variables || {}; var busy = !!api.isStreaming; var locs = arr(v.known_locations);
   var ts = React.useState({ dest: "", other: "", mode: "On foot", pace: "Normal", route: "Main roads" }); var tr = ts[0], setTr = ts[1];
   function st(k, x) { var n = Object.assign({}, tr); n[k] = x; setTr(n); }
+  var travelRef = React.useRef(null);
+  var ls0 = React.useState(false); var locSheet = ls0[0], setLocSheet = ls0[1];
+  function pick(name) {
+    var n = Object.assign({}, tr, { dest: name }); setTr(n);
+    setTimeout(function () { if (travelRef.current && travelRef.current.scrollIntoView) { try { travelRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} } }, 30);
+  }
   var dest = tr.dest && tr.dest !== "Somewhere else" ? tr.dest : tr.other.trim();
   var here = { x: num(v.player_x, 0), y: num(v.player_y, 0) };
   var destCoords = dest ? findCoords(dest, locs) : null;
@@ -30,30 +36,33 @@ function MapView(p) {
     return (
       <Frame className="bc-mapgroup" pad="6px 8px 8px" key={title}>
         <SectionHead icon={icon} iconSize={26} title={title} right={<small className="bc-shead-note">{sub}</small>} />
-        {ls.map(function (l, i) { var n = str(l.name); return <PlaceRow key={str(l.id) || n || i} l={l} on={tr.dest === n} onClick={function () { st("dest", n); }} />; })}
+        {ls.map(function (l, i) { var n = str(l.name); return <PlaceRow key={str(l.id) || n || i} l={l} on={tr.dest === n} onClick={function () { pick(n); }} />; })}
       </Frame>
     );
   }
   return (
     <div className="bc-mapview">
-      <button type="button" className="bc-curloc" onClick={function () { if (loc.settlement) st("dest", ""); }} aria-label={"Current location: " + (str(v.current_location) || "unknown")}>
+      <button type="button" className="bc-curloc" onClick={function () { setLocSheet(true); }} aria-label={"Current location: " + (str(v.current_location) || "unknown") + ". Show details"}>
         <img src={img("location")} alt="" /><span className="bc-curloc-shade" />
         <span className="bc-locbar-pin"><Icon n="pin" s={22} /></span>
         <span className="bc-curloc-text"><small>Current Location</small><strong>{loc.settlement || str(v.current_location) || "Unknown"}</strong><span>{[kingdomLabel(loc.kingdom || cp.homeland), loc.region].filter(Boolean).join(" — ") || loc.place}</span></span>
         {v.weather ? <span className="bc-curloc-weather">{str(v.weather)}</span> : null}
+        <Icon n="chevr" s={14} />
       </button>
-      <div className="bc-homeloc"><Icon n="home" s={24} /><span><small>Home Location</small><strong>{home.settlement || str(v.home_location) || "Not established"}</strong></span><em>{[kingdomLabel(home.kingdom), home.region].filter(Boolean).join(" — ")}</em></div>
+      <button type="button" className="bc-homeloc" disabled={!home.settlement} onClick={function () { pick(home.settlement); }} aria-label={"Home: " + (home.settlement || "not established") + ". Plan the way home"}><Icon n="home" s={24} /><span><small>Home Location</small><strong>{home.settlement || str(v.home_location) || "Not established"}</strong></span><em>{[kingdomLabel(home.kingdom), home.region].filter(Boolean).join(" \u2014 ")}</em>{home.settlement ? <Icon n="chevr" s={13} /> : null}</button>
+      {locSheet ? <LocationSheet api={api} v={v} close={function () { setLocSheet(false); }} toStory={p.toStory} /> : null}
       {locs.length ? null : <Empty>You know your own neighborhood and little else.</Empty>}
       {group("Places You Know", "Locations you can travel to.", "pin", known)}
       {group("Visited", "Places you have been to before.", "book", visited)}
       {group("Rumored", "Places you have heard about.", "scroll", rumored)}
+      <div ref={travelRef} className="bc-sec-anchor" />
       <Frame className="bc-travel" pad="8px 9px 10px">
         <SectionHead icon="compass" iconSize={34} title="Travel" right={<small className="bc-shead-note">Choose where to go and how to travel.</small>} />
         <div className="bc-travel-grid">
           <div className="bc-travel-left">
             <div className="bc-mini-label">Destination</div>
             <div className="bc-destchips">
-              {locs.slice(0, 6).map(function (l) { var n = str(l.name); return <Chip key={n} icon="pin" on={tr.dest === n} onClick={function () { st("dest", n); }}>{n}</Chip>; })}
+              {locs.filter(function (l) { return str(l.name) !== loc.settlement; }).slice(0, 8).map(function (l) { var n = str(l.name); return <Chip key={n} icon="pin" on={tr.dest === n} onClick={function () { st("dest", n); }}>{n}</Chip>; })}
               <Chip icon="pin" on={tr.dest === "Somewhere else"} onClick={function () { st("dest", "Somewhere else"); }}>Somewhere else</Chip>
             </div>
             {tr.dest === "Somewhere else" || !locs.length ? <input className="bc-in" aria-label="Other destination" placeholder="Where to" value={tr.other} onChange={function (e) { st("other", e.target.value); }} /> : null}
@@ -89,6 +98,25 @@ function MapView(p) {
   );
 }
 
+function LocationSheet(p) {
+  var v = p.v; var api = p.api; var loc = parseLoc(v.current_location); var busy = !!api.isStreaming;
+  var rec = null; arr(v.known_locations).forEach(function (l) { if (str(l.name) === loc.settlement) rec = l; });
+  return (
+    <Sheet title={loc.settlement || "Where you are"} onClose={p.close}>
+      <div className="bc-locsheet-art"><img src={img(/capital|castle/i.test(loc.settlement) ? "map_head" : "story_head")} alt="" /></div>
+      <Row k="Place" v={loc.place || "\u2014"} />
+      <Row k="Region" v={[kingdomLabel(loc.kingdom), loc.region].filter(Boolean).join(" \u2014 ") || "\u2014"} />
+      <Row k="Weather" v={str(v.weather) || "\u2014"} />
+      <Row k="Time" v={dayMonthWD(v.world_date) + " \u00b7 " + clock12(v.world_time)} />
+      {rec && rec.notes ? <p className="bc-note" style={{ fontSize: 14 }}>{str(rec.notes)}</p> : null}
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        <Btn small kind="gold" disabled={busy} onClick={function () { p.close(); send(api, "I take a careful look around " + (loc.place || loc.settlement || "here") + "."); p.toStory(); }}>Look around (story)</Btn>
+        <Btn small onClick={p.close}>Close</Btn>
+      </div>
+    </Sheet>
+  );
+}
+
 /* ---------- journal: chronicle, missions, notices ---------- */
 function JournalView(p) {
   var api = p.api; var v = api.variables || {}; var busy = !!api.isStreaming;
@@ -98,6 +126,9 @@ function JournalView(p) {
   var goals = arr(v.goals); var ch = arr(v.chronicle_archive).concat(arr(v.chronicle)).slice().reverse();
   function writeGoals(ng) { if (canWrite(api)) api.setVariable("goals", ng); }
   var notices = noticeCount(v); var ms = activeMissions(v);
+  var ps0 = React.useState([]); var passages = ps0[0], setPassages = ps0[1];
+  React.useEffect(function () { loadPassages(api, setPassages); }, [tab]);
+  function dropPassage(id) { var n = passages.filter(function (x) { return x.id !== id; }); setPassages(n); storePassages(api, n); }
   var body = null;
   if (tab === "missions") body = <MissionsView api={api} />;
   else if (tab === "notices") body = <NoticesView api={api} />;
@@ -122,6 +153,15 @@ function JournalView(p) {
           <Btn kind="gold" disabled={busy || !goalText.trim()} onClick={function () { writeGoals(goals.concat([{ goal: goalText.trim(), status: "active", set_on: str(v.world_date) }])); setGoalText(""); }}>Add</Btn>
         </div>
       </Frame>
+      {passages.length ? <SectionHead icon="bookmark" iconSize={22} title="Saved passages" sub="Moments you kept from the story. Private, never sent to the AI." /> : null}
+      {passages.slice().reverse().map(function (x) {
+        return (
+          <Frame key={x.id} pad="10px 13px" style={{ marginBottom: 8 }}>
+            <div className="bc-passage-meta"><span>{[str(x.date), str(x.place)].filter(Boolean).join(" \u00b7 ")}</span><button type="button" onClick={function () { dropPassage(x.id); }} aria-label="Remove passage">Remove</button></div>
+            <div className="bc-passage-text">{str(x.text)}</div>
+          </Frame>
+        );
+      })}
       <SectionHead icon="doc" iconSize={24} title="Chronicle" sub="Your own history, page by page." />
       {ch.length ? ch.map(function (c, i) {
         return <Frame key={i} pad="10px 13px" style={{ marginBottom: 8 }}><div style={{ fontSize: 13.5, color: C.gold, fontWeight: 700 }}>{str(c.date)}</div><div style={{ fontFamily: DISPLAY, fontSize: 16.5, color: C.ivory }}>{str(c.title)}</div>{c.summary ? <div style={{ fontSize: 15, color: C.muted, lineHeight: 1.45 }}>{str(c.summary)}</div> : null}</Frame>;

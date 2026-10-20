@@ -12,6 +12,7 @@ function Game(p) {
   var hs = React.useState([]); var hist = hs[0], setHist = hs[1];
   var prs = React.useState(null); var preset = prs[0], setPreset = prs[1];
   var pf = React.useState("inventory"); var packFocus = pf[0], setPackFocus = pf[1];
+  var sts = React.useState(""); var storySheet = sts[0], setStorySheet = sts[1];
   var was = React.useRef(false);
   React.useEffect(function () { if (streaming && !was.current) { setView("story"); setHist([]); } was.current = streaming; }, [streaming]);
   function route(n) {
@@ -31,7 +32,7 @@ function Game(p) {
   var base = view.split(":")[0]; var tab = view.split(":")[1] || "";
   var main = null;
   if (base === "home") main = <HomeView api={api} art={art} bannerUrl={bannerUrl} go={go} />;
-  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} />;
+  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} go={go} sheet={storySheet} setSheet={setStorySheet} />;
   else {
     var inner = null;
     if (base === "grimoire") inner = <GrimoireView api={api} art={art} goTrain={goTrain} toStory={toStory} goBound={function () { go("bound"); }} />;
@@ -56,8 +57,43 @@ function Game(p) {
   return (
     <div className="bc-fill bc-game" style={{ background: PAGE_BG }}>
       <main className="bc-main-area">{main}</main>
-      {base === "story" ? <Composer api={api} /> : null}
+      {base === "story" ? <Composer api={api} sheet={storySheet} onPlus={function () { setStorySheet(storySheet === "actions" ? "" : "actions"); }} /> : null}
       <Nav view={base} nav={nav} notices={noticeCount(v)} missions={activeMissions(v)} />
+    </div>
+  );
+}
+
+var IDEAS = ["I take a slow look around and listen.", "I ask the nearest person what's new around here.", "I check what I'm carrying and tidy my things.", "I practice a small, controlled bit of my magic.", "I find somewhere quiet to think about what to do next.", "I go looking for honest work.", "I head somewhere I haven't been yet.", "I write a short letter to someone I care about."];
+function composerIdea(v, random) {
+  var chips = (CTX[str(v.scene_type)] || CTX.other).map(function (c) { return c + "."; });
+  var goals = arr(v.goals).filter(function (g) { return g && (!g.status || g.status === "active"); });
+  var ups = arr(v.known_events).filter(function (e) { return e && (e.kind === "upcoming" || e.kind === "opportunity") && (!e.status || e.status === "known"); });
+  var focused = [];
+  if (goals.length) focused.push("I work toward my goal: " + str(goals[0].goal).replace(/\.$/, "") + ".");
+  if (ups.length) focused.push("I prepare for " + str(ups[0].title).replace(/\.$/, "") + ".");
+  var pool = random ? chips.concat(IDEAS).concat(focused) : focused.concat(chips);
+  return random ? pool[Math.floor(Math.random() * pool.length)] : pool[0];
+}
+function Composer(p) {
+  var api = p.api; var busy = !!api.isStreaming; var v = api.variables || {};
+  var ss = React.useState(0); var tick = ss[0], setTick = ss[1];
+  function draft(random) {
+    var idea = composerIdea(v, random);
+    if (typeof api.setComposerDraft === "function") api.setComposerDraft(idea);
+    else if (typeof api.showToast === "function") api.showToast(idea, "info");
+    setTick(tick + 1);
+  }
+  return (
+    <div className="bc-composer">
+      {api.error ? <div role="alert" className="bc-composer-err">{"The GM couldn't answer: " + str(api.error) + ". Send your message again."}</div> : null}
+      <MessageInput />
+      <div className="bc-composer-tools">
+        <button type="button" className={"bc-ctool bc-ctool-plus" + (p.sheet === "actions" ? " bc-ctool-on" : "")} aria-label="More actions" aria-expanded={p.sheet === "actions" ? "true" : "false"} onClick={p.onPlus}><Icon n="plus" s={14} /></button>
+        {busy
+          ? <button type="button" className="bc-ctool bc-ctool-busy" onClick={function () { if (typeof api.stopGeneration === "function") api.stopGeneration(); }}><span className="bc-streaming-dot" />{"Writing\u2026"}<b>Stop</b></button>
+          : <button type="button" className="bc-ctool" onClick={function () { draft(false); }} title="Put a suggestion in the box. Nothing is sent until you press send."><Icon n="star" s={14} />Suggest</button>}
+        <button type="button" className="bc-ctool" disabled={busy} onClick={function () { draft(true); }} title="Put a random idea in the box. Nothing is sent until you press send."><Icon n="dice" s={14} />Random</button>
+      </div>
     </div>
   );
 }

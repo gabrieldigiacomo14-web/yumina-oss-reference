@@ -187,7 +187,7 @@ function LocationBar(p) {
 function StatPill(p) {
   var val = clamp(num(p.value, 0), 0, 100);
   return (
-    <div className={"bc-pill bc-pill-" + p.k} aria-label={p.label + ": " + p.text}>
+    <div className={"bc-pill bc-pill-" + p.k + (hudLow(p.k, p.value) ? " bc-crit" : "")} aria-label={p.label + ": " + p.text}>
       <div className="bc-pill-fill" style={{ width: val + "%" }} />
       <span className="bc-pill-icon"><Icon n={p.icon} s={12} fill="#fff6dc" /></span>
       <span className="bc-pill-label">{p.label}</span>
@@ -225,15 +225,17 @@ function CharacterCard(p) {
           <button type="button" className="bc-portrait-btn" aria-label={p.portrait ? "Portrait options" : "Add a portrait"} disabled={portBusy || !p.setPortrait} onClick={function () { setPortraitMenu(true); }}>
             {p.portrait ? <img src={p.portrait} alt="" /> : <span className="bc-portrait-empty"><Icon n="bust" s={54} fill="#3a4658" /></span>}
           </button>
-          <AgeBadge age={str(v.player_age) || "?"} day={num(v.elapsed_days, 0) + 1} />
+          <AgeBadge age={str(v.player_age) || "?"} day={num(v.elapsed_days, 0) + 1} onClick={function () { p.go && p.go("character"); }} />
         </div>
         <div className="bc-profile-info">
           <div className="bc-profile-name">{str(v.player_name) || "Nameless"}</div>
           <div className="bc-profile-origin">{[origin, home.settlement || loc.settlement].filter(Boolean).join(" · ")}</div>
           <div className="bc-profile-motto">{motto}</div>
-          <StatPill k="hp" icon="heart" label="Body" value={v.vitality} text={val(v.vitality, condWord(v.vitality))} />
-          <StatPill k="mp" icon="drop" label="Mana" value={v.mana} text={val(v.mana, levelWord(v.mana))} />
-          <StatPill k="st" icon="run" label="Stamina" value={v.stamina} text={val(v.stamina, levelWord(v.stamina))} />
+          <button type="button" className="bc-pills" aria-label="Open character: condition and skills" onClick={function () { p.go && p.go("character"); }}>
+            <StatPill k="hp" icon="heart" label="Body" value={v.vitality} text={val(v.vitality, condWord(v.vitality))} />
+            <StatPill k="mp" icon="drop" label="Mana" value={v.mana} text={val(v.mana, levelWord(v.mana))} />
+            <StatPill k="st" icon="run" label="Stamina" value={v.stamina} text={val(v.stamina, levelWord(v.stamina))} />
+          </button>
         </div>
         {portMsg ? <div role="alert" className="bc-profile-alert">{portMsg}</div> : null}
       </Frame>
@@ -243,12 +245,12 @@ function CharacterCard(p) {
           <span className="bc-summary-grim-text"><strong>Grimoire</strong><small>{hasG ? (num(g.leaf_count, 3) + "-leaf · " + num(g.pages_filled, arr(v.spells).length) + " pages") : "Not yet received"}</small></span>
           <Icon n="chevr" s={12} />
         </button>
-        {[["star", "Mana", str(obj(mp.bands).reserves) || "Unknown"], ["people", "Reputation", repTxt], ["clover", "Squad", squad], ["bookmark", "Title", title], ["pin", "Location", loc.settlement || "—"]].map(function (r) {
+        {[["star", "Mana", str(obj(mp.bands).reserves) || "Unknown", "character"], ["people", "Reputation", repTxt, "crown"], ["clover", "Squad", squad, "crown"], ["bookmark", "Title", title, "crown"], ["pin", "Location", loc.settlement || "—", "map"]].map(function (r) {
           return (
-            <div key={r[1]} className="bc-summary-row">
+            <button type="button" key={r[1]} className="bc-summary-row" aria-label={r[1] + ": " + r[2]} onClick={function () { p.go && p.go(r[3]); }}>
               <span className="bc-summary-k"><Icon n={r[0]} s={14} />{r[1]}</span>
               <span className="bc-summary-v">{r[2]}</span>
-            </div>
+            </button>
           );
         })}
       </Frame>
@@ -275,7 +277,7 @@ function CharacterCard(p) {
 }
 function AgeBadge(p) {
   return (
-    <div className="bc-age" aria-label={"Age " + p.age + ", day " + p.day}>
+    <div className="bc-age" role={p.onClick ? "button" : undefined} tabIndex={p.onClick ? 0 : undefined} onClick={p.onClick} onKeyDown={function (e) { if (p.onClick && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); p.onClick(); } }} aria-label={"Age " + p.age + ", day " + p.day}>
       <div className="bc-age-ring"><span>AGE</span><strong>{p.age}</strong></div>
       <div className="bc-age-day">{"Day " + p.day}</div>
     </div>
@@ -299,7 +301,7 @@ function HomeView(p) {
       <Hero bannerUrl={p.bannerUrl} tagline="A world of magic awaits, your story begins here." kingdom={kingdom} pennantSub={dayMonth(v.world_date) ? dayMonth(v.world_date) + " · " + clock12(v.world_time) : ""} />
       <div className="bc-wrap">
         <LocationBar v={v} onClick={function () { p.go("map"); }} />
-        <CharacterCard api={api} v={v} portrait={p.art.portrait} setPortrait={p.art.setPortrait} mediaError={p.art.mediaError} grimoireArt={p.art.art} grimoireDesign={p.art.grimoireDesign} goGrimoire={function () { p.go("grimoire"); }} />
+        <CharacterCard api={api} v={v} portrait={p.art.portrait} setPortrait={p.art.setPortrait} mediaError={p.art.mediaError} grimoireArt={p.art.art} grimoireDesign={p.art.grimoireDesign} goGrimoire={function () { p.go("grimoire"); }} go={p.go} />
         <div className="bc-home-tiles">
           {TILES.map(function (t) {
             var badge = t.k === "missions" ? activeMissions(v) : 0;

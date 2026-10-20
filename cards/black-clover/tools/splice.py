@@ -43,7 +43,7 @@ tiles_at = m.start()
 s = remove_var(s, 'TILES')
 s = s[:tiles_at] + '\n' + P('p1_core.tsx') + s[tiles_at:]
 for f in ['Stepper', 'TileGrid', 'PanelHead', 'OpeningSheet', 'CreatorBanner', 'Creator', 'Tile', 'LocationBar', 'noticeCount', 'activeMissions',
-          'HomeView', 'GrimoireView', 'PackView', 'MapView', 'JournalView', 'MenuView', 'Nav', 'Page', 'Game']:
+          'HomeView', 'GrimoireView', 'PackView', 'MapView', 'JournalView', 'MenuView', 'Nav', 'Page', 'Game', 'Composer']:
     # remove the ORIGINAL definition only (the first one that is not from our parts)
     occ = [mm.start() for mm in re.finditer(r'\nfunction ' + f + r'\(', s)]
     assert occ, f
@@ -65,6 +65,8 @@ for v in ['ERA_TILES', 'NAV', 'HOME_SUB', 'TITLES', 'MENU_ITEMS', 'CONCEPT_WORD'
     s2 = s[:old[0]] + '\n@@CUT@@' + s[old[0] + 1:]
     s = remove_var(s2.replace('\n@@CUT@@', '\nvar __CUT__' + v + ' = ', 1), '__CUT__' + v)
 s = s.replace('homeland: "", homeland_note: ""', 'homeland: "Clover", homeland_note: ""', 1)
+sv = s.index('\nfunction StoryView(')
+s = s[:sv] + s[sv:].replace('var ss = React.useState(""); var sheet = ss[0], setSheet = ss[1];', 'var ss = React.useState(""); var sheet = p.setSheet ? p.sheet : ss[0], setSheet = p.setSheet || ss[1];', 1)
 # StoryView return block
 a = s.index('  return (\n    <div className="bc-fill bc-story">')
 b = s.index('\n}\n', a) + 3

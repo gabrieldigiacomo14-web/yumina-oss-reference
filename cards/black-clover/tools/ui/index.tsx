@@ -655,7 +655,69 @@ var CSS = [
   "@media (max-width:360px){.bc-home-character{grid-template-columns:minmax(0,1fr)!important}.bc-travel-grid,.bc-grim-lower{grid-template-columns:minmax(0,1fr)}.bc-travel-right{border-left:0;padding-left:0}.bc-hero-tag{display:none}}",
   "@media (min-width:820px),(orientation:landscape) and (min-width:640px){.bc-nav{flex-direction:column!important;justify-content:center}.bc-nav-item{flex:0 0 auto;min-height:58px}.bc-nav-story-wrap{flex:0 0 auto;margin:6px 0}.bc-nav-story-btn{margin-top:0}.bc-hero{height:150px}.bc-hero-big{height:156px}.bc-wrap{max-width:900px}}",
   ".bc-spells-panel .bc-chip{font-size:12.5px;padding:4px 8px;min-height:32px;gap:4px}",
-  ".bc-home-character{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)!important}"
+  ".bc-home-character{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)!important}",
+  ".bc-pills{display:block;width:100%;padding:0;margin:0;border:0;background:transparent;text-align:left;border-radius:11px}",
+  ".bc-summary-row{width:100%;background:transparent;border-left:0;border-right:0;border-top:0;text-align:left;font-family:inherit;color:inherit}",
+  ".bc-summary-row:last-child{border-bottom:0}",
+  ".bc-cardbtn{display:block;width:100%;padding:9px 9px;border:1px solid rgba(214,174,92,.55);border-radius:7px;background:linear-gradient(180deg,rgba(20,34,52,.92),rgba(10,18,30,.96));text-align:left;color:inherit;font-family:inherit;box-shadow:inset 0 0 0 1px rgba(255,238,190,.05),0 6px 18px rgba(0,0,0,.34)}",
+  ".bc-cardbtn .bc-shead{padding:2px 2px 6px;min-height:0}",
+  ".bc-tendency-body>svg:last-child{margin-left:auto;flex-shrink:0}",
+  ".bc-pagecount{font-family:inherit;color:inherit;cursor:pointer}",
+  ".bc-purse{width:100%;border:1px solid rgba(214,174,92,.7);border-radius:7px;text-align:left;font-family:inherit;color:inherit}",
+  ".bc-capchip{font-family:inherit;cursor:pointer}",
+  ".bc-homeloc{width:100%;text-align:left;font-family:inherit;color:inherit}",
+  ".bc-homeloc:disabled{opacity:1}",
+  ".bc-homeloc>svg:last-child{flex-shrink:0}",
+  ".bc-curloc>svg:last-child{position:relative;flex-shrink:0}",
+  ".bc-statcell{background:transparent;border-top:0;border-bottom:0;border-left:0;font-family:inherit;color:inherit;text-align:left;min-height:38px;cursor:pointer}",
+  ".bc-upcoming{width:100%;border-left:0;border-right:0;border-top:0;text-align:left;font-family:inherit;cursor:pointer}",
+  ".bc-upcoming>svg{flex-shrink:0;align-self:center}",
+  ".bc-sec-anchor{scroll-margin-top:8px;height:0}",
+  ".bc-locsheet-art{height:120px;border-radius:7px;overflow:hidden;border:1px solid rgba(214,174,92,.55);margin-bottom:8px}",
+  ".bc-locsheet-art img{width:100%;height:100%;object-fit:cover}",
+  ".bc-passage-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:#d9b463;font-weight:700}",
+  ".bc-passage-meta button{background:transparent;border:1px solid rgba(214,174,92,.45);border-radius:5px;color:#d9cfb7;font-size:12px;padding:2px 8px;min-height:28px}",
+  ".bc-passage-text{font-size:15px;line-height:1.55;color:#e1d6c1;white-space:pre-line;margin-top:5px}",
+  ".bc-edit-ta{min-height:220px}",
+  ".bc-cardbar{display:flex;align-items:center;gap:2px;flex-shrink:0;padding:3px 6px;border-top:1px solid rgba(214,174,92,.35);background:rgba(6,12,22,.55)}",
+  ".bc-cardbar button{display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:3px 8px;border:0;border-radius:5px;background:transparent;color:#e1d6c1;font-size:13px;font-weight:700}",
+  ".bc-cardbar-sep{flex:1;min-width:6px;height:18px;border-right:1px solid rgba(214,174,92,.3);margin-right:4px}",
+  ".bc-composer-err{color:#f1c7b8;font-size:14px;padding:0 4px 6px}",
+  ".bc-composer-tools{display:flex;align-items:center;gap:6px;padding:6px 2px 0}",
+  ".bc-ctool{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 12px;border:1px solid rgba(214,174,92,.5);border-radius:17px;background:#0a1320;color:#e1d6c1;font-size:13px;font-weight:700}",
+  ".bc-ctool-plus{width:34px;padding:0;justify-content:center}",
+  ".bc-ctool-on{border-color:#f3dda0;background:linear-gradient(180deg,#2b2614,#141109)}",
+  ".bc-ctool-busy{border-color:#b48ae8;color:#e8dbff}",
+  ".bc-ctool-busy b{margin-left:4px;padding:1px 7px;border-radius:9px;background:#3c2466;color:#fff;font-size:11.5px}",
+  ".bc-actsheet-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}",
+  ".bc-actbtn{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:62px;padding:6px 4px;border:1px solid rgba(214,174,92,.5);border-radius:7px;background:#0a1320;color:#e1d6c1;font-size:12.5px;font-weight:700;text-align:center}",
+  ".bc-actsheet-more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}",
+  ".bc-actsheet .bc-note{margin-top:8px}",
+  "@keyframes bcCrit{0%,100%{box-shadow:0 0 0 0 rgba(224,90,75,0)}50%{box-shadow:0 0 0 2px rgba(224,90,75,.55),0 0 10px rgba(224,90,75,.45)}}",
+  ".bc-crit{animation:bcCrit 1.6s ease-in-out infinite}",
+  ".bc-pill.bc-crit{border-color:#e05a4b}",
+  ".bc-statcell.bc-crit{animation:none}",
+  ".bc-statcell.bc-crit .bc-statbar{animation:bcCrit 1.6s ease-in-out infinite;border-color:#e05a4b}",
+  ".bc-statcell.bc-crit small{color:#f19a8f}",
+  "@media (prefers-reduced-motion:reduce){.bc-crit,.bc-statcell.bc-crit .bc-statbar{animation:none}}",
+  ".bc-root .bc-tile,.bc-root .bc-actrow,.bc-root .bc-invrow,.bc-root .bc-placerow,.bc-root .bc-spellrow,.bc-root .bc-actcard,.bc-root .bc-hubtab,.bc-root .bc-chip,.bc-root .bc-method,.bc-root .bc-region,.bc-root .bc-place,.bc-root .bc-listopt,.bc-root .bc-tilebtn,.bc-root .bc-attrbtn,.bc-root .bc-locbar,.bc-root .bc-curloc,.bc-root .bc-homeloc,.bc-root .bc-bondrow,.bc-root .bc-summary-grim,.bc-root .bc-summary-row,.bc-root .bc-progression,.bc-root .bc-cardbtn,.bc-root .bc-purse,.bc-root .bc-statcell,.bc-root .bc-ctool,.bc-root .bc-actbtn,.bc-root .bc-cardbar button,.bc-root .bc-kchip,.bc-root .bc-objective-btn,.bc-root .bc-travelbtn,.bc-root .bc-pills,.bc-root .bc-step{transition:transform .12s ease,border-color .15s ease,background-color .15s ease,box-shadow .15s ease,filter .15s ease;-webkit-tap-highlight-color:transparent}",
+  ".bc-root .bc-tile:active,.bc-root .bc-actrow:active,.bc-root .bc-invrow:active,.bc-root .bc-placerow:active,.bc-root .bc-spellrow:active,.bc-root .bc-actcard:active,.bc-root .bc-hubtab:active,.bc-root .bc-chip:active,.bc-root .bc-method:active,.bc-root .bc-region:active,.bc-root .bc-place:active,.bc-root .bc-listopt:active,.bc-root .bc-tilebtn:active,.bc-root .bc-attrbtn:active,.bc-root .bc-locbar:active,.bc-root .bc-curloc:active,.bc-root .bc-homeloc:active,.bc-root .bc-bondrow:active,.bc-root .bc-progression:active,.bc-root .bc-cardbtn:active,.bc-root .bc-purse:active,.bc-root .bc-ctool:active,.bc-root .bc-actbtn:active,.bc-root .bc-travelbtn:active,.bc-root .bc-kchip:active{transform:scale(.985)}",
+  ".bc-root .bc-summary-row:active,.bc-root .bc-statcell:active,.bc-root .bc-cardbar button:active,.bc-root .bc-pills:active{filter:brightness(1.25)}",
+  "@media (hover:hover){.bc-root .bc-tile:hover,.bc-root .bc-actrow:hover,.bc-root .bc-invrow-wrap:hover,.bc-root .bc-placerow:hover,.bc-root .bc-spellrow:hover,.bc-root .bc-actcard:hover,.bc-root .bc-hubtab:hover,.bc-root .bc-method:hover,.bc-root .bc-region:hover,.bc-root .bc-place:hover,.bc-root .bc-listopt:hover,.bc-root .bc-tilebtn:hover,.bc-root .bc-attrbtn:hover,.bc-root .bc-locbar:hover,.bc-root .bc-curloc:hover,.bc-root .bc-homeloc:hover,.bc-root .bc-bondrow:hover,.bc-root .bc-progression:hover,.bc-root .bc-cardbtn:hover,.bc-root .bc-purse:hover,.bc-root .bc-actbtn:hover{border-color:#f3dda0!important;box-shadow:0 0 0 1px rgba(255,233,176,.18),0 6px 18px rgba(0,0,0,.4)}.bc-root .bc-chip:not(.bc-chip-on):hover,.bc-root .bc-ctool:hover,.bc-root .bc-kchip:hover{border-color:#d9b463}.bc-root .bc-summary-row:hover,.bc-root .bc-statcell:hover,.bc-root .bc-cardbar button:hover{background:rgba(217,180,99,.08)}}",
+  ".bc-root button:focus-visible,.bc-root [role=\"button\"]:focus-visible,.bc-root select:focus-visible{outline:2px solid #f3dda0!important;outline-offset:2px}",
+  ".bc-root button:disabled{cursor:default;opacity:.45;transform:none!important}",
+  ".bc-root .bc-age[role=\"button\"]{cursor:pointer}",
+  ".bc-shead-art .bc-shead-text{max-width:56%}",
+  ".bc-shead-art .bc-shead-img{width:46%}",
+  ".bc-hub-lower .bc-shead-art .bc-shead-img{width:34%;opacity:.75}",
+  ".bc-hub-lower .bc-shead-art .bc-shead-text{max-width:66%}",
+  ".bc-phead-art .bc-phead-text{max-width:64%}",
+  ".bc-phead-art .bc-phead-img{width:44%}",
+  ".bc-tile-text{max-width:none}",
+  ".bc-tile .bc-tile-art{width:46%}",
+  ".bc-tile-shade{background:linear-gradient(90deg,#0b1422 48%,rgba(11,20,34,.75) 64%,rgba(11,20,34,.1) 100%)!important}",
+  ".bc-actcard-text{max-width:62%}",
+  ".bc-place-text{max-width:60%}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -1988,7 +2050,7 @@ function LocationBar(p) {
 function StatPill(p) {
   var val = clamp(num(p.value, 0), 0, 100);
   return (
-    <div className={"bc-pill bc-pill-" + p.k} aria-label={p.label + ": " + p.text}>
+    <div className={"bc-pill bc-pill-" + p.k + (hudLow(p.k, p.value) ? " bc-crit" : "")} aria-label={p.label + ": " + p.text}>
       <div className="bc-pill-fill" style={{ width: val + "%" }} />
       <span className="bc-pill-icon"><Icon n={p.icon} s={12} fill="#fff6dc" /></span>
       <span className="bc-pill-label">{p.label}</span>
@@ -2026,15 +2088,17 @@ function CharacterCard(p) {
           <button type="button" className="bc-portrait-btn" aria-label={p.portrait ? "Portrait options" : "Add a portrait"} disabled={portBusy || !p.setPortrait} onClick={function () { setPortraitMenu(true); }}>
             {p.portrait ? <img src={p.portrait} alt="" /> : <span className="bc-portrait-empty"><Icon n="bust" s={54} fill="#3a4658" /></span>}
           </button>
-          <AgeBadge age={str(v.player_age) || "?"} day={num(v.elapsed_days, 0) + 1} />
+          <AgeBadge age={str(v.player_age) || "?"} day={num(v.elapsed_days, 0) + 1} onClick={function () { p.go && p.go("character"); }} />
         </div>
         <div className="bc-profile-info">
           <div className="bc-profile-name">{str(v.player_name) || "Nameless"}</div>
           <div className="bc-profile-origin">{[origin, home.settlement || loc.settlement].filter(Boolean).join(" · ")}</div>
           <div className="bc-profile-motto">{motto}</div>
-          <StatPill k="hp" icon="heart" label="Body" value={v.vitality} text={val(v.vitality, condWord(v.vitality))} />
-          <StatPill k="mp" icon="drop" label="Mana" value={v.mana} text={val(v.mana, levelWord(v.mana))} />
-          <StatPill k="st" icon="run" label="Stamina" value={v.stamina} text={val(v.stamina, levelWord(v.stamina))} />
+          <button type="button" className="bc-pills" aria-label="Open character: condition and skills" onClick={function () { p.go && p.go("character"); }}>
+            <StatPill k="hp" icon="heart" label="Body" value={v.vitality} text={val(v.vitality, condWord(v.vitality))} />
+            <StatPill k="mp" icon="drop" label="Mana" value={v.mana} text={val(v.mana, levelWord(v.mana))} />
+            <StatPill k="st" icon="run" label="Stamina" value={v.stamina} text={val(v.stamina, levelWord(v.stamina))} />
+          </button>
         </div>
         {portMsg ? <div role="alert" className="bc-profile-alert">{portMsg}</div> : null}
       </Frame>
@@ -2044,12 +2108,12 @@ function CharacterCard(p) {
           <span className="bc-summary-grim-text"><strong>Grimoire</strong><small>{hasG ? (num(g.leaf_count, 3) + "-leaf · " + num(g.pages_filled, arr(v.spells).length) + " pages") : "Not yet received"}</small></span>
           <Icon n="chevr" s={12} />
         </button>
-        {[["star", "Mana", str(obj(mp.bands).reserves) || "Unknown"], ["people", "Reputation", repTxt], ["clover", "Squad", squad], ["bookmark", "Title", title], ["pin", "Location", loc.settlement || "—"]].map(function (r) {
+        {[["star", "Mana", str(obj(mp.bands).reserves) || "Unknown", "character"], ["people", "Reputation", repTxt, "crown"], ["clover", "Squad", squad, "crown"], ["bookmark", "Title", title, "crown"], ["pin", "Location", loc.settlement || "—", "map"]].map(function (r) {
           return (
-            <div key={r[1]} className="bc-summary-row">
+            <button type="button" key={r[1]} className="bc-summary-row" aria-label={r[1] + ": " + r[2]} onClick={function () { p.go && p.go(r[3]); }}>
               <span className="bc-summary-k"><Icon n={r[0]} s={14} />{r[1]}</span>
               <span className="bc-summary-v">{r[2]}</span>
-            </div>
+            </button>
           );
         })}
       </Frame>
@@ -2076,7 +2140,7 @@ function CharacterCard(p) {
 }
 function AgeBadge(p) {
   return (
-    <div className="bc-age" aria-label={"Age " + p.age + ", day " + p.day}>
+    <div className="bc-age" role={p.onClick ? "button" : undefined} tabIndex={p.onClick ? 0 : undefined} onClick={p.onClick} onKeyDown={function (e) { if (p.onClick && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); p.onClick(); } }} aria-label={"Age " + p.age + ", day " + p.day}>
       <div className="bc-age-ring"><span>AGE</span><strong>{p.age}</strong></div>
       <div className="bc-age-day">{"Day " + p.day}</div>
     </div>
@@ -2100,7 +2164,7 @@ function HomeView(p) {
       <Hero bannerUrl={p.bannerUrl} tagline="A world of magic awaits, your story begins here." kingdom={kingdom} pennantSub={dayMonth(v.world_date) ? dayMonth(v.world_date) + " · " + clock12(v.world_time) : ""} />
       <div className="bc-wrap">
         <LocationBar v={v} onClick={function () { p.go("map"); }} />
-        <CharacterCard api={api} v={v} portrait={p.art.portrait} setPortrait={p.art.setPortrait} mediaError={p.art.mediaError} grimoireArt={p.art.art} grimoireDesign={p.art.grimoireDesign} goGrimoire={function () { p.go("grimoire"); }} />
+        <CharacterCard api={api} v={v} portrait={p.art.portrait} setPortrait={p.art.setPortrait} mediaError={p.art.mediaError} grimoireArt={p.art.art} grimoireDesign={p.art.grimoireDesign} goGrimoire={function () { p.go("grimoire"); }} go={p.go} />
         <div className="bc-home-tiles">
           {TILES.map(function (t) {
             var badge = t.k === "missions" ? activeMissions(v) : 0;
@@ -2403,7 +2467,7 @@ function SceneTranscript(p) {
 
 function StoryView(p) {
   var api = p.api; var v = api.variables || {}; var busy = !!api.isStreaming; var loc = parseLoc(v.current_location); var nums = showNums(v);
-  var ss = React.useState(""); var sheet = ss[0], setSheet = ss[1];
+  var ss = React.useState(""); var sheet = p.setSheet ? p.sheet : ss[0], setSheet = p.setSheet || ss[1];
   var os = React.useState("Normal"); var out = os[0], setOut = os[1];
   var tg = React.useState(""); var tgt = tg[0], setTgt = tg[1];
   var fs=React.useState("");var freeText=fs[0],setFreeText=fs[1];
@@ -2477,6 +2541,54 @@ function StoryView(p) {
       </div>
     );
   }
+  var eds = React.useState(null); var editing = eds[0], setEditing = eds[1];
+  var ms0 = arr(api.messages); var lastAi = null;
+  for (var mi = ms0.length - 1; mi >= 0; mi--) { if (ms0[mi] && ms0[mi].role === "assistant" && ms0[mi].status !== "failed") { lastAi = ms0[mi]; break; } }
+  function toast(m, t) { if (typeof api.showToast === "function") api.showToast(m, t || "info"); }
+  function copyLast() {
+    var t = cleanPassage(proseOf(lastAi && lastAi.content)); if (!t) return;
+    try { if (typeof api.copyToClipboard === "function") api.copyToClipboard(t); else navigator.clipboard.writeText(t); toast("Passage copied.", "success"); } catch (e) { toast("Couldn't copy that passage.", "error"); }
+  }
+  function regen() { if (lastAi && typeof api.regenerateMessage === "function") api.regenerateMessage(lastAi.id); }
+  function saveLast() {
+    var t = cleanPassage(proseOf(lastAi && lastAi.content)); if (!t) return;
+    savePassage(api, { id: str(lastAi.id) || String(Date.now()), date: str(v.world_date), place: loc.place || loc.settlement, text: t.slice(0, 1200) }, function (ok, dup) { toast(dup ? "Already in your journal." : ok ? "Saved to your journal." : "Couldn't save to the journal.", ok || dup ? "success" : "error"); });
+  }
+  function eatSomething() {
+    var food = physInv.filter(function (it) { return bcCanConsume(it) && bcIsAccessible(it, physInv, false); })[0];
+    if (!food || !canWrite(api)) { act("Eat something."); return; }
+    var r = bcConsume(physInv, food.id, v);
+    if (!r.ok) { act("Eat something."); return; }
+    var appearance = bcAppearance(r.inventory, v);
+    var patch = Object.assign({ inventory: r.inventory, appearance_state: appearance, carry_state: bcCarryProfile(r.inventory, obj(v.body_profile), bcWalletProfile(v.money).weightKg), stamina: clamp(num(v.stamina, 0) + 6, 0, 100) }, bcClockForInventory(v, 15));
+    bcPatch(api, patch, function (ok) { toast(ok ? "You eat the " + str(food.name).toLowerCase() + ". (free, no AI turn)" : "Couldn't save that.", ok ? "success" : "error"); });
+  }
+  function cardAction(c) {
+    if (c === "Rest for a while") { setSheet(sheet === "rest" ? "" : "rest"); return; }
+    if (/^train/i.test(c) && p.go) { p.go("train"); return; }
+    if (c === "Eat something") { eatSomething(); return; }
+    act(c + ".");
+  }
+  if (sheet === "actions") {
+    var moreActs = chips.slice(4);
+    sheetBody = (
+      <div className="bc-actsheet">
+        <div className="bc-actsheet-grid">
+          <button type="button" className="bc-actbtn" disabled={busy} onClick={function () { setSheet("cast"); }}><Icon n="star" s={20} />Cast magic</button>
+          <button type="button" className="bc-actbtn" disabled={busy} onClick={function () { setSheet("item"); }}><Icon n="pack" s={20} />Use an item</button>
+          <button type="button" className="bc-actbtn" disabled={busy} onClick={function () { setSheet("rest"); }}><Icon n="bed" s={20} />Rest or sleep</button>
+          <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("train"); }}><Icon n="dumbbell" s={20} />Training</button>
+          <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("map"); }}><Icon n="map" s={20} />Travel</button>
+          <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("time"); }}><Icon n="hourglass" s={20} />Let time pass</button>
+        </div>
+        {moreActs.length ? <div className="bc-actsheet-more">{moreActs.map(function (c) { return <Chip key={c} disabled={busy} onClick={function () { act(c + "."); }}>{c}</Chip>; })}</div> : null}
+        <div className="bc-note">Cards and chips send the action as your message. Training, travel and time open their own planners.</div>
+      </div>
+    );
+  }
+  if (editing) {
+    sheetBody = null;
+  }
   var cp0 = obj(v.creation_profile);
   var kingdom0 = kingdomLabel(loc.kingdom || cp0.homeland) || "Clover Kingdom";
   var night = isNight(v.world_time);
@@ -2492,16 +2604,16 @@ function StoryView(p) {
       <div className="bc-statstrip" role="group" aria-label="Your condition">
         {[["heart", "Body", v.vitality, w(v.vitality, condWord(v.vitality)), "hp"], ["drop", "Mana", v.mana, w(v.mana, levelWord(v.mana)), "mp"], ["run", "Stamina", v.stamina, w(v.stamina, levelWord(v.stamina)), "st"], ["moon", "Fatigue", v.fatigue, w(v.fatigue, fatWord(v.fatigue)), "ft"]].map(function (s) {
           return (
-            <div key={s[1]} className={"bc-statcell bc-statcell-" + s[4]} aria-label={s[1] + ": " + s[3]}>
+            <button type="button" key={s[1]} className={"bc-statcell bc-statcell-" + s[4] + (hudLow(s[4], s[2]) ? " bc-crit" : "")} aria-label={s[1] + ": " + s[3] + ". Open character"} onClick={function () { p.go && p.go("character"); }}>
               <Icon n={s[0]} s={17} />
               <div className="bc-statcell-body"><span>{s[1]}</span><div className="bc-statbar"><i style={{ width: clamp(num(s[2], 0), 0, 100) + "%" }} /></div><small>{s[3]}</small></div>
-            </div>
+            </button>
           );
         })}
-        <div className="bc-statcell bc-statcell-sky"><Icon n={night ? "moon" : "sun"} s={18} /><div className="bc-statcell-body"><span>{tod}</span><small>{str(v.weather).split(",")[0] || clock12(v.world_time)}</small></div></div>
+        <button type="button" className="bc-statcell bc-statcell-sky" aria-label={tod + ", " + clock12(v.world_time) + ", " + str(v.weather) + ". Let time pass"} onClick={function () { p.go && p.go("time"); }}><Icon n={night ? "moon" : "sun"} s={18} /><div className="bc-statcell-body"><span>{tod}</span><small>{str(v.weather).split(",")[0] || clock12(v.world_time)}</small></div></button>
       </div>
       {ups.length ? (
-        <div className="bc-upcoming"><span>Upcoming</span><em>{str(ups[0].title) + (ups[0].when ? ", " + str(ups[0].when) : "") + (ups[0].where ? ", " + str(ups[0].where) : "")}</em></div>
+        <button type="button" className="bc-upcoming" onClick={function () { p.go && p.go("notices"); }}><span>Upcoming</span><em>{str(ups[0].title) + (ups[0].when ? ", " + str(ups[0].when) : "") + (ups[0].where ? ", " + str(ups[0].where) : "")}</em><Icon n="chevr" s={11} /></button>
       ) : null}
       {inCombat ? (
         <div className="bc-combatbar">
@@ -2519,6 +2631,13 @@ function StoryView(p) {
         <StoryArtContext.Provider value={p.art}>
           <Chat className="bc-story-native-chat" renderBubble={StoryBubble} />
         </StoryArtContext.Provider>
+        <div className="bc-cardbar" role="toolbar" aria-label="Latest passage">
+          <button type="button" disabled={!lastAi} onClick={copyLast}><Icon n="doc" s={14} />Copy</button>
+          <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }}><Icon n="quill" s={14} />Edit</button>
+          <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen}><Icon n="hourglass" s={14} />Regenerate</button>
+          <span className="bc-cardbar-sep" />
+          <button type="button" disabled={!lastAi} onClick={saveLast}><Icon n="bookmark" s={14} />Save to Journal</button>
+        </div>
       </div>
       {arr(v.equipment_activity).length ? (
         <div role="status" className="bc-equipnote">
@@ -2528,11 +2647,21 @@ function StoryView(p) {
       {sheet ? (
         <div className="bc-story-sheet">
           <div className="bc-story-sheet-head">
-            <span>{{ cast: "Cast", move: "Move", defend: "Defend", ally: "Allies", item: "Items", rest: "Rest" }[sheet]}</span>
+            <span>{{ cast: "Cast", move: "Move", defend: "Defend", ally: "Allies", item: "Items", rest: "Rest", actions: "Actions" }[sheet]}</span>
             <Btn small label="Close" onClick={function () { setSheet(""); }}>Close</Btn>
           </div>
           {sheetBody}
         </div>
+      ) : null}
+      {editing ? (
+        <Sheet title="Edit passage" onClose={function () { setEditing(null); }}>
+          <textarea className="bc-in bc-ta bc-edit-ta" aria-label="Passage text" value={editing.text} onChange={function (e) { setEditing(Object.assign({}, editing, { text: e.target.value })); }} />
+          <div className="bc-note">Only the prose changes. State already recorded by this reply stays exactly as it is.</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <Btn kind="gold" disabled={!editing.text.trim()} onClick={function () { var ed = editing; var pr = api.editMessage(ed.id, ed.text.trim() + (ed.dirs ? "\n\n" + ed.dirs : "")); setEditing(null); if (pr && pr.then) pr.then(function (ok) { toast(ok ? "Passage updated." : "Couldn't update that passage.", ok ? "success" : "error"); }, function () { toast("Couldn't update that passage.", "error"); }); }}>Save changes</Btn>
+            <Btn onClick={function () { setEditing(null); }}>Cancel</Btn>
+          </div>
+        </Sheet>
       ) : null}
       {inCombat ? (
         <div className="bc-chips bc-story-chips">
@@ -2543,7 +2672,7 @@ function StoryView(p) {
           {cards.map(function (c) {
             var m = actMeta(c); var isRest = c === "Rest for a while";
             return (
-              <button key={c} type="button" className={"bc-actcard" + (isRest && sheet === "rest" ? " bc-actcard-on" : "")} disabled={busy} onClick={function () { isRest ? setSheet(sheet === "rest" ? "" : "rest") : act(c + "."); }}>
+              <button key={c} type="button" className={"bc-actcard" + (isRest && sheet === "rest" ? " bc-actcard-on" : "")} disabled={busy} onClick={function () { cardAction(c); }}>
                 <img src={img(m.art)} alt="" /><span className="bc-actcard-shade" />
                 <span className="bc-actcard-icon"><Icon n={m.icon} s={26} /></span>
                 <span className="bc-actcard-text"><strong>{c}</strong><small>{m.sub}</small></span>
@@ -2551,18 +2680,24 @@ function StoryView(p) {
               </button>
             );
           })}
-          <div className="bc-actmore">
-            <Chip icon="star" disabled={busy} on={sheet === "cast"} onClick={function () { setSheet(sheet === "cast" ? "" : "cast"); }}>Cast magic</Chip>
-            <Chip icon="pack" disabled={busy} on={sheet === "item"} onClick={function () { setSheet(sheet === "item" ? "" : "item"); }}>Use item</Chip>
-            {extra.map(function (c) { return <Chip key={c} disabled={busy} onClick={function () { act(c + "."); }}>{c}</Chip>; })}
-          </div>
         </div>
       )}
     </div>
   );
 }
+var DIRECTIVE_LINE = /^\s*\[(?:audio|[A-Za-z_][\w.\-]*)\s*:[^\]]*\]\s*$/;
+function proseOf(t) { return str(t).split("\n").filter(function (l) { return !DIRECTIVE_LINE.test(l); }).join("\n").replace(/\n{3,}/g, "\n\n").trim(); }
+function cleanPassage(t) { return str(t).split("\n").map(function (l) { var m = l.match(/^\s*@(.+?)\s*$/); return m ? m[1] + ":" : l.replace(/(^|\s)[*_]+|[*_]+(?=\s|$|[.,!?;:])/g, "$1"); }).join("\n").replace(/:\n"/g, ": \"").trim(); }
+function dirsOf(t) { return str(t).split("\n").filter(function (l) { return DIRECTIVE_LINE.test(l); }).join("\n"); }
+function hudLow(k, val) { var n = num(val, k === "ft" ? 0 : 100); return k === "ft" ? n > 80 : (k === "hp" ? n < 25 : n < 15); }
+var PASSAGE_KEY = "bc_saved_passages";
+function loadPassages(api, cb) { var st = getStore(api); if (!st || typeof st.get !== "function") { cb([]); return; } try { var pr = st.get(PASSAGE_KEY); if (pr && pr.then) pr.then(function (raw) { var l = []; try { l = raw ? JSON.parse(raw) : []; } catch (e) {} cb(Array.isArray(l) ? l : []); }, function () { cb([]); }); else cb([]); } catch (e) { cb([]); } }
+function storePassages(api, list, cb) { var st = getStore(api); if (!st || typeof st.set !== "function") { cb && cb(false); return; } try { var pr = st.set(PASSAGE_KEY, JSON.stringify(list.slice(-60))); if (pr && pr.then) pr.then(function () { cb && cb(true); }, function () { cb && cb(false); }); else cb && cb(true); } catch (e) { cb && cb(false); } }
+function savePassage(api, item, cb) { loadPassages(api, function (l) { if (l.some(function (x) { return x.id === item.id; })) { cb(false, true); return; } storePassages(api, l.concat([item]), function (ok) { cb(ok, false); }); }); }
 var ACT_META = [
   [/rest|sleep|room/i, "bed", "Recover body and mind.", "act_rest"],
+  [/^eat something/i, "food", "Free if you carry food.", "act_eat"],
+  [/^train/i, "dumbbell", "Opens the training planner.", "act_train"],
   [/eat|food|meal|order/i, "food", "Restore stamina.", "act_eat"],
   [/train|practice|spar/i, "dumbbell", "Sharpen your skills.", "act_train"],
   [/head|outside|leave|explore|keep going|advance|look around|route/i, "compass", "Explore the town.", "act_out"],
@@ -3219,16 +3354,6 @@ function HelpView() {
 
 
 /* ---------- shell ---------- */
-function Composer(p) {
-  var api = p.api;
-  return (
-    <div className="bc-composer" style={{ padding: "7px 10px 16px", background: "linear-gradient(180deg,#0f1115,#0a0b0e)", borderTop: "1px solid " + C.goldLine, flexShrink: 0 }}>
-      {api.error ? <div role="alert" style={{ color: "#f1c7b8", fontSize: 14, padding: "0 4px 6px" }}>{"The GM couldn't answer: " + str(api.error) + ". Send your message again."}</div> : null}
-      {api.isStreaming ? <div role="status" style={{ color: C.muted, fontSize: 14, padding: "0 4px 5px", fontStyle: "italic" }}>The pages are turning...</div> : null}
-      <MessageInput />
-    </div>
-  );
-}
 
 
 
@@ -3474,6 +3599,24 @@ function GrimoireView(p) {
   var gfs = React.useState(false); var grimoireForge = gfs[0], setGrimoireForge = gfs[1];
   var nf = React.useState({ intent: "Offensive", idea: "", priority: "Precision", tradeoff: "" }); var form = nf[0], setForm = nf[1];
   var cp = obj(v.creation_profile); var attr = mp.attribute_known === false ? "" : str(mp.attribute);
+  var mps = React.useState(false); var profileOpen = mps[0], setProfileOpen = mps[1];
+  var mb = obj(mp.bands);
+  var profileSheet = profileOpen ? (
+    <Sheet title="Your magic" onClose={function () { setProfileOpen(false); }}>
+      <div className="bc-tendency-body" style={{ marginBottom: 8 }}><Icon n={attrIcon(attr)} s={40} fill="#9fe7d6" /><div><strong>{attr || "Not yet understood"}</strong><small>{ATTR_NATURE[str(attr).toLowerCase()] || "Your mana's own nature, still revealing itself."}</small></div></div>
+      <Row k="Reserves" v={str(mb.reserves) && mb.reserves !== "Unknown" ? str(mb.reserves) : bandOf(mp.capacity)} />
+      <Row k="Output" v={str(mb.output) && mb.output !== "Unknown" ? str(mb.output) : bandOf(mp.output)} />
+      <Row k="Control" v={str(mb.control) && mb.control !== "Unknown" ? str(mb.control) : bandOf(mp.control)} />
+      <Row k="Sensing" v={str(mb.sensing) && mb.sensing !== "Unknown" ? str(mb.sensing) : bandOf(mp.sensing)} />
+      <Row k="Physique" v={str(obj(bp.bands).physique) && obj(bp.bands).physique !== "Unknown" ? str(obj(bp.bands).physique) : bandOf((num(bp.strength, 0) + num(bp.endurance, 0)) / 2)} />
+      {arr(mp.forms).length ? <Row k="Forms" v={arr(mp.forms).map(str).join(", ")} /> : null}
+      <div className="bc-note">Descriptions only — the numbers behind them stay hidden. They grow through training, real use and breakthroughs.</div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <Btn small kind="gold" onClick={function () { setProfileOpen(false); p.goTrain("Mana control", ""); }}>Train my magic</Btn>
+        <Btn small onClick={function () { setProfileOpen(false); setSub("developing"); setOpen(-1); }}>Shape a new spell</Btn>
+      </div>
+    </Sheet>
+  ) : null;
   var hasG = isTrue(v.has_grimoire);
   var sBond = g.spirit_link ? str(g.spirit_link) : ""; var dBond = g.devil_link ? str(g.devil_link) : "";
   var bonds = (
@@ -3556,7 +3699,7 @@ function GrimoireView(p) {
       <div>
         <Frame className="bc-spells-panel" pad="9px 9px 6px" style={{ marginBottom: 12 }}>
           <SectionHead icon="book" title="Spells & Pages" sub="Spells you have discovered and mastered."
-            right={<span className="bc-pagecount"><small>Total pages</small><strong>{pages + (potential > pages ? " / " + potential : "")}</strong></span>} />
+            right={<button type="button" className="bc-pagecount" aria-label="Open the grimoire record" onClick={function () { setSub("record"); }}><small>Total pages</small><strong>{pages + (potential > pages ? " / " + potential : "")}</strong></button>} />
           <div className="bc-chiprow">{SPELL_CATS.map(function (c) { return <Chip key={c[0]} icon={c[2]} on={cat === c[0]} onClick={function () { setCat(c[0]); }}>{c[1]}</Chip>; })}</div>
           {shown.length ? shown.map(function (x) {
             var sp = x.sp, i = x.i; var su = p.art && p.art.spellImageUrl ? p.art.spellImageUrl(sp.id || ("idx" + i)) : ""; var c = spellCat(sp);
@@ -3580,15 +3723,15 @@ function GrimoireView(p) {
           }) : <Empty>{spells.length ? "No pages of that kind yet." : "Every page is still blank. Spells appear when your magic grows into them, through practice, experiments and the moments that test you."}</Empty>}
         </Frame>
         <div className="bc-grim-lower">
-          <Frame className="bc-attr-panel" pad="9px 8px">
+          <button type="button" className="bc-attr-panel bc-cardbtn" onClick={function () { setProfileOpen(true); }} aria-label="Open your magical profile">
             <SectionHead icon="compass" iconSize={24} title="Attributes" sub="Your current magical profile." />
             <Radar axes={axes} />
-          </Frame>
+          </button>
           <div className="bc-grim-side">
-            <Frame className="bc-tendency" pad="9px 9px">
+            <button type="button" className="bc-tendency bc-cardbtn" onClick={function () { setProfileOpen(true); }} aria-label="Open your mana tendency">
               <SectionHead icon={attrIcon(attr)} iconSize={24} title="Mana Tendency" sub="The nature of your magic." />
-              <div className="bc-tendency-body"><Icon n={attrIcon(attr)} s={34} fill="#9fe7d6" /><div><strong>{attr || "Not yet understood"}</strong><small>{ATTR_NATURE[str(attr).toLowerCase()] || (attr ? "Your mana's own nature, still revealing itself." : "Your attribute will reveal itself in time.")}</small></div></div>
-            </Frame>
+              <div className="bc-tendency-body"><Icon n={attrIcon(attr)} s={34} fill="#9fe7d6" /><div><strong>{attr || "Not yet understood"}</strong><small>{ATTR_NATURE[str(attr).toLowerCase()] || (attr ? "Your mana's own nature, still revealing itself." : "Your attribute will reveal itself in time.")}</small></div><Icon n="chevr" s={12} /></div>
+            </button>
             <button type="button" className="bc-progression" onClick={function () { setSub("developing"); }}>
               <Icon n="chart" s={28} /><span><strong>Progression</strong><small>Concepts in development, techniques and the grimoire's record.</small></span><Icon n="chevr" s={12} />
             </button>
@@ -3646,6 +3789,7 @@ function GrimoireView(p) {
   }
   return (
     <div>
+      {profileSheet}
       {sub === "spells" && open < 0 ? bonds : null}
       {grimoireForge ? <GrimoireForgeSheet api={p.api} art={p.art} g={g} attr={mp.attribute} onClose={function () { setGrimoireForge(false); }} /> : null}
       {sub !== "spells" || open >= 0 ? <div className="bc-chiprow" style={{ marginBottom: 10 }}>{[["spells", "Overview", "book"], ["developing", "Developing", "quill"], ["techniques", "Techniques", "star"], ["record", "Record", "scroll"]].map(function (t) { return <Chip key={t[0]} icon={t[2]} on={sub === t[0] && open < 0} onClick={function () { setSub(t[0]); setOpen(-1); }}>{t[1]}</Chip>; })}</div> : null}
@@ -3689,7 +3833,17 @@ function PackView(p) {
   var msgState = React.useState(''), msg = msgState[0], setMsg = msgState[1];
   var refs = { inventory: React.useRef(null), market: React.useRef(null), bank: React.useRef(null) };
   var focus = p.focus || "inventory";
-  React.useEffect(function () { var r = refs[focus]; if (focus !== "inventory" && r && r.current && r.current.scrollIntoView) { try { r.current.scrollIntoView({ block: "start" }); } catch (e) {} } }, [focus]);
+  var vs0 = React.useState(focus); var visible = vs0[0], setVisible = vs0[1];
+  function jump(k, smooth) { var r = refs[k]; setVisible(k); if (r && r.current && r.current.scrollIntoView) { try { r.current.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" }); } catch (e) {} } }
+  React.useEffect(function () { if (focus !== "inventory") jump(focus, false); }, [focus]);
+  React.useEffect(function () {
+    if (typeof IntersectionObserver !== "function") return;
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { var k = en.target.getAttribute("data-sec"); if (k) setVisible(k); } });
+    }, { rootMargin: "-25% 0px -65% 0px" });
+    ["inventory", "market", "bank"].forEach(function (k) { if (refs[k].current) obs.observe(refs[k].current); });
+    return function () { obs.disconnect(); };
+  }, []);
   var atHome = !!str(v.home_location) && str(v.home_location) === str(v.current_location);
   var can = !busy && canWrite(api);
   var atSquad = bcAtSquadLocker(v);
@@ -3785,20 +3939,20 @@ function PackView(p) {
   var bank = bcBankState(v.bank_account);
   return (
     <div className="bc-packhub">
-      <Frame className="bc-purse" pad="0">
-        <img className="bc-purse-art" src={img("purse")} alt="" /><span className="bc-purse-shade" />
+      <button type="button" className="bc-purse bc-frame" onClick={function () { jump("bank", true); }} aria-label={"Purse: " + num(v.money, 0).toLocaleString() + " Yul. Go to the bank."}>
+        <img className="bc-purse-art" src={img("purse")} alt="" /><span className="bc-purse-shade" /><Corners s={14} />
         <span className="bc-purse-icon"><Icon n="coins" s={44} /></span>
         <div className="bc-purse-text"><small>Your Purse</small><strong>{num(v.money, 0).toLocaleString() + " Yul"}</strong><span>{bank.open ? "Bank: " + bcMoney(bank.balance) + " on account." : "The coin of the Clover Kingdom."}</span></div>
-      </Frame>
+      </button>
       <div className="bc-hubtabs" role="tablist" aria-label="Pack sections">
         {[["inventory", "Inventory", "Items & Materials", "pack"], ["market", "Market", "Buy · Sell · Trade", "coins"], ["bank", "Bank & Treasury", "Save · Deposit · Withdraw", "bank"]].map(function (t) {
-          return <button key={t[0]} type="button" role="tab" aria-selected={focus === t[0] ? "true" : "false"} className={"bc-hubtab" + (focus === t[0] ? " bc-hubtab-on" : "")} onClick={function () { p.setFocus(t[0]); var r = refs[t[0]]; if (r.current && r.current.scrollIntoView) { try { r.current.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} } }}><Icon n={t[3]} s={30} /><span><strong>{t[1]}</strong><small>{t[2]}</small></span></button>;
+          return <button key={t[0]} type="button" role="tab" aria-selected={visible === t[0] ? "true" : "false"} className={"bc-hubtab" + (visible === t[0] ? " bc-hubtab-on" : "")} onClick={function () { jump(t[0], true); }}><Icon n={t[3]} s={30} /><span><strong>{t[1]}</strong><small>{t[2]}</small></span></button>;
         })}
       </div>
-      <div ref={refs.inventory} />
+      <div ref={refs.inventory} data-sec="inventory" className="bc-sec-anchor" />
       <Frame className="bc-inv-panel" pad="0 0 8px">
         <SectionHead art="inv_head" icon="pack" title="Inventory" sub="Items, Materials, and Key Items you carry."
-          right={<span className="bc-inv-tools"><span className="bc-capchip">{Math.round(carry.weight * 10) / 10 + " / " + carry.max + " kg"}</span>
+          right={<span className="bc-inv-tools"><button type="button" className={"bc-capchip" + (carry.band !== "comfortable" ? " bc-crit" : "")} aria-label={"Carried " + Math.round(carry.weight * 10) / 10 + " of " + carry.max + " kilograms, " + carry.band + ". Show load details."} onClick={function () { setDetails(!details); }}>{Math.round(carry.weight * 10) / 10 + " / " + carry.max + " kg"}</button>
             <select aria-label="Sort items" value={sort} onChange={function (e) { setSort(e.target.value); }}><option value="location">Location</option><option value="name">Name</option><option value="weight">Weight</option><option value="type">Type</option></select></span>} />
         <div className="bc-chiprow bc-inv-filters">{[["all", "All"], ["item", "Items"], ["material", "Materials"], ["key", "Key Items"]].map(function (f) { return <Chip key={f[0]} on={filter === f[0]} onClick={function () { setFilter(f[0]); }}>{f[1]}</Chip>; })}</div>
         {msg ? <div role="status" className="bc-inv-msg">{msg}</div> : null}
@@ -3836,10 +3990,10 @@ function PackView(p) {
           </div>
         ) : null}
       </Frame>
-      <div ref={refs.market} />
+      <div ref={refs.market} data-sec="market" className="bc-sec-anchor" />
       <div className="bc-hub-lower">
         <MarketView api={api} toStory={p.toStory} embedded={true} />
-        <div ref={refs.bank} className="bc-bank-anchor" />
+        <div ref={refs.bank} data-sec="bank" className="bc-sec-anchor bc-bank-anchor" />
         <BankView api={api} toStory={p.toStory} embedded={true} />
       </div>
     </div>
@@ -3862,6 +4016,12 @@ function MapView(p) {
   var api = p.api; var v = api.variables || {}; var busy = !!api.isStreaming; var locs = arr(v.known_locations);
   var ts = React.useState({ dest: "", other: "", mode: "On foot", pace: "Normal", route: "Main roads" }); var tr = ts[0], setTr = ts[1];
   function st(k, x) { var n = Object.assign({}, tr); n[k] = x; setTr(n); }
+  var travelRef = React.useRef(null);
+  var ls0 = React.useState(false); var locSheet = ls0[0], setLocSheet = ls0[1];
+  function pick(name) {
+    var n = Object.assign({}, tr, { dest: name }); setTr(n);
+    setTimeout(function () { if (travelRef.current && travelRef.current.scrollIntoView) { try { travelRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} } }, 30);
+  }
   var dest = tr.dest && tr.dest !== "Somewhere else" ? tr.dest : tr.other.trim();
   var here = { x: num(v.player_x, 0), y: num(v.player_y, 0) };
   var destCoords = dest ? findCoords(dest, locs) : null;
@@ -3877,30 +4037,33 @@ function MapView(p) {
     return (
       <Frame className="bc-mapgroup" pad="6px 8px 8px" key={title}>
         <SectionHead icon={icon} iconSize={26} title={title} right={<small className="bc-shead-note">{sub}</small>} />
-        {ls.map(function (l, i) { var n = str(l.name); return <PlaceRow key={str(l.id) || n || i} l={l} on={tr.dest === n} onClick={function () { st("dest", n); }} />; })}
+        {ls.map(function (l, i) { var n = str(l.name); return <PlaceRow key={str(l.id) || n || i} l={l} on={tr.dest === n} onClick={function () { pick(n); }} />; })}
       </Frame>
     );
   }
   return (
     <div className="bc-mapview">
-      <button type="button" className="bc-curloc" onClick={function () { if (loc.settlement) st("dest", ""); }} aria-label={"Current location: " + (str(v.current_location) || "unknown")}>
+      <button type="button" className="bc-curloc" onClick={function () { setLocSheet(true); }} aria-label={"Current location: " + (str(v.current_location) || "unknown") + ". Show details"}>
         <img src={img("location")} alt="" /><span className="bc-curloc-shade" />
         <span className="bc-locbar-pin"><Icon n="pin" s={22} /></span>
         <span className="bc-curloc-text"><small>Current Location</small><strong>{loc.settlement || str(v.current_location) || "Unknown"}</strong><span>{[kingdomLabel(loc.kingdom || cp.homeland), loc.region].filter(Boolean).join(" — ") || loc.place}</span></span>
         {v.weather ? <span className="bc-curloc-weather">{str(v.weather)}</span> : null}
+        <Icon n="chevr" s={14} />
       </button>
-      <div className="bc-homeloc"><Icon n="home" s={24} /><span><small>Home Location</small><strong>{home.settlement || str(v.home_location) || "Not established"}</strong></span><em>{[kingdomLabel(home.kingdom), home.region].filter(Boolean).join(" — ")}</em></div>
+      <button type="button" className="bc-homeloc" disabled={!home.settlement} onClick={function () { pick(home.settlement); }} aria-label={"Home: " + (home.settlement || "not established") + ". Plan the way home"}><Icon n="home" s={24} /><span><small>Home Location</small><strong>{home.settlement || str(v.home_location) || "Not established"}</strong></span><em>{[kingdomLabel(home.kingdom), home.region].filter(Boolean).join(" \u2014 ")}</em>{home.settlement ? <Icon n="chevr" s={13} /> : null}</button>
+      {locSheet ? <LocationSheet api={api} v={v} close={function () { setLocSheet(false); }} toStory={p.toStory} /> : null}
       {locs.length ? null : <Empty>You know your own neighborhood and little else.</Empty>}
       {group("Places You Know", "Locations you can travel to.", "pin", known)}
       {group("Visited", "Places you have been to before.", "book", visited)}
       {group("Rumored", "Places you have heard about.", "scroll", rumored)}
+      <div ref={travelRef} className="bc-sec-anchor" />
       <Frame className="bc-travel" pad="8px 9px 10px">
         <SectionHead icon="compass" iconSize={34} title="Travel" right={<small className="bc-shead-note">Choose where to go and how to travel.</small>} />
         <div className="bc-travel-grid">
           <div className="bc-travel-left">
             <div className="bc-mini-label">Destination</div>
             <div className="bc-destchips">
-              {locs.slice(0, 6).map(function (l) { var n = str(l.name); return <Chip key={n} icon="pin" on={tr.dest === n} onClick={function () { st("dest", n); }}>{n}</Chip>; })}
+              {locs.filter(function (l) { return str(l.name) !== loc.settlement; }).slice(0, 8).map(function (l) { var n = str(l.name); return <Chip key={n} icon="pin" on={tr.dest === n} onClick={function () { st("dest", n); }}>{n}</Chip>; })}
               <Chip icon="pin" on={tr.dest === "Somewhere else"} onClick={function () { st("dest", "Somewhere else"); }}>Somewhere else</Chip>
             </div>
             {tr.dest === "Somewhere else" || !locs.length ? <input className="bc-in" aria-label="Other destination" placeholder="Where to" value={tr.other} onChange={function (e) { st("other", e.target.value); }} /> : null}
@@ -3936,6 +4099,25 @@ function MapView(p) {
   );
 }
 
+function LocationSheet(p) {
+  var v = p.v; var api = p.api; var loc = parseLoc(v.current_location); var busy = !!api.isStreaming;
+  var rec = null; arr(v.known_locations).forEach(function (l) { if (str(l.name) === loc.settlement) rec = l; });
+  return (
+    <Sheet title={loc.settlement || "Where you are"} onClose={p.close}>
+      <div className="bc-locsheet-art"><img src={img(/capital|castle/i.test(loc.settlement) ? "map_head" : "story_head")} alt="" /></div>
+      <Row k="Place" v={loc.place || "\u2014"} />
+      <Row k="Region" v={[kingdomLabel(loc.kingdom), loc.region].filter(Boolean).join(" \u2014 ") || "\u2014"} />
+      <Row k="Weather" v={str(v.weather) || "\u2014"} />
+      <Row k="Time" v={dayMonthWD(v.world_date) + " \u00b7 " + clock12(v.world_time)} />
+      {rec && rec.notes ? <p className="bc-note" style={{ fontSize: 14 }}>{str(rec.notes)}</p> : null}
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        <Btn small kind="gold" disabled={busy} onClick={function () { p.close(); send(api, "I take a careful look around " + (loc.place || loc.settlement || "here") + "."); p.toStory(); }}>Look around (story)</Btn>
+        <Btn small onClick={p.close}>Close</Btn>
+      </div>
+    </Sheet>
+  );
+}
+
 /* ---------- journal: chronicle, missions, notices ---------- */
 function JournalView(p) {
   var api = p.api; var v = api.variables || {}; var busy = !!api.isStreaming;
@@ -3945,6 +4127,9 @@ function JournalView(p) {
   var goals = arr(v.goals); var ch = arr(v.chronicle_archive).concat(arr(v.chronicle)).slice().reverse();
   function writeGoals(ng) { if (canWrite(api)) api.setVariable("goals", ng); }
   var notices = noticeCount(v); var ms = activeMissions(v);
+  var ps0 = React.useState([]); var passages = ps0[0], setPassages = ps0[1];
+  React.useEffect(function () { loadPassages(api, setPassages); }, [tab]);
+  function dropPassage(id) { var n = passages.filter(function (x) { return x.id !== id; }); setPassages(n); storePassages(api, n); }
   var body = null;
   if (tab === "missions") body = <MissionsView api={api} />;
   else if (tab === "notices") body = <NoticesView api={api} />;
@@ -3969,6 +4154,15 @@ function JournalView(p) {
           <Btn kind="gold" disabled={busy || !goalText.trim()} onClick={function () { writeGoals(goals.concat([{ goal: goalText.trim(), status: "active", set_on: str(v.world_date) }])); setGoalText(""); }}>Add</Btn>
         </div>
       </Frame>
+      {passages.length ? <SectionHead icon="bookmark" iconSize={22} title="Saved passages" sub="Moments you kept from the story. Private, never sent to the AI." /> : null}
+      {passages.slice().reverse().map(function (x) {
+        return (
+          <Frame key={x.id} pad="10px 13px" style={{ marginBottom: 8 }}>
+            <div className="bc-passage-meta"><span>{[str(x.date), str(x.place)].filter(Boolean).join(" \u00b7 ")}</span><button type="button" onClick={function () { dropPassage(x.id); }} aria-label="Remove passage">Remove</button></div>
+            <div className="bc-passage-text">{str(x.text)}</div>
+          </Frame>
+        );
+      })}
       <SectionHead icon="doc" iconSize={24} title="Chronicle" sub="Your own history, page by page." />
       {ch.length ? ch.map(function (c, i) {
         return <Frame key={i} pad="10px 13px" style={{ marginBottom: 8 }}><div style={{ fontSize: 13.5, color: C.gold, fontWeight: 700 }}>{str(c.date)}</div><div style={{ fontFamily: DISPLAY, fontSize: 16.5, color: C.ivory }}>{str(c.title)}</div>{c.summary ? <div style={{ fontSize: 15, color: C.muted, lineHeight: 1.45 }}>{str(c.summary)}</div> : null}</Frame>;
@@ -4096,6 +4290,7 @@ function Game(p) {
   var hs = React.useState([]); var hist = hs[0], setHist = hs[1];
   var prs = React.useState(null); var preset = prs[0], setPreset = prs[1];
   var pf = React.useState("inventory"); var packFocus = pf[0], setPackFocus = pf[1];
+  var sts = React.useState(""); var storySheet = sts[0], setStorySheet = sts[1];
   var was = React.useRef(false);
   React.useEffect(function () { if (streaming && !was.current) { setView("story"); setHist([]); } was.current = streaming; }, [streaming]);
   function route(n) {
@@ -4115,7 +4310,7 @@ function Game(p) {
   var base = view.split(":")[0]; var tab = view.split(":")[1] || "";
   var main = null;
   if (base === "home") main = <HomeView api={api} art={art} bannerUrl={bannerUrl} go={go} />;
-  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} />;
+  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} go={go} sheet={storySheet} setSheet={setStorySheet} />;
   else {
     var inner = null;
     if (base === "grimoire") inner = <GrimoireView api={api} art={art} goTrain={goTrain} toStory={toStory} goBound={function () { go("bound"); }} />;
@@ -4140,8 +4335,43 @@ function Game(p) {
   return (
     <div className="bc-fill bc-game" style={{ background: PAGE_BG }}>
       <main className="bc-main-area">{main}</main>
-      {base === "story" ? <Composer api={api} /> : null}
+      {base === "story" ? <Composer api={api} sheet={storySheet} onPlus={function () { setStorySheet(storySheet === "actions" ? "" : "actions"); }} /> : null}
       <Nav view={base} nav={nav} notices={noticeCount(v)} missions={activeMissions(v)} />
+    </div>
+  );
+}
+
+var IDEAS = ["I take a slow look around and listen.", "I ask the nearest person what's new around here.", "I check what I'm carrying and tidy my things.", "I practice a small, controlled bit of my magic.", "I find somewhere quiet to think about what to do next.", "I go looking for honest work.", "I head somewhere I haven't been yet.", "I write a short letter to someone I care about."];
+function composerIdea(v, random) {
+  var chips = (CTX[str(v.scene_type)] || CTX.other).map(function (c) { return c + "."; });
+  var goals = arr(v.goals).filter(function (g) { return g && (!g.status || g.status === "active"); });
+  var ups = arr(v.known_events).filter(function (e) { return e && (e.kind === "upcoming" || e.kind === "opportunity") && (!e.status || e.status === "known"); });
+  var focused = [];
+  if (goals.length) focused.push("I work toward my goal: " + str(goals[0].goal).replace(/\.$/, "") + ".");
+  if (ups.length) focused.push("I prepare for " + str(ups[0].title).replace(/\.$/, "") + ".");
+  var pool = random ? chips.concat(IDEAS).concat(focused) : focused.concat(chips);
+  return random ? pool[Math.floor(Math.random() * pool.length)] : pool[0];
+}
+function Composer(p) {
+  var api = p.api; var busy = !!api.isStreaming; var v = api.variables || {};
+  var ss = React.useState(0); var tick = ss[0], setTick = ss[1];
+  function draft(random) {
+    var idea = composerIdea(v, random);
+    if (typeof api.setComposerDraft === "function") api.setComposerDraft(idea);
+    else if (typeof api.showToast === "function") api.showToast(idea, "info");
+    setTick(tick + 1);
+  }
+  return (
+    <div className="bc-composer">
+      {api.error ? <div role="alert" className="bc-composer-err">{"The GM couldn't answer: " + str(api.error) + ". Send your message again."}</div> : null}
+      <MessageInput />
+      <div className="bc-composer-tools">
+        <button type="button" className={"bc-ctool bc-ctool-plus" + (p.sheet === "actions" ? " bc-ctool-on" : "")} aria-label="More actions" aria-expanded={p.sheet === "actions" ? "true" : "false"} onClick={p.onPlus}><Icon n="plus" s={14} /></button>
+        {busy
+          ? <button type="button" className="bc-ctool bc-ctool-busy" onClick={function () { if (typeof api.stopGeneration === "function") api.stopGeneration(); }}><span className="bc-streaming-dot" />{"Writing\u2026"}<b>Stop</b></button>
+          : <button type="button" className="bc-ctool" onClick={function () { draft(false); }} title="Put a suggestion in the box. Nothing is sent until you press send."><Icon n="star" s={14} />Suggest</button>}
+        <button type="button" className="bc-ctool" disabled={busy} onClick={function () { draft(true); }} title="Put a random idea in the box. Nothing is sent until you press send."><Icon n="dice" s={14} />Random</button>
+      </div>
     </div>
   );
 }

@@ -34,7 +34,17 @@ function PackView(p) {
   var msgState = React.useState(''), msg = msgState[0], setMsg = msgState[1];
   var refs = { inventory: React.useRef(null), market: React.useRef(null), bank: React.useRef(null) };
   var focus = p.focus || "inventory";
-  React.useEffect(function () { var r = refs[focus]; if (focus !== "inventory" && r && r.current && r.current.scrollIntoView) { try { r.current.scrollIntoView({ block: "start" }); } catch (e) {} } }, [focus]);
+  var vs0 = React.useState(focus); var visible = vs0[0], setVisible = vs0[1];
+  function jump(k, smooth) { var r = refs[k]; setVisible(k); if (r && r.current && r.current.scrollIntoView) { try { r.current.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" }); } catch (e) {} } }
+  React.useEffect(function () { if (focus !== "inventory") jump(focus, false); }, [focus]);
+  React.useEffect(function () {
+    if (typeof IntersectionObserver !== "function") return;
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { var k = en.target.getAttribute("data-sec"); if (k) setVisible(k); } });
+    }, { rootMargin: "-25% 0px -65% 0px" });
+    ["inventory", "market", "bank"].forEach(function (k) { if (refs[k].current) obs.observe(refs[k].current); });
+    return function () { obs.disconnect(); };
+  }, []);
   var atHome = !!str(v.home_location) && str(v.home_location) === str(v.current_location);
   var can = !busy && canWrite(api);
   var atSquad = bcAtSquadLocker(v);
@@ -130,20 +140,20 @@ function PackView(p) {
   var bank = bcBankState(v.bank_account);
   return (
     <div className="bc-packhub">
-      <Frame className="bc-purse" pad="0">
-        <img className="bc-purse-art" src={img("purse")} alt="" /><span className="bc-purse-shade" />
+      <button type="button" className="bc-purse bc-frame" onClick={function () { jump("bank", true); }} aria-label={"Purse: " + num(v.money, 0).toLocaleString() + " Yul. Go to the bank."}>
+        <img className="bc-purse-art" src={img("purse")} alt="" /><span className="bc-purse-shade" /><Corners s={14} />
         <span className="bc-purse-icon"><Icon n="coins" s={44} /></span>
         <div className="bc-purse-text"><small>Your Purse</small><strong>{num(v.money, 0).toLocaleString() + " Yul"}</strong><span>{bank.open ? "Bank: " + bcMoney(bank.balance) + " on account." : "The coin of the Clover Kingdom."}</span></div>
-      </Frame>
+      </button>
       <div className="bc-hubtabs" role="tablist" aria-label="Pack sections">
         {[["inventory", "Inventory", "Items & Materials", "pack"], ["market", "Market", "Buy · Sell · Trade", "coins"], ["bank", "Bank & Treasury", "Save · Deposit · Withdraw", "bank"]].map(function (t) {
-          return <button key={t[0]} type="button" role="tab" aria-selected={focus === t[0] ? "true" : "false"} className={"bc-hubtab" + (focus === t[0] ? " bc-hubtab-on" : "")} onClick={function () { p.setFocus(t[0]); var r = refs[t[0]]; if (r.current && r.current.scrollIntoView) { try { r.current.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} } }}><Icon n={t[3]} s={30} /><span><strong>{t[1]}</strong><small>{t[2]}</small></span></button>;
+          return <button key={t[0]} type="button" role="tab" aria-selected={visible === t[0] ? "true" : "false"} className={"bc-hubtab" + (visible === t[0] ? " bc-hubtab-on" : "")} onClick={function () { jump(t[0], true); }}><Icon n={t[3]} s={30} /><span><strong>{t[1]}</strong><small>{t[2]}</small></span></button>;
         })}
       </div>
-      <div ref={refs.inventory} />
+      <div ref={refs.inventory} data-sec="inventory" className="bc-sec-anchor" />
       <Frame className="bc-inv-panel" pad="0 0 8px">
         <SectionHead art="inv_head" icon="pack" title="Inventory" sub="Items, Materials, and Key Items you carry."
-          right={<span className="bc-inv-tools"><span className="bc-capchip">{Math.round(carry.weight * 10) / 10 + " / " + carry.max + " kg"}</span>
+          right={<span className="bc-inv-tools"><button type="button" className={"bc-capchip" + (carry.band !== "comfortable" ? " bc-crit" : "")} aria-label={"Carried " + Math.round(carry.weight * 10) / 10 + " of " + carry.max + " kilograms, " + carry.band + ". Show load details."} onClick={function () { setDetails(!details); }}>{Math.round(carry.weight * 10) / 10 + " / " + carry.max + " kg"}</button>
             <select aria-label="Sort items" value={sort} onChange={function (e) { setSort(e.target.value); }}><option value="location">Location</option><option value="name">Name</option><option value="weight">Weight</option><option value="type">Type</option></select></span>} />
         <div className="bc-chiprow bc-inv-filters">{[["all", "All"], ["item", "Items"], ["material", "Materials"], ["key", "Key Items"]].map(function (f) { return <Chip key={f[0]} on={filter === f[0]} onClick={function () { setFilter(f[0]); }}>{f[1]}</Chip>; })}</div>
         {msg ? <div role="status" className="bc-inv-msg">{msg}</div> : null}
@@ -181,10 +191,10 @@ function PackView(p) {
           </div>
         ) : null}
       </Frame>
-      <div ref={refs.market} />
+      <div ref={refs.market} data-sec="market" className="bc-sec-anchor" />
       <div className="bc-hub-lower">
         <MarketView api={api} toStory={p.toStory} embedded={true} />
-        <div ref={refs.bank} className="bc-bank-anchor" />
+        <div ref={refs.bank} data-sec="bank" className="bc-sec-anchor bc-bank-anchor" />
         <BankView api={api} toStory={p.toStory} embedded={true} />
       </div>
     </div>

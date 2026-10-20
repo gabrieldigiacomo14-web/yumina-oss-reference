@@ -44,3 +44,22 @@ What changed:
 ## Rebuilding
 
 `tools/` holds everything needed to regenerate the card: `splice.py` builds `ui/index.tsx` from the source interface plus `parts/`, `build.py` builds the card from the source JSON plus `core/` and `ui/`, and `analyze.ts` measures prompt size with the engine.
+
+## v21.5 — interaction pass
+
+Every element that looks clickable is now clickable, and every button actually does something.
+
+- **Home:** the stat bars and age badge open Character. Each summary row opens its page (Mana → Character, Reputation/Squad/Title → Crown, Location → World Map), and the location bar opens the map. Body, mana and stamina pulse red when they're critically low (on the Adventure screen, fatigue pulses when it's too high).
+- **Adventure:** the condition strip opens Character and the time/weather cell opens Let Time Pass. The Upcoming bar opens Notices. The story card has a working toolbar: **Copy**, **Edit** (prose only; the state that reply recorded is kept), **Regenerate** and **Save to Journal**. Action cards do the sensible thing:
+  - **Rest** opens the rest panel.
+  - **Train** opens the training planner.
+  - **Eat something** eats a carried food item for free with no AI turn, and only asks the AI if you have no food.
+  - Other cards send the action.
+- **Composer:** **+** opens an Actions sheet (cast, use item, rest, training, travel, let time pass, plus any extra scene actions). **Suggest** and **Random** put an idea in the box without sending it. While the AI is writing, a **Stop** button appears.
+- **Grimoire:** the Attributes and Mana Tendency cards open a "Your magic" sheet with every band, plus Train / Shape buttons. The page counter opens the grimoire record.
+- **Pack:** the three tabs follow your scroll position. The purse jumps to the bank, and the weight chip opens load details.
+- **World Map:** tapping a place selects it and scrolls to Travel. Home plans the way home, and Current Location opens a details sheet with a "look around" action.
+- **Chronicle:** a Saved passages section (stored privately on your device, never sent to the AI).
+- Every tappable element has press, hover and keyboard-focus feedback.
+
+**Background art:** all 40 paintings are cropped further inward and none contains lettering. On the panels, the background art sits behind and to the side of the text, so only the interface's own words appear.

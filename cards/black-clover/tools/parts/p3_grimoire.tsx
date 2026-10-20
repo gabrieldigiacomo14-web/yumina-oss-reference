@@ -42,6 +42,24 @@ function GrimoireView(p) {
   var gfs = React.useState(false); var grimoireForge = gfs[0], setGrimoireForge = gfs[1];
   var nf = React.useState({ intent: "Offensive", idea: "", priority: "Precision", tradeoff: "" }); var form = nf[0], setForm = nf[1];
   var cp = obj(v.creation_profile); var attr = mp.attribute_known === false ? "" : str(mp.attribute);
+  var mps = React.useState(false); var profileOpen = mps[0], setProfileOpen = mps[1];
+  var mb = obj(mp.bands);
+  var profileSheet = profileOpen ? (
+    <Sheet title="Your magic" onClose={function () { setProfileOpen(false); }}>
+      <div className="bc-tendency-body" style={{ marginBottom: 8 }}><Icon n={attrIcon(attr)} s={40} fill="#9fe7d6" /><div><strong>{attr || "Not yet understood"}</strong><small>{ATTR_NATURE[str(attr).toLowerCase()] || "Your mana's own nature, still revealing itself."}</small></div></div>
+      <Row k="Reserves" v={str(mb.reserves) && mb.reserves !== "Unknown" ? str(mb.reserves) : bandOf(mp.capacity)} />
+      <Row k="Output" v={str(mb.output) && mb.output !== "Unknown" ? str(mb.output) : bandOf(mp.output)} />
+      <Row k="Control" v={str(mb.control) && mb.control !== "Unknown" ? str(mb.control) : bandOf(mp.control)} />
+      <Row k="Sensing" v={str(mb.sensing) && mb.sensing !== "Unknown" ? str(mb.sensing) : bandOf(mp.sensing)} />
+      <Row k="Physique" v={str(obj(bp.bands).physique) && obj(bp.bands).physique !== "Unknown" ? str(obj(bp.bands).physique) : bandOf((num(bp.strength, 0) + num(bp.endurance, 0)) / 2)} />
+      {arr(mp.forms).length ? <Row k="Forms" v={arr(mp.forms).map(str).join(", ")} /> : null}
+      <div className="bc-note">Descriptions only — the numbers behind them stay hidden. They grow through training, real use and breakthroughs.</div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <Btn small kind="gold" onClick={function () { setProfileOpen(false); p.goTrain("Mana control", ""); }}>Train my magic</Btn>
+        <Btn small onClick={function () { setProfileOpen(false); setSub("developing"); setOpen(-1); }}>Shape a new spell</Btn>
+      </div>
+    </Sheet>
+  ) : null;
   var hasG = isTrue(v.has_grimoire);
   var sBond = g.spirit_link ? str(g.spirit_link) : ""; var dBond = g.devil_link ? str(g.devil_link) : "";
   var bonds = (
@@ -124,7 +142,7 @@ function GrimoireView(p) {
       <div>
         <Frame className="bc-spells-panel" pad="9px 9px 6px" style={{ marginBottom: 12 }}>
           <SectionHead icon="book" title="Spells & Pages" sub="Spells you have discovered and mastered."
-            right={<span className="bc-pagecount"><small>Total pages</small><strong>{pages + (potential > pages ? " / " + potential : "")}</strong></span>} />
+            right={<button type="button" className="bc-pagecount" aria-label="Open the grimoire record" onClick={function () { setSub("record"); }}><small>Total pages</small><strong>{pages + (potential > pages ? " / " + potential : "")}</strong></button>} />
           <div className="bc-chiprow">{SPELL_CATS.map(function (c) { return <Chip key={c[0]} icon={c[2]} on={cat === c[0]} onClick={function () { setCat(c[0]); }}>{c[1]}</Chip>; })}</div>
           {shown.length ? shown.map(function (x) {
             var sp = x.sp, i = x.i; var su = p.art && p.art.spellImageUrl ? p.art.spellImageUrl(sp.id || ("idx" + i)) : ""; var c = spellCat(sp);
@@ -148,15 +166,15 @@ function GrimoireView(p) {
           }) : <Empty>{spells.length ? "No pages of that kind yet." : "Every page is still blank. Spells appear when your magic grows into them, through practice, experiments and the moments that test you."}</Empty>}
         </Frame>
         <div className="bc-grim-lower">
-          <Frame className="bc-attr-panel" pad="9px 8px">
+          <button type="button" className="bc-attr-panel bc-cardbtn" onClick={function () { setProfileOpen(true); }} aria-label="Open your magical profile">
             <SectionHead icon="compass" iconSize={24} title="Attributes" sub="Your current magical profile." />
             <Radar axes={axes} />
-          </Frame>
+          </button>
           <div className="bc-grim-side">
-            <Frame className="bc-tendency" pad="9px 9px">
+            <button type="button" className="bc-tendency bc-cardbtn" onClick={function () { setProfileOpen(true); }} aria-label="Open your mana tendency">
               <SectionHead icon={attrIcon(attr)} iconSize={24} title="Mana Tendency" sub="The nature of your magic." />
-              <div className="bc-tendency-body"><Icon n={attrIcon(attr)} s={34} fill="#9fe7d6" /><div><strong>{attr || "Not yet understood"}</strong><small>{ATTR_NATURE[str(attr).toLowerCase()] || (attr ? "Your mana's own nature, still revealing itself." : "Your attribute will reveal itself in time.")}</small></div></div>
-            </Frame>
+              <div className="bc-tendency-body"><Icon n={attrIcon(attr)} s={34} fill="#9fe7d6" /><div><strong>{attr || "Not yet understood"}</strong><small>{ATTR_NATURE[str(attr).toLowerCase()] || (attr ? "Your mana's own nature, still revealing itself." : "Your attribute will reveal itself in time.")}</small></div><Icon n="chevr" s={12} /></div>
+            </button>
             <button type="button" className="bc-progression" onClick={function () { setSub("developing"); }}>
               <Icon n="chart" s={28} /><span><strong>Progression</strong><small>Concepts in development, techniques and the grimoire's record.</small></span><Icon n="chevr" s={12} />
             </button>
@@ -214,6 +232,7 @@ function GrimoireView(p) {
   }
   return (
     <div>
+      {profileSheet}
       {sub === "spells" && open < 0 ? bonds : null}
       {grimoireForge ? <GrimoireForgeSheet api={p.api} art={p.art} g={g} attr={mp.attribute} onClose={function () { setGrimoireForge(false); }} /> : null}
       {sub !== "spells" || open >= 0 ? <div className="bc-chiprow" style={{ marginBottom: 10 }}>{[["spells", "Overview", "book"], ["developing", "Developing", "quill"], ["techniques", "Techniques", "star"], ["record", "Record", "scroll"]].map(function (t) { return <Chip key={t[0]} icon={t[2]} on={sub === t[0] && open < 0} onClick={function () { setSub(t[0]); setOpen(-1); }}>{t[1]}</Chip>; })}</div> : null}
