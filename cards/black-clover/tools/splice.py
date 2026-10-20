@@ -35,7 +35,7 @@ def remove_var(src, name):
         i += 1
     return src[:start] + '\n' + src[i + 1:]
 
-s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport {bcManaMax', 1)
+s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS } from "./bc-battle";\nimport { WorldMap, WORLDMAP_CSS } from "./bc-worldmap";\nimport {bcManaMax', 1)
 s = remove_var(s, 'TILE_KEYS')
 # new home/nav core goes where the old TILES table was, so ART_SLOTS (evaluated at load) sees it
 m = re.search(r'\nvar TILES = \[', s)
@@ -80,7 +80,7 @@ a = s.index('  return <div>\n    <Eyebrow k="CLOVER KINGDOM', bv); b = s.index('
 s = s[:a] + P('p6_bank_return.tsx') + s[b:]
 # remaining parts before App
 app = s.index('\nexport default function App(')
-s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + s[app:]
+s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + s[app:]
 # css
 # the original 430px media rule never closed its block, swallowing every later rule on wider screens
 s = s.replace('scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}",', 'scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}}",', 1)

@@ -13,6 +13,8 @@ function Game(p) {
   var prs = React.useState(null); var preset = prs[0], setPreset = prs[1];
   var pf = React.useState("inventory"); var packFocus = pf[0], setPackFocus = pf[1];
   var sts = React.useState(""); var storySheet = sts[0], setStorySheet = sts[1];
+  var bts = React.useState(null); var battle = bts[0], setBattle = bts[1];
+  function openBattle(mode) { if (api.isStreaming) return; setStorySheet(""); setBattle({ mode: mode, k: Date.now() }); }
   var was = React.useRef(false);
   React.useEffect(function () { if (streaming && !was.current) { setView("story"); setHist([]); } was.current = streaming; }, [streaming]);
   function route(n) {
@@ -32,7 +34,7 @@ function Game(p) {
   var base = view.split(":")[0]; var tab = view.split(":")[1] || "";
   var main = null;
   if (base === "home") main = <HomeView api={api} art={art} bannerUrl={bannerUrl} go={go} />;
-  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} go={go} sheet={storySheet} setSheet={setStorySheet} />;
+  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} go={go} sheet={storySheet} setSheet={setStorySheet} openBattle={openBattle} />;
   else {
     var inner = null;
     if (base === "grimoire") inner = <GrimoireView api={api} art={art} goTrain={goTrain} toStory={toStory} goBound={function () { go("bound"); }} />;
@@ -43,7 +45,7 @@ function Game(p) {
     else if (base === "people") inner = <PeopleView api={api} art={art} />;
     else if (base === "bound") inner = <BoundView api={api} art={art} />;
     else if (base === "journal") inner = <JournalView api={api} tab={tab || "chronicle"} />;
-    else if (base === "train") inner = <TrainingPanel api={api} preset={preset} toStory={toStory} />;
+    else if (base === "train") inner = <div><SparCard api={api} onSpar={function () { openBattle("spar"); }} /><TrainingPanel api={api} preset={preset} toStory={toStory} /></div>;
     else if (base === "time") inner = <TimeView api={api} toStory={toStory} />;
     else if (base === "routine") inner = <RoutineView api={api} />;
     else if (base === "codex") inner = <CodexView api={api} toStory={toStory} />;
@@ -56,6 +58,10 @@ function Game(p) {
   }
   return (
     <div className="bc-fill bc-game" style={{ background: PAGE_BG }}>
+      <style>{BATTLE_CSS + "\n" + WORLDMAP_CSS}</style>
+      {battle ? <BattleArena key={battle.k} v={v} mode={battle.mode} portrait={art.portrait} spellCat={spellCat}
+        onCancel={function () { setBattle(null); }}
+        onFinish={function (r, again) { applyBattle(api, v, r); setBattle(again ? { mode: battle.mode, k: Date.now() } : null); if (r.mode !== "spar") toStory(); }} /> : null}
       <main className="bc-main-area">{main}</main>
       {base === "story" ? <Composer api={api} sheet={storySheet} onPlus={function () { setStorySheet(storySheet === "actions" ? "" : "actions"); }} /> : null}
       <Nav view={base} nav={nav} notices={noticeCount(v)} missions={activeMissions(v)} />

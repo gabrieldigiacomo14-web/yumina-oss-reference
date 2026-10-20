@@ -50,6 +50,7 @@ function MapView(p) {
         <Icon n="chevr" s={14} />
       </button>
       <button type="button" className="bc-homeloc" disabled={!home.settlement} onClick={function () { pick(home.settlement); }} aria-label={"Home: " + (home.settlement || "not established") + ". Plan the way home"}><Icon n="home" s={24} /><span><small>Home Location</small><strong>{home.settlement || str(v.home_location) || "Not established"}</strong></span><em>{[kingdomLabel(home.kingdom), home.region].filter(Boolean).join(" \u2014 ")}</em>{home.settlement ? <Icon n="chevr" s={13} /> : null}</button>
+      <WorldMap v={v} api={api} trail={mapTrail(api)} onTravel={pick} />
       {locSheet ? <LocationSheet api={api} v={v} close={function () { setLocSheet(false); }} toStory={p.toStory} /> : null}
       {locs.length ? null : <Empty>You know your own neighborhood and little else.</Empty>}
       {group("Places You Know", "Locations you can travel to.", "pin", known)}
@@ -98,6 +99,11 @@ function MapView(p) {
   );
 }
 
+function mapTrail(api) {
+  var out = [], last = "";
+  arr(api.messages).forEach(function (m) { var sn = obj(m && m.stateSnapshot); if (sn.player_x === undefined || sn.player_y === undefined) return; var k = num(sn.player_x, 0) + "," + num(sn.player_y, 0); if (k === last) return; last = k; out.push({ x: num(sn.player_x, 0), y: num(sn.player_y, 0) }); });
+  return out.slice(-8);
+}
 function LocationSheet(p) {
   var v = p.v; var api = p.api; var loc = parseLoc(v.current_location); var busy = !!api.isStreaming;
   var rec = null; arr(v.known_locations).forEach(function (l) { if (str(l.name) === loc.settlement) rec = l; });
@@ -186,6 +192,7 @@ function CrownView(p) {
   return (
     <div>
       <SquadView api={p.api} />
+      <BattleRecord v={v} />
       <SectionHead icon="crown" iconSize={24} title="Standing" sub="How communities and institutions see you." />
       {keys.length ? <Frame pad="4px 14px 8px">{keys.map(function (k) { var r = rep[k]; return <Row key={k} k={k} v={typeof r === "object" && r ? [str(r.band), str(r.note)].filter(Boolean).join(" — ") : str(r)} />; })}</Frame> : <Empty>No one outside your home has formed an opinion of you yet.</Empty>}
     </div>

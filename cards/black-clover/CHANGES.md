@@ -1,6 +1,61 @@
-# Black Clover: A Mage's Tale — v21.5
+# Black Clover: A Mage's Tale — v21.6
 
-Import `Black_Clover_A_Mages_Tale_v21.5.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.6.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.6 — battle arena and a generated world map
+
+### Battle arena
+
+Fights can now be played out instead of narrated. It's a real-time top-down arena, not a menu of buttons. The whole fight runs in the interface, so it costs **no AI turns**. The AI writes one reply afterwards, about the aftermath.
+
+- **Starting a fight:** while `in_combat` is true, the Adventure screen's combat bar has **Fight it out**. A VS card shows your side and the foes. You can **Fight!** or choose **Let the story decide instead** and carry on in text as before.
+- **Controls:** on a phone, a left stick and buttons. On a keyboard: WASD to move, J to **Strike** (a melee hit), Space to **Roll** (a dodge with a moment of invulnerability), hold Shift to **Guard** (halves damage; with Mana Skin or Reinforcement it becomes a mana-fed guard that blocks more), 1–3 for up to three of your own spells, E for the finisher, Tab to switch targets and Esc to pause.
+- **What makes it play:**
+  - Enemy attacks wind up as red danger zones before they land.
+  - Hitting a foe during its wind-up **interrupts** it for 1.5× damage.
+  - Rolling through an attack as it lands is a **Perfect Dodge**, which slows time.
+  - Hits build a combo and a **Focus** meter. A full meter unlocks a Full-output finisher for any spell.
+  - Arenas match the scene (street, wilderness, wooden interior, stone training ground) and have cover to fight around.
+- **Your real character, your real magic:**
+  - The fight starts from your actual vitality, stamina and mana.
+  - Spells cost exactly what the spell engine says (`bcCastPlan`), so a fight drains the same reserve the story uses.
+  - Each spell's shape decides how it plays: bolt, lance, wave, burst, bind, barrier, heal or blink. The shape comes from its category and description.
+  - Foe strength comes from the world (`combat.participants` threat and kind, saved NPC profiles), never from your level. A captain-class foe is a real wall.
+  - Allies in `combat.participants` fight beside you.
+- **Ways out:** win, get beaten, run out through the escape gate (hold it for 2 seconds), or pause and yield. You can also pause and hand the fight back to the story.
+- **After the fight**, you get a grade (S–D), the stats, and each foe's fate, and the interface applies:
+  - vitality and stamina (in-fight stamina is a separate "wind" gauge, and only part of what you spend is charged as real stamina)
+  - fatigue, mana and `mana_reserve`
+  - the clock
+  - a "battle wounds" condition after a heavy beating
+  - each foe's condition, in `combat` and in the saved NPC records
+  - `in_combat` (on a defeat it stays true, and the AI decides what the enemy does)
+
+  It then sends one hidden `[UI:BATTLE]` report, and the AI narrates the decisive moments and consequences without rewriting any of those numbers.
+- **Sparring:** the Training page has **Spar in the arena**. It's a practice fight against a training partner with softer hits, and it ends when either side takes a clean beating. It spends stamina, mana and about 20 minutes, and adds spell practice to the spells you used (once per spell per day). It sends no message to the AI at all. **Finish & spar again** goes straight into another round.
+- **Battle Record** on the Crown page lists your recent fights and grades.
+- **New variables:** `battle_log` and `spar_practice` (both hidden from the AI). `combat.participants` can now carry `key`, `threat` (weak → captain), `kind` (brute / caster / beast) and `attribute`. The combat engine only mentions the arena while a fight is on, so ordinary turns cost the same tokens as before.
+
+### World map, drawn from the story
+
+The World Map page now has an interactive map that the interface generates itself from what the story has said:
+- **Terrain:** the land, mountains, forests, coast and kingdom borders are painted procedurally around the canon layout. The Clover Kingdom's Noble, Common and Forsaken realms show as rings around the capital.
+- **Where each place goes,** in order:
+  1. coordinates the AI recorded
+  2. the hidden `world_truth.geo` record
+  3. the canon gazetteer
+  4. `near` / `dir` / `km` fields
+  5. the description itself, e.g. "a day north of Hage", "12 km east of Kiten", "near Nairn"
+  6. a best guess from the kingdom or realm
+
+  Places placed by a guess have a soft halo so you know they're approximate. Names like "Hage Village" and "The Village of Hage" are matched to the same spot.
+- **Status and history:** visited, known and rumored places have their own colors and icons. Places you haven't looked at yet show **NEW**. Your past positions form a trail, and your home is marked.
+- **Controls:** drag to pan, pinch or wheel to zoom, and use the +/−/◎ buttons, **Realms** and **Expand** (full screen). Tap a place to open its card, then **Plan travel here** fills in the Travel panel.
+- The AI is now told to give `near`/`dir`/`km` for a new place when it has no exact coordinates, so the map can place it.
+
+### Fixes in this pass
+
+- On the map, the "you are here" marker now finds you even when the current location and the known place are named slightly differently.
 
 ## Lower mushie use
 

@@ -536,3 +536,13 @@
 
 .bc-actcard-text{max-width:62%}
 .bc-place-text{max-width:60%}
+.bc-combatbar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.bc-fightbtn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 14px;border-radius:18px;border:1px solid #ffb4a8;background:linear-gradient(180deg,#ff8a6a,#c0392b);color:#2a0907;font:800 14px Cinzel,Georgia,serif;letter-spacing:.04em;box-shadow:0 0 14px rgba(224,90,75,.55);animation:bcFightPulse 1.6s ease-in-out infinite}
+@keyframes bcFightPulse{0%,100%{box-shadow:0 0 8px rgba(224,90,75,.4)}50%{box-shadow:0 0 18px rgba(255,138,106,.85)}}
+.bc-sparcard{position:relative;display:flex;align-items:center;gap:10px;width:100%;min-height:72px;margin-bottom:12px;padding:8px 12px;border:1px solid rgba(214,174,92,.75);border-radius:9px;overflow:hidden;background:#0b1422;text-align:left;color:inherit;font-family:inherit}
+.bc-sparcard img{position:absolute;right:0;top:0;width:52%;height:100%;object-fit:cover}
+.bc-sparcard-shade{position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,#0b1422 44%,rgba(11,20,34,.55) 75%,rgba(11,20,34,.2))}
+.bc-sparcard>svg,.bc-sparcard-text{position:relative}
+.bc-sparcard-text{flex:1;min-width:0;max-width:68%}
+.bc-sparcard-text strong{display:block;font-family:Cinzel,Georgia,serif;font-size:16px;color:#f3dda0;font-variant:small-caps}
+.bc-sparcard-text small{display:block;font-size:12.5px;color:#e1d6c1;line-height:1.3;text-shadow:0 1px 3px #000}

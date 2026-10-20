@@ -1,4 +1,6 @@
 import { BC_IMG } from "./bc-art.js";
+import { BattleArena, BATTLE_CSS } from "./bc-battle";
+import { WorldMap, WORLDMAP_CSS } from "./bc-worldmap";
 import {bcManaMax,bcReserve,bcIsMagicless,bcSpellMechanics,bcNormalizeSpells,bcCastPlan,bcApplyPlayerCast,bcProcessEvents} from "./bc-spell-engine.js";
 import {bcWalletProfile,bcBankState,bcBankHere,bcBankOpen,bcBankTransfer} from "./bc-banking.js";
 import { BC_SLOTS, BC_STORAGE, BC_ARMS_BULK, bcSpec, bcStorageOf, bcAllowedSlots, bcNormalize, bcCarryProfile, bcWeight, bcBulk, bcCarried, bcIsAccessible, bcPlaceLabel, bcDestinations, bcFindSpot, bcMoveQty, bcReceive, bcHomeUsed, bcAtSquadLocker, bcWorldStoreUsed, bcAppearance, bcRestoreLegacyClothes, bcEventText, bcLocalExamine, bcCanConsume, bcConsume } from "./bc-inventory.js";
@@ -717,7 +719,17 @@ var CSS = [
   ".bc-tile .bc-tile-art{width:46%}",
   ".bc-tile-shade{background:linear-gradient(90deg,#0b1422 48%,rgba(11,20,34,.75) 64%,rgba(11,20,34,.1) 100%)!important}",
   ".bc-actcard-text{max-width:62%}",
-  ".bc-place-text{max-width:60%}"
+  ".bc-place-text{max-width:60%}",
+  ".bc-combatbar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}",
+  ".bc-fightbtn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 14px;border-radius:18px;border:1px solid #ffb4a8;background:linear-gradient(180deg,#ff8a6a,#c0392b);color:#2a0907;font:800 14px Cinzel,Georgia,serif;letter-spacing:.04em;box-shadow:0 0 14px rgba(224,90,75,.55);animation:bcFightPulse 1.6s ease-in-out infinite}",
+  "@keyframes bcFightPulse{0%,100%{box-shadow:0 0 8px rgba(224,90,75,.4)}50%{box-shadow:0 0 18px rgba(255,138,106,.85)}}",
+  ".bc-sparcard{position:relative;display:flex;align-items:center;gap:10px;width:100%;min-height:72px;margin-bottom:12px;padding:8px 12px;border:1px solid rgba(214,174,92,.75);border-radius:9px;overflow:hidden;background:#0b1422;text-align:left;color:inherit;font-family:inherit}",
+  ".bc-sparcard img{position:absolute;right:0;top:0;width:52%;height:100%;object-fit:cover}",
+  ".bc-sparcard-shade{position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,#0b1422 44%,rgba(11,20,34,.55) 75%,rgba(11,20,34,.2))}",
+  ".bc-sparcard>svg,.bc-sparcard-text{position:relative}",
+  ".bc-sparcard-text{flex:1;min-width:0;max-width:68%}",
+  ".bc-sparcard-text strong{display:block;font-family:Cinzel,Georgia,serif;font-size:16px;color:#f3dda0;font-variant:small-caps}",
+  ".bc-sparcard-text small{display:block;font-size:12.5px;color:#e1d6c1;line-height:1.3;text-shadow:0 1px 3px #000}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -2580,6 +2592,7 @@ function StoryView(p) {
           <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("train"); }}><Icon n="dumbbell" s={20} />Training</button>
           <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("map"); }}><Icon n="map" s={20} />Travel</button>
           <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("time"); }}><Icon n="hourglass" s={20} />Let time pass</button>
+          {p.openBattle ? <button type="button" className="bc-actbtn" disabled={busy} onClick={function () { p.openBattle("spar"); }}><Icon n="sword" s={20} />Spar (practice)</button> : null}
         </div>
         {moreActs.length ? <div className="bc-actsheet-more">{moreActs.map(function (c) { return <Chip key={c} disabled={busy} onClick={function () { act(c + "."); }}>{c}</Chip>; })}</div> : null}
         <div className="bc-note">Cards and chips send the action as your message. Training, travel and time open their own planners.</div>
@@ -2617,7 +2630,8 @@ function StoryView(p) {
       ) : null}
       {inCombat ? (
         <div className="bc-combatbar">
-          <div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
+          <div className="bc-combatbar-head"><div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
+            {p.openBattle ? <button type="button" className="bc-fightbtn" disabled={busy} onClick={function () { p.openBattle("combat"); }}><Icon n="sword" s={16} fill="#2a0907" />Fight it out</button> : null}</div>
           {arr(combat.participants).slice(0, 6).map(function (c, i) {
             return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
           })}
@@ -4051,6 +4065,7 @@ function MapView(p) {
         <Icon n="chevr" s={14} />
       </button>
       <button type="button" className="bc-homeloc" disabled={!home.settlement} onClick={function () { pick(home.settlement); }} aria-label={"Home: " + (home.settlement || "not established") + ". Plan the way home"}><Icon n="home" s={24} /><span><small>Home Location</small><strong>{home.settlement || str(v.home_location) || "Not established"}</strong></span><em>{[kingdomLabel(home.kingdom), home.region].filter(Boolean).join(" \u2014 ")}</em>{home.settlement ? <Icon n="chevr" s={13} /> : null}</button>
+      <WorldMap v={v} api={api} trail={mapTrail(api)} onTravel={pick} />
       {locSheet ? <LocationSheet api={api} v={v} close={function () { setLocSheet(false); }} toStory={p.toStory} /> : null}
       {locs.length ? null : <Empty>You know your own neighborhood and little else.</Empty>}
       {group("Places You Know", "Locations you can travel to.", "pin", known)}
@@ -4099,6 +4114,11 @@ function MapView(p) {
   );
 }
 
+function mapTrail(api) {
+  var out = [], last = "";
+  arr(api.messages).forEach(function (m) { var sn = obj(m && m.stateSnapshot); if (sn.player_x === undefined || sn.player_y === undefined) return; var k = num(sn.player_x, 0) + "," + num(sn.player_y, 0); if (k === last) return; last = k; out.push({ x: num(sn.player_x, 0), y: num(sn.player_y, 0) }); });
+  return out.slice(-8);
+}
 function LocationSheet(p) {
   var v = p.v; var api = p.api; var loc = parseLoc(v.current_location); var busy = !!api.isStreaming;
   var rec = null; arr(v.known_locations).forEach(function (l) { if (str(l.name) === loc.settlement) rec = l; });
@@ -4187,6 +4207,7 @@ function CrownView(p) {
   return (
     <div>
       <SquadView api={p.api} />
+      <BattleRecord v={v} />
       <SectionHead icon="crown" iconSize={24} title="Standing" sub="How communities and institutions see you." />
       {keys.length ? <Frame pad="4px 14px 8px">{keys.map(function (k) { var r = rep[k]; return <Row key={k} k={k} v={typeof r === "object" && r ? [str(r.band), str(r.note)].filter(Boolean).join(" — ") : str(r)} />; })}</Frame> : <Empty>No one outside your home has formed an opinion of you yet.</Empty>}
     </div>
@@ -4291,6 +4312,8 @@ function Game(p) {
   var prs = React.useState(null); var preset = prs[0], setPreset = prs[1];
   var pf = React.useState("inventory"); var packFocus = pf[0], setPackFocus = pf[1];
   var sts = React.useState(""); var storySheet = sts[0], setStorySheet = sts[1];
+  var bts = React.useState(null); var battle = bts[0], setBattle = bts[1];
+  function openBattle(mode) { if (api.isStreaming) return; setStorySheet(""); setBattle({ mode: mode, k: Date.now() }); }
   var was = React.useRef(false);
   React.useEffect(function () { if (streaming && !was.current) { setView("story"); setHist([]); } was.current = streaming; }, [streaming]);
   function route(n) {
@@ -4310,7 +4333,7 @@ function Game(p) {
   var base = view.split(":")[0]; var tab = view.split(":")[1] || "";
   var main = null;
   if (base === "home") main = <HomeView api={api} art={art} bannerUrl={bannerUrl} go={go} />;
-  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} go={go} sheet={storySheet} setSheet={setStorySheet} />;
+  else if (base === "story") main = <StoryView api={api} art={art} bannerUrl={bannerUrl} onBack={function () { nav("home"); }} go={go} sheet={storySheet} setSheet={setStorySheet} openBattle={openBattle} />;
   else {
     var inner = null;
     if (base === "grimoire") inner = <GrimoireView api={api} art={art} goTrain={goTrain} toStory={toStory} goBound={function () { go("bound"); }} />;
@@ -4321,7 +4344,7 @@ function Game(p) {
     else if (base === "people") inner = <PeopleView api={api} art={art} />;
     else if (base === "bound") inner = <BoundView api={api} art={art} />;
     else if (base === "journal") inner = <JournalView api={api} tab={tab || "chronicle"} />;
-    else if (base === "train") inner = <TrainingPanel api={api} preset={preset} toStory={toStory} />;
+    else if (base === "train") inner = <div><SparCard api={api} onSpar={function () { openBattle("spar"); }} /><TrainingPanel api={api} preset={preset} toStory={toStory} /></div>;
     else if (base === "time") inner = <TimeView api={api} toStory={toStory} />;
     else if (base === "routine") inner = <RoutineView api={api} />;
     else if (base === "codex") inner = <CodexView api={api} toStory={toStory} />;
@@ -4334,6 +4357,10 @@ function Game(p) {
   }
   return (
     <div className="bc-fill bc-game" style={{ background: PAGE_BG }}>
+      <style>{BATTLE_CSS + "\n" + WORLDMAP_CSS}</style>
+      {battle ? <BattleArena key={battle.k} v={v} mode={battle.mode} portrait={art.portrait} spellCat={spellCat}
+        onCancel={function () { setBattle(null); }}
+        onFinish={function (r, again) { applyBattle(api, v, r); setBattle(again ? { mode: battle.mode, k: Date.now() } : null); if (r.mode !== "spar") toStory(); }} /> : null}
       <main className="bc-main-area">{main}</main>
       {base === "story" ? <Composer api={api} sheet={storySheet} onPlus={function () { setStorySheet(storySheet === "actions" ? "" : "actions"); }} /> : null}
       <Nav view={base} nav={nav} notices={noticeCount(v)} missions={activeMissions(v)} />
@@ -4814,6 +4841,95 @@ function Creator(p) {
       {sheet === "appearance" ? <AppearanceSheet api={api} f={f} setMany={setMany} close={function () { setSheet(""); }} portrait={art.portrait} setPortrait={art.setPortrait} hasStore={art.hasStore} mediaError={art.mediaError} /> : null}
       {sheet === "opening" ? <OpeningSheet era={f.era} value={f.opening} onPick={function (o) { set("opening", o); }} close={function () { setSheet(""); }} /> : null}
     </div>
+  );
+}
+
+/* ---------- battle arena glue: apply results, entry points ---------- */
+function applyBattle(api, v, r, opts) {
+  opts = opts || {};
+  var maxU = num(r.maxUnits, 0), units = clamp(num(r.units, 0), 0, maxU || 0);
+  var bar = maxU ? Math.round(100 * units / maxU) : 0;
+  var spar = r.mode === "spar";
+  var lost = Math.max(0, num(r.hp0, 0) - num(r.hp, 0));
+  var vit = spar ? clamp(num(v.vitality, 100) - Math.round(r.taken * 0.5), 1, 100) : clamp(num(r.hp, 0), 0, 100);
+  var manaFrac = maxU ? (num(r.units0, 0) - units) / maxU : 0;
+  var minutes = Math.max(1, Math.round(r.seconds / 20)) + (spar ? 20 : 0);
+  var patch = Object.assign({
+    vitality: vit, stamina: clamp(num(r.st, 0), 0, 100),
+    fatigue: clamp(num(v.fatigue, 0) + Math.round(r.seconds / 25 + manaFrac * 10 + r.taken / 10 + (spar ? 3 : 0)), 0, 100)
+  }, bcClockForInventory(v, minutes));
+  if (maxU) { patch.mana = bar; patch.mana_reserve = { version: 1, maxUnits: maxU, currentUnits: Math.round(units * 100) / 100, capacityBasis: num(obj(v.magic_profile).capacity, 0), percent: bar, lastPercent: bar }; }
+  var log = arr(v.battle_log).slice();
+  log.push({ date: str(v.world_date), time: str(v.world_time), mode: r.mode, outcome: r.outcome, grade: r.grade, seconds: r.seconds, foes: r.foes.map(function (f) { return f.name; }), where: parseLoc(v.current_location).settlement || "" });
+  patch.battle_log = log.slice(-40);
+  if (spar) {
+    // Practice counts: each spell used gains a little progress, once per in-world day.
+    var today = str(v.world_date), done = obj(v.spar_practice), nextDone = Object.assign({}, done), gained = [];
+    var spells = arr(v.spells).map(function (sp) {
+      var u = r.spellsUsed.filter(function (m) { return m.id === str(sp.id) || m.id === str(sp.name); })[0];
+      if (!u || done[str(sp.id) || str(sp.name)] === today) return sp;
+      nextDone[str(sp.id) || str(sp.name)] = today; gained.push(u.name);
+      return Object.assign({}, sp, { prog: clamp(num(sp.prog, 0) + Math.min(4, 1 + u.uses), 0, 100) });
+    });
+    if (gained.length) { patch.spells = spells; patch.spar_practice = nextDone; }
+    bcPatch(api, patch, function (ok) {
+      if (typeof api.showToast === "function") api.showToast(ok ? "Sparring done (" + r.grade + "). " + (gained.length ? "Practice gained: " + gained.join(", ") + "." : "Spells already practiced today.") + " No AI turn used." : "Couldn't save the sparring result.", ok ? "success" : "error");
+    });
+    return;
+  }
+  var npcs = Object.assign({}, obj(obj(v.world_truth).npcs)), npcChanged = false;
+  var parts = arr(obj(v.combat).participants).map(function (pt) {
+    pt = obj(pt); var f = r.foes.filter(function (x) { return x.name === str(pt.name); })[0];
+    if (!f) return pt;
+    if (f.persisted && npcs[f.key]) { npcs[f.key] = Object.assign({}, obj(npcs[f.key]), { vitality: f.hpPct }); npcChanged = true; }
+    return Object.assign({}, pt, { condition: f.outcome === "defeated" ? "defeated" : f.outcome });
+  });
+  patch.combat = Object.assign({}, obj(v.combat), { participants: parts, resolved: r.outcome });
+  if (npcChanged) patch.world_truth = Object.assign({}, obj(v.world_truth), { npcs: npcs });
+  if (r.outcome !== "defeat") { patch.in_combat = false; patch.combat.active = false; }
+  if (lost >= 15) {
+    var sev = lost >= 45 ? "serious" : lost >= 25 ? "moderate" : "minor";
+    patch.conditions = arr(v.conditions).concat([{ id: "battle-" + log.length + "-" + str(v.world_date).replace(/\W+/g, ""), kind: "injury", location: "various", type: "battle wounds", severity: sev, effects: sev === "serious" ? "bleeding, impaired movement" : sev === "moderate" ? "deep bruising, cuts" : "bruises and scrapes", treatment: "", healing: "0%", since: str(v.world_date) }]);
+  }
+  var title = { victory: "victory", defeat: "defeat", fled: "escape", yielded: "surrender" }[r.outcome];
+  var hidden = "[UI:BATTLE] The fight was PLAYED OUT in the battle arena and its results are ALREADY APPLIED to state. Outcome: " + r.outcome.toUpperCase() +
+    " after about " + Math.max(1, Math.round(r.seconds / 20)) + (Math.max(1, Math.round(r.seconds / 20)) === 1 ? " minute" : " minutes") + " of fighting. Foes: " + r.foes.map(function (f) { return f.name + " (" + f.outcome + ")"; }).join(", ") +
+    ". The character took " + r.taken + " damage (vitality " + r.hp0 + "→" + vit + "), spent " + Math.round(manaFrac * 100) + "% of their mana" +
+    (r.spellsUsed.length ? " casting " + r.spellsUsed.map(function (m) { return m.name + " ×" + m.uses; }).join(", ") : " without spells") +
+    "; best combo " + r.bestCombo + ", " + r.perfect + (r.perfect === 1 ? " perfect dodge, " : " perfect dodges, ") + r.interrupts + (r.interrupts === 1 ? " interrupted attack" : " interrupted attacks") + (r.log.length ? "; moments: " + r.log.join("; ") : "") +
+    ". Narrate the end of this fight and its immediate aftermath in prose that matches this result exactly (a short, vivid summary, not a blow-by-blow replay). " +
+    "Do NOT write vitality, stamina, fatigue, mana, mana_reserve, conditions, in_combat, combat or world_time for it, and emit no spell_events for these casts — all already applied. " +
+    "You still own the consequences: what defeated or fled foes do next, loot actually present, witnesses, reputation, crimes, and relationships." + (r.outcome === "defeat" ? " The character has collapsed; what the enemy does now is decided by them and the world (in_combat is still true — you own combat and in_combat from here)." : "");
+  bcPatch(api, patch, function (ok) {
+    if (!ok) { if (typeof api.showToast === "function") api.showToast("Couldn't save the battle result.", "error"); return; }
+    tellGM(api, hidden, "⚔ The battle ends in " + title + ".");
+  });
+}
+function BattleRecord(p) {
+  var log = arr(p.v.battle_log); if (!log.length) return null;
+  var fights = log.filter(function (b) { return b.mode !== "spar"; }), wins = fights.filter(function (b) { return b.outcome === "victory"; }).length;
+  var best = log.map(function (b) { return str(b.grade); }).sort()[0] || "—";
+  return (
+    <div>
+      <SectionHead icon="sword" iconSize={22} title="Battle record" sub="Fought in the arena." />
+      <Frame pad="6px 12px 8px" style={{ marginBottom: 12 }}>
+        <Row k="Real fights" v={fights.length + " (" + wins + " won)"} />
+        <Row k="Sparring sessions" v={String(log.length - fights.length)} />
+        <Row k="Best grade" v={best} />
+        {log.slice(-4).reverse().map(function (b, i) { return <Row key={i} k={(b.mode === "spar" ? "Spar · " : "") + arr(b.foes).join(", ")} v={str(b.outcome) + " · " + str(b.grade)} />; })}
+      </Frame>
+    </div>
+  );
+}
+function SparCard(p) {
+  var v = p.api.variables || {}; var busy = !!p.api.isStreaming;
+  return (
+    <button type="button" className="bc-sparcard" disabled={busy || isTrue(v.in_combat)} onClick={p.onSpar}>
+      <img src={img("act_train")} alt="" /><span className="bc-sparcard-shade" />
+      <Icon n="sword" s={30} />
+      <span className="bc-sparcard-text"><strong>Spar in the arena</strong><small>A real-time practice fight. Costs stamina and mana, builds spell practice, uses no AI turn.</small></span>
+      <Icon n="chevr" s={14} />
+    </button>
   );
 }
 

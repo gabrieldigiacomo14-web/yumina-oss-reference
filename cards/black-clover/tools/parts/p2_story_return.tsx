@@ -37,6 +37,7 @@
           <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("train"); }}><Icon n="dumbbell" s={20} />Training</button>
           <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("map"); }}><Icon n="map" s={20} />Travel</button>
           <button type="button" className="bc-actbtn" onClick={function () { setSheet(""); p.go && p.go("time"); }}><Icon n="hourglass" s={20} />Let time pass</button>
+          {p.openBattle ? <button type="button" className="bc-actbtn" disabled={busy} onClick={function () { p.openBattle("spar"); }}><Icon n="sword" s={20} />Spar (practice)</button> : null}
         </div>
         {moreActs.length ? <div className="bc-actsheet-more">{moreActs.map(function (c) { return <Chip key={c} disabled={busy} onClick={function () { act(c + "."); }}>{c}</Chip>; })}</div> : null}
         <div className="bc-note">Cards and chips send the action as your message. Training, travel and time open their own planners.</div>
@@ -74,7 +75,8 @@
       ) : null}
       {inCombat ? (
         <div className="bc-combatbar">
-          <div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
+          <div className="bc-combatbar-head"><div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
+            {p.openBattle ? <button type="button" className="bc-fightbtn" disabled={busy} onClick={function () { p.openBattle("combat"); }}><Icon n="sword" s={16} fill="#2a0907" />Fight it out</button> : null}</div>
           {arr(combat.participants).slice(0, 6).map(function (c, i) {
             return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
           })}

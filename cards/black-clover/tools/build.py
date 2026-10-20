@@ -220,15 +220,15 @@ V['inventory']['behaviorRules'] = ("Unique physical item instances: {id,name,qty
     "the grimoire is never an inventory item. The interface normalizes records and handles UI moves, purchases and storage.")
 V['mk_status']['behaviorRules'] = ("New recruits start at Junior Magic Knight, 5th Class regardless of birth. Promotion is institutional, never automatic (Junior/Intermediate/Senior × 5th→1st). "
     "merit = recognition; personal_stars = confirmed individual merit stars only (squad star totals are separate). Salary is paid by the interface — never credit it yourself.")
-w['variables'].append({"id": "bank_summary", "name": "Bank summary", "type": "string", "category": "economy", "aiAccess": "read",
+w['variables'].append({"id": "bank_summary", "name": "Bank summary", "type": "string", "category": "resource", "aiAccess": "read",
     "defaultValue": "No bank account.", "description": "Interface-maintained one-line summary of the bank account and knight pay.",
     "behaviorRules": "Bank savings and knight pay, kept by the interface. Usable only in person at a staffed bank or treasury; never mirrored into money."})
-w['variables'].append({"id": "mk_bonus_requests", "name": "Knight bonus requests", "type": "json", "category": "economy",
+w['variables'].append({"id": "mk_bonus_requests", "name": "Knight bonus requests", "type": "json", "category": "resource",
     "defaultValue": [], "description": "Authorized one-time Magic Knight bonuses waiting for the payroll office.",
     "behaviorRules": "Push {\"id\",\"amount\",\"reason\",\"source\"} only for a genuinely authorized, funded one-time knight bonus (unique id). The interface pays it to the bank once and clears the list. Never also change money."})
 for nid, nm, desc in [("chronicle_archive", "Chronicle archive", "Older chronicle pages kept for the player's Journal (not sent to the AI)."),
                       ("events_archive", "Resolved events archive", "Older resolved known_events kept for the Journal (not sent to the AI).")]:
-    w['variables'].append({"id": nid, "name": nm, "type": "json", "category": "life", "aiAccess": "none", "defaultValue": [], "description": desc})
+    w['variables'].append({"id": nid, "name": nm, "type": "json", "category": "custom", "aiAccess": "none", "defaultValue": [], "description": desc})
 V['chronicle']['behaviorRules'] = "Push {\"date\",\"title\",\"category\",\"summary\"} for genuine milestones only. The interface archives older pages automatically."
 V['known_events']['behaviorRules'] = ("Push {\"id\",\"title\",\"when\",\"where\",\"kind\":\"upcoming|opportunity|news|rumor\",\"status\":\"known|missed|done|taken\"} when learned; "
     "update status when it resolves. The interface archives old resolved entries.")
@@ -240,6 +240,19 @@ V['world_truth']['behaviorRules'] = ("GM-only, never revealed. Record hidden fac
     ".houses {\"House <Surname>\":{tier,seat,standing,notes}} for every generated noble/royal house — check here before inventing a new one.")
 V['known_locations']['behaviorRules'] = ("Push {name,kingdom,region,status:visited|known|rumored|approximate,notes,route,x,y} when learned; upgrade status on visiting. "
     "x/y = km from the Royal Capital (+x east, +y north): copy from the gazetteer for canon places or from world_truth.geo for generated ones; never move a place once used.")
+# battle arena + generated map
+V['combat']['behaviorRules'] = ("While fighting: {\"active\":true,\"location\",\"participants\":[{\"name\",\"key\",\"side\",\"threat\":\"weak|average|strong|elite|captain\",\"kind\":\"brute|caster|beast\",\"attribute\",\"condition\",\"distance\",\"notes\"}],\"objectives\":[],\"hazards\":[]} "
+    "— only what the character can perceive (threat/kind = honest read of the foe; the battle arena uses them). Reset to {\"active\":false} when it ends.")
+V['known_locations']['behaviorRules'] += (" If exact coordinates are unknown, give \"near\":\"<known place>\",\"dir\":\"N|NE|E|SE|S|SW|W|NW\",\"km\":<number> instead — the interface draws its map from these.")
+combat['content'] += ("\nARENA: the player may settle a fight in the interface's battle arena instead of turn-by-turn. A [UI:BATTLE] message then reports the outcome; "
+    "its results are already applied.")
+uiap = E['ui-action-protocol']
+uiap['content'] += (" [UI:BATTLE] outcome · foes · duration · damage → the fight was played out in the battle arena and the interface has ALREADY applied vitality, stamina, fatigue, mana, "
+    "mana_reserve, conditions, in_combat, combat and world_time — do not write those or spell_events for it. Narrate the decisive moments and aftermath consistent with the report "
+    "(who fell, fled or yielded), then update relationships, world_truth, loot, missions and everything else as usual.")
+for nid, nm, typ, dv, desc in [("battle_log", "Battle record", "json", [], "Arena fight results kept for the Crown page (not sent to the AI)."),
+                               ("spar_practice", "Spar practice", "json", {}, "Per-day spar progress tracker used by the interface (not sent to the AI).")]:
+    w['variables'].append({"id": nid, "name": nm, "type": typ, "category": "custom", "aiAccess": "none", "defaultValue": dv, "description": desc})
 V['last_train_report']['behaviorRules'] = "When a training block resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual training time this reply). The interface then applies stamina, mana, fatigue and the clock — don't write those. Otherwise leave \"\"."
 V['last_travel_report']['behaviorRules'] = "When a travel leg resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual travel time this reply). The interface then applies stamina, mana, fatigue and the clock; you still write current_location, known_locations, food and money. Otherwise leave \"\"."
 
@@ -285,9 +298,9 @@ w['settings'].update({
         "every promise, debt and favor (who owes whom), how each named NPC feels about the character and why, grimoire/spell milestones, "
         "squad and rank changes, crimes and witnesses, and every way the story has diverged from canon."},
 })
-w['version'] = "21.5.0"
+w["version"] = "21.6.0"
 w['description'] = d['description'] + \
-    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface."
+    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
 
 # ---------------------------------------------------------------- 7. interface files
 files = w['rootComponent']['files']
