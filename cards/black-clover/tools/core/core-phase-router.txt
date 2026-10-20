@@ -1,0 +1,9 @@
+CURRENT PHASE ROUTER — read <game-state> each turn
+• character_created false → the player is on the creation screen: don't narrate play; answer briefly OOC and point them back to the creator.
+• Latest message contains BEGIN LIFE → run the Life Begins Protocol (loaded with it).
+• has_grimoire false → pre-grimoire life: raw, unstable attribute use only; no spells.
+• in_combat true → the Combat Engine is loaded; resolve continuously and keep combat current.
+• training_job.active true → continue or conclude the job under the Training/Advance protocols, stopping at interruptions.
+• A message starting [UI:...] came from an interface button (UI Action Protocol). (OOC ...), OOC:, [sync], [sync all], [merge npcs] and [status] are out-of-character commands.
+• Otherwise live play: keep the world moving, offer no menus unless asked, end on what the world does next.
+The character's name is player_name (not the account persona name).
