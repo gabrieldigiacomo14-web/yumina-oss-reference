@@ -17,7 +17,7 @@ meshoptimizer|master|f0a684f11ead064e176775c9b796f82a55910e92|
 THREE.Terrain|gh-pages|6f05b60947971e53024f4fe6bc3b344181656379|
 FastNoiseLite|master|785f37a9ad76e283586a379675085f2063ae03f7|
 recast-navigation-js|main|8769e8b9995f127033af9f6e6eeac3fad7d66201|
-makehuman|master|a8bc2d54ff0ac92e78ff71431b1023eda42bf482|/*.md /*.txt /makehuman/*.md /makehuman/*.txt /makehuman/*.py /makehuman/apps/ /makehuman/core/ /makehuman/lib/ /makehuman/shared/ /makehuman/plugins/ /makehuman/licenses/ /makehuman/data/rigs/ /makehuman/data/skins/ /makehuman/data/targets/macrodetails/ /makehuman/data/targets/expression/ !*.png !*.jpg !*.thumb !*.npz
+makehuman|master|a8bc2d54ff0ac92e78ff71431b1023eda42bf482|/*.md /*.txt /makehuman/*.md /makehuman/*.txt /makehuman/*.py /makehuman/apps/ /makehuman/core/ /makehuman/lib/ /makehuman/shared/ /makehuman/plugins/ /makehuman/licenses/ /makehuman/data/rigs/ /makehuman/data/skins/ /makehuman/data/targets/macrodetails/ /makehuman/data/targets/expression/ /makehuman/data/targets/nose/ /makehuman/data/targets/mouth/ /makehuman/data/targets/eyes/ /makehuman/data/targets/eyebrows/ /makehuman/data/targets/chin/ /makehuman/data/targets/cheek/ /makehuman/data/targets/forehead/ /makehuman/data/targets/head/ /makehuman/data/targets/ears/ /makehuman/data/targets/asym/ !*.png !*.jpg !*.thumb !*.npz
 glTF-Blender-IO|main|a35fd9fbc53280116ea50565fd16889a14ae91b1|
 glTF-Sample-Assets|main|edc7c9e67c639d230715049ee31f9a96a6babbbe|/*.md /Models/*.md /Models/*/LICENSE.md /Models/*/README.md /Models/*/metadata.json
 yumina-image-references|main|0c23a011b39ffbefea513b9a65a113695755f9d6|/*.md /**/*.md /.github/

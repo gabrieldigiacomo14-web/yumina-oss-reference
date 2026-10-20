@@ -160,6 +160,15 @@ click for a tap made while another finger is down). The `landscape-layout` scena
 containment and overlaps; `touch-gestures` drives real multi-touch (stick + camera drag + button tap, pinch, HUD drag).
 **These are Chromium emulations, not a real iPhone.**
 
+## Research library
+
+Agent instructions are in [AGENTS.md](AGENTS.md). A source-level audit of 18 reference repositories (the Yumina runtime,
+three.js, three-mesh-bvh, meshoptimizer, glTF-Transform, THREE.Terrain, FastNoiseLite, recast-navigation-js, rot.js,
+MakeHuman, glTF-Blender-IO, glTF-Sample-Assets, the image references, UGDL, Yumina-Game-Foundry, STGAAB, RPGAtlas,
+RPG-JS) lives in [docs/research/](docs/research/REFERENCE_REPOSITORIES.md), with ranked
+[integration candidates](docs/research/INTEGRATION_CANDIDATES.md). `tools/setup-references.sh` recreates the clones
+outside the repository at the audited commits.
+
 ## Graphics milestone: Aurelia City (visual direction pass)
 
 Goal: a grounded, semi-realistic dark-fantasy look (Baldur's Gate 3 as the quality benchmark, nothing copied from it) proven
