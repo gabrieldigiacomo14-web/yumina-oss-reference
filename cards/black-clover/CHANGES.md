@@ -1,6 +1,10 @@
-# Black Clover: A Mage's Tale — v21.6.2
+# Black Clover: A Mage's Tale — v21.6.3
 
-Import `Black_Clover_A_Mages_Tale_v21.6.2.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.6.3.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.6.3 — back button on every page
+
+Every page now has a **back button** in the top-left corner (44px, easier to tap). Before, it only appeared on pages opened from a Home card, so a page opened from the bottom bar had nothing to tap if the bar wasn't reachable. From the bar, back goes to Realm.
 
 ## v21.6.2 — new section names
 

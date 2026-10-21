@@ -731,7 +731,8 @@ var CSS = [
   ".bc-sparcard-text strong{display:block;font-family:Cinzel,Georgia,serif;font-size:16px;color:#f3dda0;font-variant:small-caps}",
   ".bc-sparcard-text small{display:block;font-size:12.5px;color:#e1d6c1;line-height:1.3;text-shadow:0 1px 3px #000}",
   ".bc-hero .bc-hero-name.bc-long,.bc-hero-big .bc-hero-name.bc-long{font-size:19px;letter-spacing:.04em}",
-  ".bc-hero .bc-hero-sub.bc-long,.bc-hero-big .bc-hero-sub.bc-long{font-size:9px;letter-spacing:.08em}"
+  ".bc-hero .bc-hero-sub.bc-long,.bc-hero-big .bc-hero-sub.bc-long{font-size:9px;letter-spacing:.08em}",
+  ".bc-hero-back{width:44px;height:44px;border-radius:22px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;z-index:5}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -4362,7 +4363,7 @@ function Game(p) {
     else if (base === "settings") inner = <SettingsView api={api} toStory={toStory} />;
     else if (base === "help") inner = <HelpView />;
     else inner = <MenuView go={go} />;
-    main = <Page title={TITLES[base] || ""} heroKey={base} onBack={hist.length ? back : null} bannerUrl={bannerUrl} kingdom={kingdom} date={v.world_date} time={v.world_time}>{inner}</Page>;
+    main = <Page title={TITLES[base] || ""} heroKey={base} onBack={hist.length ? back : function () { nav("home"); }} bannerUrl={bannerUrl} kingdom={kingdom} date={v.world_date} time={v.world_time}>{inner}</Page>;
   }
   return (
     <div className="bc-fill bc-game" style={{ background: PAGE_BG }}>

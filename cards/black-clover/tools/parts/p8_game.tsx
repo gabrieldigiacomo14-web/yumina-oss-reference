@@ -54,7 +54,7 @@ function Game(p) {
     else if (base === "settings") inner = <SettingsView api={api} toStory={toStory} />;
     else if (base === "help") inner = <HelpView />;
     else inner = <MenuView go={go} />;
-    main = <Page title={TITLES[base] || ""} heroKey={base} onBack={hist.length ? back : null} bannerUrl={bannerUrl} kingdom={kingdom} date={v.world_date} time={v.world_time}>{inner}</Page>;
+    main = <Page title={TITLES[base] || ""} heroKey={base} onBack={hist.length ? back : function () { nav("home"); }} bannerUrl={bannerUrl} kingdom={kingdom} date={v.world_date} time={v.world_time}>{inner}</Page>;
   }
   return (
     <div className="bc-fill bc-game" style={{ background: PAGE_BG }}>
