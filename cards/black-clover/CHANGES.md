@@ -1,6 +1,14 @@
-# Black Clover: A Mage's Tale — v21.6
+# Black Clover: A Mage's Tale — v21.6.1
 
-Import `Black_Clover_A_Mages_Tale_v21.6.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.6.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.6.1 — hosted art (fixes the "inline base64" save error)
+
+Yumina refuses to save a world that adds embedded base64 images ("This save would add 41 new inline base64 data URI(s)"). The 40 painted interface crops and the header banner were embedded that way. They are now ordinary image files in `art/` in this repository, and the card points to them by `https://` URL, which Yumina allows. Nothing looks different.
+
+- The card contains **no** inline data URIs, and its size dropped from about 1.2 MB to 0.9 MB.
+- The URLs are pinned to a specific commit of this repo, so they keep working after the branch is merged or deleted. The repo has to stay public.
+- To host the images somewhere else, run `python3 tools/art/mkart.py art tools/ui/bc-art.js <base-url>/` and rebuild. If you would rather use Yumina's own CDN, upload the files in `art/` to your Library and put each `@asset:<id>` into `bc-art.js` (the interface resolves `@asset:` refs for the banner only, so other images need `https://` URLs).
 
 ## v21.6 — battle arena and a generated world map
 
@@ -98,7 +106,7 @@ What changed:
 
 ## Rebuilding
 
-`tools/` holds everything needed to regenerate the card: `splice.py` builds `ui/index.tsx` from the source interface plus `parts/`, `build.py` builds the card from the source JSON plus `core/` and `ui/`, and `analyze.ts` measures prompt size with the engine.
+`art/` holds the interface images and `tools/` holds everything needed to regenerate the card: `splice.py` builds `ui/index.tsx` from the source interface plus `parts/`, `build.py` builds the card from the source JSON plus `core/` and `ui/`, and `analyze.ts` measures prompt size with the engine.
 
 ## v21.5 — interaction pass
 

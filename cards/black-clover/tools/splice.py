@@ -36,6 +36,9 @@ def remove_var(src, name):
     return src[:start] + '\n' + src[i + 1:]
 
 s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS } from "./bc-battle";\nimport { WorldMap, WORLDMAP_CSS } from "./bc-worldmap";\nimport {bcManaMax', 1)
+# the hero banner is a hosted image (bc-art.js), not an embedded data: URI
+s, nb = re.subn(r'banner:\s*"data:image/[a-z]+;base64,[A-Za-z0-9+/=]+"', 'banner: (BC_IMG && BC_IMG.banner) || ""', s, count=1)
+assert nb == 1, "banner data URI not found"
 s = remove_var(s, 'TILE_KEYS')
 # new home/nav core goes where the old TILES table was, so ART_SLOTS (evaluated at load) sees it
 m = re.search(r'\nvar TILES = \[', s)
