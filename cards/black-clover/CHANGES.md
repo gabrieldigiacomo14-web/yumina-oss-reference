@@ -1,6 +1,10 @@
-# Black Clover: A Mage's Tale — v21.6.3
+# Black Clover: A Mage's Tale — v21.6.4
 
-Import `Black_Clover_A_Mages_Tale_v21.6.3.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.6.4.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.6.4 — taps on the bar and back button
+
+Reported: inside a page, the bottom bar looked normal but didn't respond to taps; only the page content did. The page area was a separate stacking layer above the bar. It now has no layer of its own, the bar sits above it (sheets still cover the bar), the header sits above the page, and touch-scroll tweaks that could capture taps are removed. This could not be reproduced outside a phone, so it is a fix for the most likely cause.
 
 ## v21.6.3 — back button on every page
 

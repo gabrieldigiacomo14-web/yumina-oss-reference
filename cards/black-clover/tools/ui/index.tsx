@@ -732,7 +732,12 @@ var CSS = [
   ".bc-sparcard-text small{display:block;font-size:12.5px;color:#e1d6c1;line-height:1.3;text-shadow:0 1px 3px #000}",
   ".bc-hero .bc-hero-name.bc-long,.bc-hero-big .bc-hero-name.bc-long{font-size:19px;letter-spacing:.04em}",
   ".bc-hero .bc-hero-sub.bc-long,.bc-hero-big .bc-hero-sub.bc-long{font-size:9px;letter-spacing:.08em}",
-  ".bc-hero-back{width:44px;height:44px;border-radius:22px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;z-index:5}"
+  ".bc-hero-back{width:44px;height:44px;border-radius:22px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;z-index:5}",
+  ".bc-main-area{z-index:auto!important;isolation:auto!important}",
+  ".bc-nav{position:relative!important;z-index:30!important;pointer-events:auto!important;touch-action:manipulation}",
+  ".bc-nav *{touch-action:manipulation;-webkit-tap-highlight-color:transparent}",
+  ".bc-hero{position:relative;z-index:6}",
+  ".bc-scroll{-webkit-overflow-scrolling:auto;overscroll-behavior:auto}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
