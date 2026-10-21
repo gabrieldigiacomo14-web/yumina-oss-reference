@@ -46,7 +46,14 @@ var MORE_PATHS = {
 };
 Object.keys(MORE_PATHS).forEach(function (k) { if (!PATHS[k]) PATHS[k] = MORE_PATHS[k]; });
 
-function img(k) { return (BC_IMG && BC_IMG[k]) || ""; }
+/* Art values in bc-art.js are https URLs or "@asset:<id>" refs (resolved through the sandbox once App has set the resolver). */
+var ART_RESOLVE = null;
+function img(k) {
+  var v = (BC_IMG && BC_IMG[k]) || "";
+  if (v.indexOf("@asset:") !== 0) return v;
+  if (!ART_RESOLVE) return "";
+  try { return ART_RESOLVE(v) || ""; } catch (e) { return ""; }
+}
 function hashPick(s, list) { var h = 0; s = str(s); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return list[Math.abs(h) % list.length]; }
 
 function Pennant(p) {
@@ -76,8 +83,8 @@ function Hero(p) {
       {p.onBack ? <button type="button" className="bc-hero-back" aria-label="Back" onClick={p.onBack}><Icon n="chevl" s={18} fill={C.goldHi} /></button> : (p.left === false ? null : <Pennant side="l" />)}
       <div className={"bc-hero-title" + (p.onBack || p.left === false ? " bc-hero-title-back" : "")}>
         <div className="bc-hero-orn" aria-hidden="true"><span /><Icon n="clover" s={12} /><span /></div>
-        <div className="bc-hero-name">{p.title || "Black Clover"}</div>
-        <div className="bc-hero-sub">{p.sub || "A Mage's Tale"}</div>
+        <div className={"bc-hero-name" + ((p.title || "").length > 12 ? " bc-long" : "")}>{p.title || "Black Clover"}</div>
+        <div className={"bc-hero-sub" + ((p.sub || "").length > 22 ? " bc-long" : "")}>{p.sub || "A Mage's Tale"}</div>
         {p.tagline ? <div className="bc-hero-tag">{p.tagline}</div> : null}
         {p.quote ? <div className="bc-hero-quote">{p.quote}{p.quoteBy ? <small>{"— " + p.quoteBy}</small> : null}</div> : null}
       </div>
@@ -110,7 +117,7 @@ function ActionRow(p) {
 }
 
 /* ---------- navigation ---------- */
-var NAV = [["home", "Home", "home"], ["grimoire", "Grimoire", "book"], ["people", "Bonds", "people"], ["journal", "Chronicle", "doc"], ["story", "Adventure", "clover"], ["pack", "Pack", "pack"], ["bound", "Bound", "wisp"], ["crown", "Crown", "crown"], ["menu", "More", "gear"]];
+var NAV = [["home", "Realm", "home"], ["people", "Relations", "people"], ["crown", "Renown", "crown"], ["journal", "Records", "doc"], ["story", "Story", "clover"], ["grimoire", "Magic", "book"], ["bound", "Pacts", "wisp"], ["pack", "Satchel", "pack"], ["menu", "More", "gear"]];
 var HOME_SUB = { character: 1, train: 1, time: 1, routine: 1, codex: 1, household: 1, art: 1, settings: 1, help: 1, map: 1 };
 var PACK_SUB = { bank: 1, market: 1 };
 var JOURNAL_SUB = { missions: 1, notices: 1 };
@@ -122,7 +129,7 @@ function Nav(p) {
         if (it[0] === "story") {
           return (
             <div key="story" className="bc-nav-story-wrap">
-              <button className="bc-nav-story-btn" type="button" aria-label="Adventure" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
+              <button className="bc-nav-story-btn" type="button" aria-label="Story" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
                 <Icon n="clover" s={38} />
               </button>
             </div>
@@ -143,17 +150,17 @@ function Nav(p) {
 
 /* ---------- home ---------- */
 var TILES = [
-  { k: "adventure", t: "Adventure", s: "Explore. Fight. Grow.", icon: "compass", view: "story" },
-  { k: "grimoire", t: "Grimoire", s: "Spells. Attributes. Progress.", icon: "book", view: "grimoire" },
+  { k: "adventure", t: "Story", s: "Explore. Fight. Grow.", icon: "compass", view: "story" },
+  { k: "grimoire", t: "Magic", s: "Spells. Attributes. Progress.", icon: "book", view: "grimoire" },
   { k: "character", t: "Character", s: "Profile. Skills. Conditions.", icon: "bust", view: "character" },
-  { k: "squad", t: "Squad", s: "Join. Rise. Make a name.", icon: "people", view: "crown" },
-  { k: "inventory", t: "Inventory", s: "Items. Materials. Key items.", icon: "pack", view: "pack" },
-  { k: "market", t: "Market", s: "Buy. Sell. Trade.", icon: "coins", view: "market" },
-  { k: "bank", t: "Bank & Treasury", s: "Save. Deposit. Withdraw.", icon: "bank", view: "bank" },
-  { k: "missions", t: "Missions", s: "Requests. Bounties. Guild.", icon: "scroll", view: "missions" },
-  { k: "map", t: "World Map", s: "Travel. Discover. Plan.", icon: "map", view: "map" },
-  { k: "relationships", t: "Bonds", s: "Friends. Rivals. Romance.", icon: "heart", view: "people" },
-  { k: "more", t: "More", s: "Journal. Codex. Settings.", icon: "dots", view: "menu" }
+  { k: "relationships", t: "Connections", s: "Friends. Rivals. Romance.", icon: "heart", view: "people" },
+  { k: "squad", t: "Renown", s: "Join. Rise. Make a name.", icon: "people", view: "crown" },
+  { k: "missions", t: "Assignments", s: "Requests. Bounties. Guild.", icon: "scroll", view: "missions" },
+  { k: "map", t: "Realm Map", s: "Travel. Discover. Plan.", icon: "map", view: "map" },
+  { k: "inventory", t: "Satchel", s: "Gear. Materials. Keys.", icon: "pack", view: "pack" },
+  { k: "market", t: "Trading", s: "Buy. Sell. Trade.", icon: "coins", view: "market" },
+  { k: "bank", t: "Treasury", s: "Save. Deposit. Withdraw.", icon: "bank", view: "bank" },
+  { k: "more", t: "More", s: "Records. Codex. Settings.", icon: "dots", view: "menu" }
 ];
 var TILE_KEYS = TILES.map(function (t) { return t.k; });
 function Tile(p) {

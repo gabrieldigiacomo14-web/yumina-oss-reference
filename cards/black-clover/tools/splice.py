@@ -92,5 +92,43 @@ end = s.index('].join("\\n");')
 pre = s[:end].rstrip()
 if not pre.endswith(','): pre += ','
 s = pre + '\n' + ',\n'.join('  ' + json.dumps(l) for l in css_lines) + '\n' + s[end:]
+
+# ---- display names (v21.6.2): the interface's own words; internal view ids are unchanged
+def label(old, new, n=1):
+    global s
+    c = s.count(old)
+    assert c == n, "label %r: expected %d, found %d" % (old, n, c)
+    s = s.replace(old, new)
+label('title: "Grimoire", sub: "Spells. Attributes. Progress."', 'title: "Magic", sub: "Spells. Attributes. Progress."')
+label('people: { title: "Bonds", sub: "Friends. Rivals. Romance.", big: true }', 'people: { title: "Connections", sub: "Friends. Rivals. Romance.", big: true }')
+label('journal: { title: "Chronicle", sub: "Goals · Missions · History", big: true }', 'journal: { title: "Kingdom Records", sub: "Goals · Assignments · Reports", big: true }')
+label('bound: { title: "Bound", sub: "Spirits and Devils", big: true }', 'bound: { title: "Mystic Pacts", sub: "Spirit connections and devil contracts", big: true }')
+label('crown: { title: "Crown", sub: "Rank · Merit · Service", big: true }', 'crown: { title: "Renown & Rank", sub: "Advancement · Merit · Reputation", big: true }')
+s, n_t = re.subn(r'var TITLES = \{.*?\};', lambda m: 'var TITLES = { grimoire: "Magic", character: "Character", squad: "Renown & Rank", crown: "Renown & Rank", pack: "Satchel & Treasury", bank: "Satchel & Treasury", market: "Satchel & Treasury", missions: "Kingdom Records", map: "Realm Map", people: "Connections", notices: "Kingdom Records",\n  journal: "Kingdom Records", bound: "Mystic Pacts", menu: "More", train: "Training", time: "Let Time Pass", routine: "Routine", codex: "Codex", household: "Home and Family", art: "Artwork", settings: "Settings", help: "Help" };', s, count=1, flags=re.S)
+assert n_t == 1
+label('title="Chronicle" sub="Your own history, page by page."', 'title="Life Log" sub="Your own history, page by page."')
+label('>Chronicle</Chip>', '>Life Log</Chip>')
+label('{"Missions" + (ms ? " (" + ms + ")" : "")}', '{"Assignments" + (ms ? " (" + ms + ")" : "")}')
+label('{"Notices" + (notices ? " (" + notices + ")" : "")}', '{"Reports" + (notices ? " (" + notices + ")" : "")}')
+label('<Icon n="clover" s={13} />Chronicle</span>', '<Icon n="clover" s={13} />Story</span>')
+label('Save to Journal', 'Save to Life Log')
+label('<H>Missions and commitments</H>', '<H>Assignments and commitments</H>')
+label('No missions. Requests come from', 'No assignments. Requests come from')
+label('<Eyebrow k={"BONDS · FRIENDS AND RIVALS"}>{ids.length ? "No journey is solitary." : "No journey is solitary, yet."}</Eyebrow>', '<Eyebrow k={"CONNECTIONS · FRIENDS AND RIVALS"}>{ids.length ? "Every thread you have woven." : "No threads woven yet."}</Eyebrow>')
+label('BOUND · SPIRITS AND DEVILS', 'MYSTIC PACTS · SPIRITS AND DEVILS')
+label('<strong>Bonds</strong><small>Spirits and Devils walk different paths.', '<strong>Pacts</strong><small>Spirit connections and devil contracts walk different paths.')
+label('aria-label="Pack sections"', 'aria-label="Satchel sections"')
+label('["inventory", "Inventory", "Items & Materials", "pack"], ["market", "Market", "Buy · Sell · Trade", "coins"], ["bank", "Bank & Treasury", "Save · Deposit · Withdraw", "bank"]', '["inventory", "Equipment", "Gear & Materials", "pack"], ["market", "Trading", "Buy · Sell · Trade", "coins"], ["bank", "Banking", "Save · Deposit · Withdraw", "bank"]')
+label('title="Inventory" sub="Items, Materials, and Key Items you carry."', 'title="Equipment" sub="Gear, materials and key items you carry."')
+label('title="Bank & Treasury" sub="Safekeep your wealth."', 'title="Banking" sub="Safekeep your wealth."')
+label('title="Market" sub="Buy, Sell, and Trade in the Kingdom."', 'title="Trading" sub="Buy, sell and trade across the Kingdom."')
+label('title="Natural simulation"', 'title="World-Generated Talent"')
+label('["leaf", "Natural Simulation",', '["leaf", "World-Generated Talent",')
+# story-opening options, reworded
+label('before: ["One year before the ceremony", "Three years before", "Five years before", "Ten years before", "A generation before"]', 'before: ["A year before the ceremony", "Three years before", "Five years before", "A decade before", "A generation before"]')
+label('during: ["The Grimoire Acceptance Ceremony", "The months before the Entrance Exam", "Right after the Entrance Exam", "Asta and Yuno\'s first year as Magic Knights"]', 'during: ["Grimoire Ceremony Day", "Months before the Entrance Exam", "Just after the Entrance Exam", "Asta and Yuno\'s first year in the Knights"]')
+label('after: ["Right after the published story", "Ten years after", "Twenty-five years after", "A generation later"]', 'after: ["Just after the published story", "A decade after", "A quarter-century after", "A generation on"]')
+label('opening: "The Grimoire Acceptance Ceremony"', 'opening: "Grimoire Ceremony Day"')
+label('  var api = useYumina();\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">', '  var api = useYumina();\n  if (api && typeof api.resolveAssetUrl === "function") ART_RESOLVE = function (ref) { return api.resolveAssetUrl(ref); };\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">')
 open(sys.argv[2], 'w').write(s)
 print('ok', len(s))

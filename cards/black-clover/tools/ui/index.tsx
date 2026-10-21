@@ -729,7 +729,9 @@ var CSS = [
   ".bc-sparcard>svg,.bc-sparcard-text{position:relative}",
   ".bc-sparcard-text{flex:1;min-width:0;max-width:68%}",
   ".bc-sparcard-text strong{display:block;font-family:Cinzel,Georgia,serif;font-size:16px;color:#f3dda0;font-variant:small-caps}",
-  ".bc-sparcard-text small{display:block;font-size:12.5px;color:#e1d6c1;line-height:1.3;text-shadow:0 1px 3px #000}"
+  ".bc-sparcard-text small{display:block;font-size:12.5px;color:#e1d6c1;line-height:1.3;text-shadow:0 1px 3px #000}",
+  ".bc-hero .bc-hero-name.bc-long,.bc-hero-big .bc-hero-name.bc-long{font-size:19px;letter-spacing:.04em}",
+  ".bc-hero .bc-hero-sub.bc-long,.bc-hero-big .bc-hero-sub.bc-long{font-size:9px;letter-spacing:.08em}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -1628,10 +1630,10 @@ function Quote() {
 /* ---------- creation data ---------- */
 
 var OPENINGS = {
-  before: ["One year before the ceremony", "Three years before", "Five years before", "Ten years before", "A generation before"],
-  during: ["The Grimoire Acceptance Ceremony", "The months before the Entrance Exam", "Right after the Entrance Exam", "Asta and Yuno's first year as Magic Knights"],
+  before: ["A year before the ceremony", "Three years before", "Five years before", "A decade before", "A generation before"],
+  during: ["Grimoire Ceremony Day", "Months before the Entrance Exam", "Just after the Entrance Exam", "Asta and Yuno's first year in the Knights"],
   later: ["Later era I", "Later era II", "Later era III"],
-  after: ["Right after the published story", "Ten years after", "Twenty-five years after", "A generation later"],
+  after: ["Just after the published story", "A decade after", "A quarter-century after", "A generation on"],
   custom: []
 };
 var KINGDOMS = [
@@ -1708,7 +1710,7 @@ var STEP_HEAD = [
   ["V. Finalize", "Review your life before it begins."]
 ];
 var BLANK = {
-  name: "", sex: "", age: 15, appearance: "", appearance_detail: {}, personality: "", era: "during", opening: "The Grimoire Acceptance Ceremony", era_detail: "",
+  name: "", sex: "", age: 15, appearance: "", appearance_detail: {}, personality: "", era: "during", opening: "Grimoire Ceremony Day", era_detail: "",
   homeland: "Clover", homeland_note: "", origin: "", origin_detail: "", origin_note: "", region: "", settlement: "", settlement_mode: "", custom_place: "",
   family_mode: "Generated family", family_note: "", magic_mode: "Random", attribute_choice: "", attribute_custom: "",
   talent_mode: "Natural", lean_reserves: "Average", lean_control: "Average", lean_physique: "Average", sandbox_note: "", race: "Human",
@@ -1921,7 +1923,14 @@ var MORE_PATHS = {
 };
 Object.keys(MORE_PATHS).forEach(function (k) { if (!PATHS[k]) PATHS[k] = MORE_PATHS[k]; });
 
-function img(k) { return (BC_IMG && BC_IMG[k]) || ""; }
+/* Art values in bc-art.js are https URLs or "@asset:<id>" refs (resolved through the sandbox once App has set the resolver). */
+var ART_RESOLVE = null;
+function img(k) {
+  var v = (BC_IMG && BC_IMG[k]) || "";
+  if (v.indexOf("@asset:") !== 0) return v;
+  if (!ART_RESOLVE) return "";
+  try { return ART_RESOLVE(v) || ""; } catch (e) { return ""; }
+}
 function hashPick(s, list) { var h = 0; s = str(s); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return list[Math.abs(h) % list.length]; }
 
 function Pennant(p) {
@@ -1951,8 +1960,8 @@ function Hero(p) {
       {p.onBack ? <button type="button" className="bc-hero-back" aria-label="Back" onClick={p.onBack}><Icon n="chevl" s={18} fill={C.goldHi} /></button> : (p.left === false ? null : <Pennant side="l" />)}
       <div className={"bc-hero-title" + (p.onBack || p.left === false ? " bc-hero-title-back" : "")}>
         <div className="bc-hero-orn" aria-hidden="true"><span /><Icon n="clover" s={12} /><span /></div>
-        <div className="bc-hero-name">{p.title || "Black Clover"}</div>
-        <div className="bc-hero-sub">{p.sub || "A Mage's Tale"}</div>
+        <div className={"bc-hero-name" + ((p.title || "").length > 12 ? " bc-long" : "")}>{p.title || "Black Clover"}</div>
+        <div className={"bc-hero-sub" + ((p.sub || "").length > 22 ? " bc-long" : "")}>{p.sub || "A Mage's Tale"}</div>
         {p.tagline ? <div className="bc-hero-tag">{p.tagline}</div> : null}
         {p.quote ? <div className="bc-hero-quote">{p.quote}{p.quoteBy ? <small>{"— " + p.quoteBy}</small> : null}</div> : null}
       </div>
@@ -1985,7 +1994,7 @@ function ActionRow(p) {
 }
 
 /* ---------- navigation ---------- */
-var NAV = [["home", "Home", "home"], ["grimoire", "Grimoire", "book"], ["people", "Bonds", "people"], ["journal", "Chronicle", "doc"], ["story", "Adventure", "clover"], ["pack", "Pack", "pack"], ["bound", "Bound", "wisp"], ["crown", "Crown", "crown"], ["menu", "More", "gear"]];
+var NAV = [["home", "Realm", "home"], ["people", "Relations", "people"], ["crown", "Renown", "crown"], ["journal", "Records", "doc"], ["story", "Story", "clover"], ["grimoire", "Magic", "book"], ["bound", "Pacts", "wisp"], ["pack", "Satchel", "pack"], ["menu", "More", "gear"]];
 var HOME_SUB = { character: 1, train: 1, time: 1, routine: 1, codex: 1, household: 1, art: 1, settings: 1, help: 1, map: 1 };
 var PACK_SUB = { bank: 1, market: 1 };
 var JOURNAL_SUB = { missions: 1, notices: 1 };
@@ -1997,7 +2006,7 @@ function Nav(p) {
         if (it[0] === "story") {
           return (
             <div key="story" className="bc-nav-story-wrap">
-              <button className="bc-nav-story-btn" type="button" aria-label="Adventure" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
+              <button className="bc-nav-story-btn" type="button" aria-label="Story" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
                 <Icon n="clover" s={38} />
               </button>
             </div>
@@ -2018,17 +2027,17 @@ function Nav(p) {
 
 /* ---------- home ---------- */
 var TILES = [
-  { k: "adventure", t: "Adventure", s: "Explore. Fight. Grow.", icon: "compass", view: "story" },
-  { k: "grimoire", t: "Grimoire", s: "Spells. Attributes. Progress.", icon: "book", view: "grimoire" },
+  { k: "adventure", t: "Story", s: "Explore. Fight. Grow.", icon: "compass", view: "story" },
+  { k: "grimoire", t: "Magic", s: "Spells. Attributes. Progress.", icon: "book", view: "grimoire" },
   { k: "character", t: "Character", s: "Profile. Skills. Conditions.", icon: "bust", view: "character" },
-  { k: "squad", t: "Squad", s: "Join. Rise. Make a name.", icon: "people", view: "crown" },
-  { k: "inventory", t: "Inventory", s: "Items. Materials. Key items.", icon: "pack", view: "pack" },
-  { k: "market", t: "Market", s: "Buy. Sell. Trade.", icon: "coins", view: "market" },
-  { k: "bank", t: "Bank & Treasury", s: "Save. Deposit. Withdraw.", icon: "bank", view: "bank" },
-  { k: "missions", t: "Missions", s: "Requests. Bounties. Guild.", icon: "scroll", view: "missions" },
-  { k: "map", t: "World Map", s: "Travel. Discover. Plan.", icon: "map", view: "map" },
-  { k: "relationships", t: "Bonds", s: "Friends. Rivals. Romance.", icon: "heart", view: "people" },
-  { k: "more", t: "More", s: "Journal. Codex. Settings.", icon: "dots", view: "menu" }
+  { k: "relationships", t: "Connections", s: "Friends. Rivals. Romance.", icon: "heart", view: "people" },
+  { k: "squad", t: "Renown", s: "Join. Rise. Make a name.", icon: "people", view: "crown" },
+  { k: "missions", t: "Assignments", s: "Requests. Bounties. Guild.", icon: "scroll", view: "missions" },
+  { k: "map", t: "Realm Map", s: "Travel. Discover. Plan.", icon: "map", view: "map" },
+  { k: "inventory", t: "Satchel", s: "Gear. Materials. Keys.", icon: "pack", view: "pack" },
+  { k: "market", t: "Trading", s: "Buy. Sell. Trade.", icon: "coins", view: "market" },
+  { k: "bank", t: "Treasury", s: "Save. Deposit. Withdraw.", icon: "bank", view: "bank" },
+  { k: "more", t: "More", s: "Records. Codex. Settings.", icon: "dots", view: "menu" }
 ];
 var TILE_KEYS = TILES.map(function (t) { return t.k; });
 function Tile(p) {
@@ -2640,7 +2649,7 @@ function StoryView(p) {
       <div className="bc-chat bc-story-chat bc-chronicle-card" aria-label="Living story and NPC dialogue">
         <div className="bc-chronicle-head" aria-hidden="true">
           <img src={img("story_head")} alt="" />
-          <div><span><Icon n="clover" s={13} />Chronicle</span><strong>{chapter}</strong></div>
+          <div><span><Icon n="clover" s={13} />Story</span><strong>{chapter}</strong></div>
         </div>
         <StoryArtContext.Provider value={p.art}>
           <Chat className="bc-story-native-chat" renderBubble={StoryBubble} />
@@ -2650,7 +2659,7 @@ function StoryView(p) {
           <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }}><Icon n="quill" s={14} />Edit</button>
           <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen}><Icon n="hourglass" s={14} />Regenerate</button>
           <span className="bc-cardbar-sep" />
-          <button type="button" disabled={!lastAi} onClick={saveLast}><Icon n="bookmark" s={14} />Save to Journal</button>
+          <button type="button" disabled={!lastAi} onClick={saveLast}><Icon n="bookmark" s={14} />Save to Life Log</button>
         </div>
       </div>
       {arr(v.equipment_activity).length ? (
@@ -2906,7 +2915,7 @@ function BankView(p) {
   }
   return (
     <Frame className="bc-bank-panel" pad="0 0 8px">
-      <SectionHead art="bank_head" icon="bank" title="Bank & Treasury" sub="Safekeep your wealth." />
+      <SectionHead art="bank_head" icon="bank" title="Banking" sub="Safekeep your wealth." />
       <div className="bc-balance">
         <img src={img("bank_balance")} alt="" /><span className="bc-balance-shade" />
         <div><small>Account Balance</small><strong>{num(bank.balance, 0).toLocaleString() + " Yul"}</strong><span>{acctLabel}</span></div>
@@ -2977,7 +2986,7 @@ function MarketView(p) {
   }
   return (
     <Frame className="bc-market-panel" pad="0 0 8px">
-      <SectionHead art="market_head" icon="coins" title="Market" sub="Buy, Sell, and Trade in the Kingdom." />
+      <SectionHead art="market_head" icon="coins" title="Trading" sub="Buy, sell and trade across the Kingdom." />
       {buyError ? <div role="alert" className="bc-inv-msg" style={{ color: "#efb6a5" }}>{buyError}</div> : null}
       {stock.length ? (
         <div className="bc-stock">
@@ -3007,8 +3016,8 @@ function MissionsView(p) {
   var past = arr(v.known_events).filter(function (e) { return e && /^(done|missed|taken|resolved|expired)$/i.test(str(e.status)); }).slice(-5).reverse();
   return (
     <div>
-      <H>Missions and commitments</H>
-      {missions.length ? <Frame pad="4px 14px 8px">{missions.map(function (m, i) { return <Row key={m.id || i} k={str(m.title) + (m.issuer ? " (" + str(m.issuer) + ")" : "")} v={str(m.status)} />; })}</Frame> : <Empty>No missions. Requests come from real problems: squads, officials, villages and people you know.</Empty>}
+      <H>Assignments and commitments</H>
+      {missions.length ? <Frame pad="4px 14px 8px">{missions.map(function (m, i) { return <Row key={m.id || i} k={str(m.title) + (m.issuer ? " (" + str(m.issuer) + ")" : "")} v={str(m.status)} />; })}</Frame> : <Empty>No assignments. Requests come from real problems: squads, officials, villages and people you know.</Empty>}
       <H m="20px 0 10px">Things you know are coming</H>
       {events.length ? <Frame pad="4px 14px 8px">{events.map(function (e, i) { return <Row key={e.id || i} k={str(e.title)} v={[str(e.when), str(e.where)].filter(Boolean).join(", ")} />; })}</Frame> : <Empty>Nothing on the horizon that you know of.</Empty>}
       {past.length ? <div><H m="20px 0 10px">Recently resolved</H><Frame pad="4px 14px 8px">{past.map(function (e, i) { return <Row key={e.id || i} k={str(e.title)} v={str(e.status)} />; })}</Frame></div> : null}
@@ -3020,7 +3029,7 @@ function PeopleView(p) {
   var os = React.useState(""); var open = os[0], setOpen = os[1];
   return (
     <div style={{ position: "relative" }}>
-      <Eyebrow k={"BONDS · FRIENDS AND RIVALS"}>{ids.length ? "No journey is solitary." : "No journey is solitary, yet."}</Eyebrow>
+      <Eyebrow k={"CONNECTIONS · FRIENDS AND RIVALS"}>{ids.length ? "Every thread you have woven." : "No threads woven yet."}</Eyebrow>
       {ids.length ? ids.map(function (id) {
         var r = obj(rel[id]);
         var nm = str(r.name) || id;
@@ -3132,7 +3141,7 @@ function BoundView(p) {
   }
   return (
     <div style={{ position: "relative" }}>
-      <Eyebrow k={"BOUND · SPIRITS AND DEVILS"}>What answers when you call.</Eyebrow>
+      <Eyebrow k={"MYSTIC PACTS · SPIRITS AND DEVILS"}>What answers when you call.</Eyebrow>
       <H>Your bonds</H>
       {sBond ? <BoundCompactCard art={art} slotKey="spirit" name={sBond} kind="Spirit" subtitle="Your spirit bond" note="A living bond carried in your grimoire state." onOpen={function () { setOpen("spirit"); }} /> : <Frame pad="4px 14px 8px" style={{ marginBottom: 8 }}><Row k="Your spirit bond" v="No spirit bound" /></Frame>}
       {dBond ? <BoundCompactCard art={art} slotKey="devil" name={dBond} kind="Devil" subtitle="Your devil bond" note="A pact or bond carried in your grimoire state." onOpen={function () { setOpen("devil"); }} /> : <Frame pad="4px 14px 8px" style={{ marginBottom: 16 }}><Row k="Your devil bond" v="No devil pact" /></Frame>}
@@ -3637,7 +3646,7 @@ function GrimoireView(p) {
     <Frame className="bc-bonds-panel" pad="9px 10px" style={{ marginBottom: 12 }}>
       <div className="bc-bonds-head">
         <Icon n="clover" s={30} />
-        <div><strong>Bonds</strong><small>Spirits and Devils walk different paths. Both leave their mark on your story.</small></div>
+        <div><strong>Pacts</strong><small>Spirit connections and devil contracts walk different paths. Both leave their mark on your story.</small></div>
       </div>
       <button type="button" className="bc-bondrow" onClick={p.goBound}>
         <span className="bc-bondrow-icon"><Icon n="wisp" s={26} /></span>
@@ -3958,14 +3967,14 @@ function PackView(p) {
         <span className="bc-purse-icon"><Icon n="coins" s={44} /></span>
         <div className="bc-purse-text"><small>Your Purse</small><strong>{num(v.money, 0).toLocaleString() + " Yul"}</strong><span>{bank.open ? "Bank: " + bcMoney(bank.balance) + " on account." : "The coin of the Clover Kingdom."}</span></div>
       </button>
-      <div className="bc-hubtabs" role="tablist" aria-label="Pack sections">
-        {[["inventory", "Inventory", "Items & Materials", "pack"], ["market", "Market", "Buy · Sell · Trade", "coins"], ["bank", "Bank & Treasury", "Save · Deposit · Withdraw", "bank"]].map(function (t) {
+      <div className="bc-hubtabs" role="tablist" aria-label="Satchel sections">
+        {[["inventory", "Equipment", "Gear & Materials", "pack"], ["market", "Trading", "Buy · Sell · Trade", "coins"], ["bank", "Banking", "Save · Deposit · Withdraw", "bank"]].map(function (t) {
           return <button key={t[0]} type="button" role="tab" aria-selected={visible === t[0] ? "true" : "false"} className={"bc-hubtab" + (visible === t[0] ? " bc-hubtab-on" : "")} onClick={function () { jump(t[0], true); }}><Icon n={t[3]} s={30} /><span><strong>{t[1]}</strong><small>{t[2]}</small></span></button>;
         })}
       </div>
       <div ref={refs.inventory} data-sec="inventory" className="bc-sec-anchor" />
       <Frame className="bc-inv-panel" pad="0 0 8px">
-        <SectionHead art="inv_head" icon="pack" title="Inventory" sub="Items, Materials, and Key Items you carry."
+        <SectionHead art="inv_head" icon="pack" title="Equipment" sub="Gear, materials and key items you carry."
           right={<span className="bc-inv-tools"><button type="button" className={"bc-capchip" + (carry.band !== "comfortable" ? " bc-crit" : "")} aria-label={"Carried " + Math.round(carry.weight * 10) / 10 + " of " + carry.max + " kilograms, " + carry.band + ". Show load details."} onClick={function () { setDetails(!details); }}>{Math.round(carry.weight * 10) / 10 + " / " + carry.max + " kg"}</button>
             <select aria-label="Sort items" value={sort} onChange={function (e) { setSort(e.target.value); }}><option value="location">Location</option><option value="name">Name</option><option value="weight">Weight</option><option value="type">Type</option></select></span>} />
         <div className="bc-chiprow bc-inv-filters">{[["all", "All"], ["item", "Items"], ["material", "Materials"], ["key", "Key Items"]].map(function (f) { return <Chip key={f[0]} on={filter === f[0]} onClick={function () { setFilter(f[0]); }}>{f[1]}</Chip>; })}</div>
@@ -4183,7 +4192,7 @@ function JournalView(p) {
           </Frame>
         );
       })}
-      <SectionHead icon="doc" iconSize={24} title="Chronicle" sub="Your own history, page by page." />
+      <SectionHead icon="doc" iconSize={24} title="Life Log" sub="Your own history, page by page." />
       {ch.length ? ch.map(function (c, i) {
         return <Frame key={i} pad="10px 13px" style={{ marginBottom: 8 }}><div style={{ fontSize: 13.5, color: C.gold, fontWeight: 700 }}>{str(c.date)}</div><div style={{ fontFamily: DISPLAY, fontSize: 16.5, color: C.ivory }}>{str(c.title)}</div>{c.summary ? <div style={{ fontSize: 15, color: C.muted, lineHeight: 1.45 }}>{str(c.summary)}</div> : null}</Frame>;
       }) : <Empty>Your history begins with your first day.</Empty>}
@@ -4192,9 +4201,9 @@ function JournalView(p) {
   return (
     <div>
       <div className="bc-chiprow" style={{ marginBottom: 12 }}>
-        <Chip icon="doc" on={tab === "chronicle"} onClick={function () { setTab("chronicle"); }}>Chronicle</Chip>
-        <Chip icon="scroll" on={tab === "missions"} onClick={function () { setTab("missions"); }}>{"Missions" + (ms ? " (" + ms + ")" : "")}</Chip>
-        <Chip icon="bell" on={tab === "notices"} onClick={function () { setTab("notices"); }}>{"Notices" + (notices ? " (" + notices + ")" : "")}</Chip>
+        <Chip icon="doc" on={tab === "chronicle"} onClick={function () { setTab("chronicle"); }}>Life Log</Chip>
+        <Chip icon="scroll" on={tab === "missions"} onClick={function () { setTab("missions"); }}>{"Assignments" + (ms ? " (" + ms + ")" : "")}</Chip>
+        <Chip icon="bell" on={tab === "notices"} onClick={function () { setTab("notices"); }}>{"Reports" + (notices ? " (" + notices + ")" : "")}</Chip>
       </div>
       {body}
     </div>
@@ -4229,17 +4238,17 @@ function MenuView(p) {
 
 /* ---------- page shell ---------- */
 var PAGE_HERO = {
-  grimoire: { title: "Grimoire", sub: "Spells. Attributes. Progress.", quote: "“Every spell begins with a single page.”", quoteBy: "Asta", img: "grim_head", big: true, right: false },
+  grimoire: { title: "Magic", sub: "Spells. Attributes. Progress.", quote: "“Every spell begins with a single page.”", quoteBy: "Asta", img: "grim_head", big: true, right: false },
   map: { title: "World Map", sub: "Travel · Discover · Plan", tagline: "Explore the Clover Kingdom and beyond. New places, people, and stories await.", big: true, right: "compass" },
   pack: { tagline: "Your purse, your pack, your savings." },
-  people: { title: "Bonds", sub: "Friends. Rivals. Romance.", big: true },
-  journal: { title: "Chronicle", sub: "Goals · Missions · History", big: true },
-  bound: { title: "Bound", sub: "Spirits and Devils", big: true },
-  crown: { title: "Crown", sub: "Rank · Merit · Service", big: true },
+  people: { title: "Connections", sub: "Friends. Rivals. Romance.", big: true },
+  journal: { title: "Kingdom Records", sub: "Goals · Assignments · Reports", big: true },
+  bound: { title: "Mystic Pacts", sub: "Spirit connections and devil contracts", big: true },
+  crown: { title: "Renown & Rank", sub: "Advancement · Merit · Reputation", big: true },
   menu: { title: "More", sub: "Life · Codex · Settings", big: true }
 };
-var TITLES = { grimoire: "Grimoire", character: "Character", squad: "Crown", crown: "Crown", pack: "Pack", bank: "Pack", market: "Pack", missions: "Chronicle", map: "World Map", people: "Bonds", notices: "Chronicle",
-  journal: "Chronicle", bound: "Bound", menu: "More", train: "Training", time: "Let Time Pass", routine: "Routine", codex: "Codex", household: "Home and Family", art: "Artwork", settings: "Settings", help: "Help" };
+var TITLES = { grimoire: "Magic", character: "Character", squad: "Renown & Rank", crown: "Renown & Rank", pack: "Satchel & Treasury", bank: "Satchel & Treasury", market: "Satchel & Treasury", missions: "Kingdom Records", map: "Realm Map", people: "Connections", notices: "Kingdom Records",
+  journal: "Kingdom Records", bound: "Mystic Pacts", menu: "More", train: "Training", time: "Let Time Pass", routine: "Routine", codex: "Codex", household: "Home and Family", art: "Artwork", settings: "Settings", help: "Help" };
 function Page(p) {
   var hero = PAGE_HERO[p.heroKey] || { title: p.title, sub: dayMonthWD(p.date) ? dayMonthWD(p.date) + " · " + clock12(p.time) : "", big: true };
   return (
@@ -4678,7 +4687,7 @@ function Creator(p) {
         ) : null}
         <CField label="Talent" note="Choose how your magic behaves. The world will add variance.">
           <div role="radiogroup" aria-label="Talent">
-            <ListOpt on={f.talent_mode === "Natural"} icon="leaf" title="Natural simulation" tag="Recommended" desc="Your abilities come from lineage, circumstance, variance and fate. You discover them by living." onClick={function () { set("talent_mode", "Natural"); }} />
+            <ListOpt on={f.talent_mode === "Natural"} icon="leaf" title="World-Generated Talent" tag="Recommended" desc="Your abilities come from lineage, circumstance, variance and fate. You discover them by living." onClick={function () { set("talent_mode", "Natural"); }} />
             <ListOpt on={f.talent_mode === "Guided"} icon="book" title="Guided" desc="Choose broad leaning. The world still adds variance." onClick={function () { set("talent_mode", "Guided"); }} />
             <ListOpt on={f.talent_mode === "Sandbox"} icon="star" title="Full sandbox" desc="Specify exactly what you want. The world reacts honestly to it." onClick={function () { set("talent_mode", "Sandbox"); }} />
           </div>
@@ -4783,7 +4792,7 @@ function Creator(p) {
           </Frame>
           <Frame className="bc-final-modes" pad="8px 9px">
             <div className="bc-final-h"><Icon n="gear" s={18} />Narrative Mode Options</div>
-            {[["leaf", "Natural Simulation", "A living world that moves on its own.", f.talent_mode === "Natural", function (on) { set("talent_mode", on ? "Natural" : "Guided"); }],
+            {[["leaf", "World-Generated Talent", "A living world that moves on its own.", f.talent_mode === "Natural", function (on) { set("talent_mode", on ? "Natural" : "Guided"); }],
               ["book", "Story Guidance", "Receive direction and key story prompts.", f.canon_guidance !== "Off", function (on) { set("canon_guidance", on ? "Balanced" : "Off"); }],
               ["compass", "Sandbox Elements", "Freedom to explore beyond the main story.", f.content_continuity === "Full Official Sandbox", function (on) { set("content_continuity", on ? "Full Official Sandbox" : "Core Canon"); }]].map(function (m) {
               return (
@@ -4935,6 +4944,7 @@ function SparCard(p) {
 
 export default function App() {
   var api = useYumina();
+  if (api && typeof api.resolveAssetUrl === "function") ART_RESOLVE = function (ref) { return api.resolveAssetUrl(ref); };
   var v = (api && api.variables) || {};
   useRelationshipIdentityGuard(api);
   var art = useArt(api);

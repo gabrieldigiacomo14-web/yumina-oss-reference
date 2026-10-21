@@ -1,6 +1,29 @@
-# Black Clover: A Mage's Tale — v21.6.1
+# Black Clover: A Mage's Tale — v21.6.2
 
-Import `Black_Clover_A_Mages_Tale_v21.6.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.6.2.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.6.2 — new section names
+
+Names only; nothing under them changed. Where the old names are still in the file (variables like `chronicle`, the internal page ids) the interface doesn't show them.
+
+| Before | Now |
+|---|---|
+| Home | **Realm** |
+| Bonds | **Relations** (page: **Connections**) |
+| Crown | **Renown** (page: **Renown & Rank**) |
+| Chronicle | **Records** (page: **Kingdom Records**, with **Life Log**, **Assignments** and **Reports**) |
+| Adventure | **Story** (the clover) |
+| Grimoire | **Magic** |
+| Bound | **Pacts** (page: **Mystic Pacts**) |
+| Pack | **Satchel** (page: **Satchel & Treasury**, with **Equipment**, **Trading** and **Banking**) |
+| More | More |
+
+- The bar is reordered to Realm · Relations · Renown · Records · **Story** · Magic · Pacts · Satchel · More.
+- The Home cards are reordered (Story, Magic, Character, Connections, Renown, Assignments, Realm Map, Satchel, Trading, Treasury, More) and retitled to match.
+- Connections no longer repeats "No journey is solitary."; it says "Every thread you have woven." (or "No threads woven yet.").
+- Character creation: "Natural Simulation" is now **World-Generated Talent**, and the story-opening options are reworded (e.g. "Grimoire Ceremony Day", "Just after the Entrance Exam").
+- Long page titles ("Kingdom Records", "Mystic Pacts") shrink to fit beside the pennants.
+- The interface can now use images uploaded to the Yumina Library: `tools/art/mkart.py` takes an optional `assets.json` (image name → `@asset:<id>`), and any image listed there is loaded from the Yumina CDN instead of GitHub.
 
 ## v21.6.1 — hosted art (fixes the "inline base64" save error)
 
