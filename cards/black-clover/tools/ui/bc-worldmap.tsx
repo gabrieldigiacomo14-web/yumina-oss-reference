@@ -370,7 +370,7 @@ export var WORLDMAP_CSS = [
   ".bcwm-newbtn{border-color:#b48ae8;color:#e8dbff;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
   ".bcwm-box{position:relative;height:300px;overflow:hidden;touch-action:none;cursor:grab;background:#0e2338}",
   ".bcwm-full .bcwm-box{flex:1;height:auto}",
-  ".bcwm-base{pointer-events:none;user-select:none;image-rendering:auto}",
+  ".bcwm-base{pointer-events:none;user-select:none;image-rendering:auto;display:block;max-width:none!important;max-height:none!important;min-width:0;object-fit:fill}",
   ".bcwm-svg{position:absolute;left:0;top:0}",
   ".bcwm-mtn{fill:#6b5a44;stroke:#2a2015;stroke-width:1}.bcwm-tree{fill:#21492f;stroke:#0f2416;stroke-width:.8}.bcwm-hill{fill:none;stroke:#3e5a33;stroke-width:1.4}",
   ".bcwm-ring{fill:none;stroke:#f3dda0;stroke-opacity:.45;stroke-width:1.2;stroke-dasharray:5 5}",

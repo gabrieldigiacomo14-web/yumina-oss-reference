@@ -1,6 +1,12 @@
-# Black Clover: A Mage's Tale — v21.8
+# Black Clover: A Mage's Tale — v21.8.1
 
-Import `Black_Clover_A_Mages_Tale_v21.8.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.8.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.8.1 — world map land lines up with places
+
+Reported in a screen recording: when panning or zooming the expanded map, the painted land slid away from the labels, pins and realm rings. Places ended up over open sea, and at high zoom the land stretched into stripes.
+
+The Yumina player loads Tailwind CSS. Its built-in reset gives every `<img>` `max-width: 100%`. The land picture is drawn far larger than the map box so it can be panned and zoomed, but the reset capped it at the box's width while the pins kept scaling. The map's land image now opts out (`max-width: none`), so land, labels and pins share one scale at every zoom. The test page now applies the same reset, so this kind of mismatch shows up before release.
 
 ## v21.8 — spells that act like themselves
 
