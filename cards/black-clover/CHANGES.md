@@ -1,6 +1,42 @@
-# Black Clover: A Mage's Tale — v21.7
+# Black Clover: A Mage's Tale — v21.8
 
-Import `Black_Clover_A_Mages_Tale_v21.7.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.8.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.8 — spells that act like themselves
+
+Reported: a Granite Lance did nothing, and a shield-like sealing spell attacked instead. The arena guessed each spell's type by scanning its whole description, with shield words checked first. "Pierces armor" or "breaks through a wall" turned the lance into a barrier. A seal with no shield words fell through to the default, a plain attack bolt.
+
+**How spells are read now** (`readSpell` in `bc-battle.tsx`):
+1. **Name first.** The last word in the spell's own name that names a form decides: Granite **Lance**, Stone **Seal**, Rock **Shield**, Stone **Wall**, Gale **Edge**, Thorn **Snare**.
+2. **Then the stored category, then the description.** The first sentence counts double. "Pierces armor", "breaks through walls" and the like count as attack words, not defence words.
+3. **The look comes from the material.** It's read from the name, then the attribute, then the description: granite, stone, steel, ice, fire, water, lightning, wind, plant, light, dark, sand or blood. A granite lance is a grey stone spear trailing dust. Hits throw off particles of that material: stone chunks, embers, shards, droplets.
+4. **The pre-fight screen lists your spells** and what each will do ("Granite Lance — Piercing lance", "Granite Seal — Sealing ward"), so you can see how a spell was read before you fight.
+
+**What each kind of spell does:**
+
+| Kind | In the arena |
+|---|---|
+| Lance | Fast, heavy, pierces one foe (two at full output), knocks back, smashes crates. Hard to dodge. |
+| Cutting wave | A wide crescent that passes through everyone in its path. |
+| Projectile | An orb that hits the first foe. |
+| Blast | Lands where you aim after a short warning. Hits everyone inside and breaks crates. |
+| Binding shot | Roots the foe it hits. |
+| Shield | Material plates that turn to face the nearest foe. Blocks shots, blows and charges from the front (a charging foe is rebuffed) until its strength runs out. |
+| Barrier / dome | The same protection all round when the spell describes a dome, sphere or surrounding barrier. |
+| Wall | Raises stone (or ice, iron…) blocks in front of you that stop enemy shots and movement for about 6 seconds. Your own shots pass through. |
+| Sealing ward | A rune circle around you for about 3.5 seconds. Enemy shots and blasts inside it are erased, and foes inside can't start an attack. |
+| Seal on a foe | When the description says it seals an enemy, target or movement, it locks one foe in place. |
+| Heal | Restores body. |
+| Quick shift | Moves you a short distance and briefly protects you. |
+
+Defensive spells have longer cooldowns: shields 4.5s, walls 5s, sealing wards 6s.
+
+**Feel of the fight:**
+- **Aiming:** drag from a spell button to aim it, with an aim line, a target circle for blasts or the wall's footprint. A plain tap still auto-aims.
+- **Weight:** hits pause for a split second (longer for big ones) and knock foes back.
+- **Stagger:** enough damage in a short time staggers a foe for about a second, and staggered foes take extra damage.
+- **Smarter enemies:** average-or-stronger foes may sidestep a slow projectile you shoot straight at them, and lances are harder to dodge. Brawlers also lunge from mid-range, with a warning shown first.
+- **Cover:** your shots no longer vanish on the first crate. Lances and blasts smash crates, and other shots still stop on cover.
 
 ## v21.7 — room to read the story
 
