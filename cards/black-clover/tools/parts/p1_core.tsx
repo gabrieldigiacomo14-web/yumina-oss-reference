@@ -129,7 +129,7 @@ function Nav(p) {
         if (it[0] === "story") {
           return (
             <div key="story" className="bc-nav-story-wrap">
-              <button className="bc-nav-story-btn" type="button" aria-label="Story" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
+              <button className="bc-nav-story-btn" type="button" aria-label="Return to the living story" title="Return to the living story" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
                 <Icon n="clover" s={38} />
               </button>
             </div>
@@ -150,17 +150,17 @@ function Nav(p) {
 
 /* ---------- home ---------- */
 var TILES = [
-  { k: "adventure", t: "Story", s: "Explore. Fight. Grow.", icon: "compass", view: "story" },
-  { k: "grimoire", t: "Magic", s: "Spells. Attributes. Progress.", icon: "book", view: "grimoire" },
-  { k: "character", t: "Character", s: "Profile. Skills. Conditions.", icon: "bust", view: "character" },
-  { k: "relationships", t: "Connections", s: "Friends. Rivals. Romance.", icon: "heart", view: "people" },
-  { k: "squad", t: "Renown", s: "Join. Rise. Make a name.", icon: "people", view: "crown" },
-  { k: "missions", t: "Assignments", s: "Requests. Bounties. Guild.", icon: "scroll", view: "missions" },
-  { k: "map", t: "Realm Map", s: "Travel. Discover. Plan.", icon: "map", view: "map" },
-  { k: "inventory", t: "Satchel", s: "Gear. Materials. Keys.", icon: "pack", view: "pack" },
-  { k: "market", t: "Trading", s: "Buy. Sell. Trade.", icon: "coins", view: "market" },
-  { k: "bank", t: "Treasury", s: "Save. Deposit. Withdraw.", icon: "bank", view: "bank" },
-  { k: "more", t: "More", s: "Records. Codex. Settings.", icon: "dots", view: "menu" }
+  { k: "character", t: "Mage Profile", s: "Identity, skills and condition.", icon: "bust", view: "character" },
+  { k: "grimoire", t: "Spellcraft", s: "Attributes, spells and magical growth.", icon: "book", view: "grimoire" },
+  { k: "adventure", t: "Journey", s: "Live your own story across the kingdoms.", icon: "compass", view: "story" },
+  { k: "map", t: "Kingdom Atlas", s: "Travel routes and discovered places.", icon: "map", view: "map" },
+  { k: "squad", t: "Magic Knights", s: "Squad, standing and merit.", icon: "people", view: "crown" },
+  { k: "missions", t: "Assignments", s: "Duties, requests and opportunities.", icon: "scroll", view: "missions" },
+  { k: "relationships", t: "Connections", s: "Friends, rivals and confidants.", icon: "heart", view: "people" },
+  { k: "inventory", t: "Equipment", s: "Carry, equip and organize.", icon: "pack", view: "pack" },
+  { k: "bank", t: "Treasury", s: "Accounts, savings and deposits.", icon: "bank", view: "bank" },
+  { k: "market", t: "Trade", s: "Buy, sell and barter.", icon: "coins", view: "market" },
+  { k: "more", t: "Life & Settings", s: "Training, routine and world options.", icon: "dots", view: "menu" }
 ];
 var TILE_KEYS = TILES.map(function (t) { return t.k; });
 function Tile(p) {

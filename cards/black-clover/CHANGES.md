@@ -1,6 +1,27 @@
-# Black Clover: A Mage's Tale — v21.6.4
+# Black Clover: A Mage's Tale — v21.7
 
-Import `Black_Clover_A_Mages_Tale_v21.6.4.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.7.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.7 — room to read the story
+
+On a phone the story screen left the narration about one line. The castle header, status strip, Upcoming bar, story toolbar, four action cards, Yumina's message box, a Suggest/Random row and the bottom bar all shared the screen, so an NPC's dialogue card was cut off too.
+
+The story area on a 430 × 758 screen (a large iPhone with Safari's bars) went from about **30px** to **365px**, or **468px** in Reading mode. On a 390 × 664 screen it's 271px and 374px. These were measured with a stand-in for Yumina's message box at its real height of about 120px.
+
+- **Header:** a slim bar shows the back button, the place and the date, plus a **Reading mode** button.
+- **Reading mode** hides the status strip, the Upcoming bar and the action row so the story gets the screen. Tap **Show all** to bring them back. It's remembered on your device.
+- **Status strip:** each stat's name and word now share a line, so the strip is about half as tall.
+- **Story card:** Copy, Edit, Regenerate and Save are small icon buttons in the card's title row instead of a separate toolbar.
+- **One action row:** **+**, **Suggest**, **Random** and the scene actions (Rest, Eat, Train, Head outside…) are a single row of chips you can swipe sideways. In combat the row shows Cast, Move, Defend, Allies and Items. The **Fight it out** button is unchanged.
+- **Short screens:** under 640px tall, the Upcoming bar hides and the header gets thinner.
+
+**Wording now follows the creator's "Distinct UI" file** (`Black_Clover_A_Mages_Tale_v21.6_Distinct_UI.json`), replacing the v21.6.2 choices. The exact before/after text is in `tools/distinct_labels.json`, which `splice.py` applies.
+- Home cards: Mage Profile, Spellcraft, Journey, Kingdom Atlas, Magic Knights, Assignments, Connections, Equipment, Treasury, Trade, Life & Settings.
+- Satchel tabs: Equipment · Accounts · Trade.
+- The Connections and Mystic Pacts lines, and the Spirit & Devil Links box in Magic.
+- Story openings get display names ("Ceremony Day · At the Grimoire Tower"…) while the saved values stay the same, so old saves still work. "Suggested Start" and "Lore-Grounded" tags.
+- The AI's top rule is titled "A Mage's Tale".
+- That file was built on v21.6.0, so it still embedded the 41 images and lacked the v21.6.1–v21.6.4 fixes. This version has both: its wording, and hosted art with the back-button and tap fixes.
 
 ## v21.6.4 — taps on the bar and back button
 

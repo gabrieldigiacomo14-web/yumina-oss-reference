@@ -82,24 +82,10 @@ function composerIdea(v, random) {
 }
 function Composer(p) {
   var api = p.api; var busy = !!api.isStreaming; var v = api.variables || {};
-  var ss = React.useState(0); var tick = ss[0], setTick = ss[1];
-  function draft(random) {
-    var idea = composerIdea(v, random);
-    if (typeof api.setComposerDraft === "function") api.setComposerDraft(idea);
-    else if (typeof api.showToast === "function") api.showToast(idea, "info");
-    setTick(tick + 1);
-  }
   return (
     <div className="bc-composer">
       {api.error ? <div role="alert" className="bc-composer-err">{"The GM couldn't answer: " + str(api.error) + ". Send your message again."}</div> : null}
       <MessageInput />
-      <div className="bc-composer-tools">
-        <button type="button" className={"bc-ctool bc-ctool-plus" + (p.sheet === "actions" ? " bc-ctool-on" : "")} aria-label="More actions" aria-expanded={p.sheet === "actions" ? "true" : "false"} onClick={p.onPlus}><Icon n="plus" s={14} /></button>
-        {busy
-          ? <button type="button" className="bc-ctool bc-ctool-busy" onClick={function () { if (typeof api.stopGeneration === "function") api.stopGeneration(); }}><span className="bc-streaming-dot" />{"Writing\u2026"}<b>Stop</b></button>
-          : <button type="button" className="bc-ctool" onClick={function () { draft(false); }} title="Put a suggestion in the box. Nothing is sent until you press send."><Icon n="star" s={14} />Suggest</button>}
-        <button type="button" className="bc-ctool" disabled={busy} onClick={function () { draft(true); }} title="Put a random idea in the box. Nothing is sent until you press send."><Icon n="dice" s={14} />Random</button>
-      </div>
     </div>
   );
 }

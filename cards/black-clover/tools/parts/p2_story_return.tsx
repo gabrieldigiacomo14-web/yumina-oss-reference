@@ -9,7 +9,7 @@
   function regen() { if (lastAi && typeof api.regenerateMessage === "function") api.regenerateMessage(lastAi.id); }
   function saveLast() {
     var t = cleanPassage(proseOf(lastAi && lastAi.content)); if (!t) return;
-    savePassage(api, { id: str(lastAi.id) || String(Date.now()), date: str(v.world_date), place: loc.place || loc.settlement, text: t.slice(0, 1200) }, function (ok, dup) { toast(dup ? "Already in your journal." : ok ? "Saved to your journal." : "Couldn't save to the journal.", ok || dup ? "success" : "error"); });
+    savePassage(api, { id: str(lastAi.id) || String(Date.now()), date: str(v.world_date), place: loc.place || loc.settlement, text: t.slice(0, 1200) }, function (ok, dup) { toast(dup ? "Already in your Life Log." : ok ? "Saved to your Life Log." : "Couldn't save to the journal.", ok || dup ? "success" : "error"); });
   }
   function eatSomething() {
     var food = physInv.filter(function (it) { return bcCanConsume(it) && bcIsAccessible(it, physInv, false); })[0];
@@ -54,51 +54,81 @@
   var chapter = loc.place || loc.settlement || "The First Page";
   var chapterSub = loc.place && loc.settlement ? loc.settlement + " · " + dayMonthWD(v.world_date) : (dayMonthWD(v.world_date) || "Where your story begins.");
   var cards = chips.slice(0, 4); var extra = chips.slice(4);
+  var rds = React.useState(false); var reading = rds[0], setReading = rds[1];
+  React.useEffect(function () { var st = getStore(api); if (!st || typeof st.get !== "function") return; try { var pr = st.get("bc_reading_mode"); if (pr && pr.then) pr.then(function (x) { if (x === "1") setReading(true); }, function () {}); } catch (e) {} }, []);
+  function toggleReading() { var n = !reading; setReading(n); setSheet(""); var st = getStore(api); if (st && typeof st.set === "function") { try { var pr = st.set("bc_reading_mode", n ? "1" : "0"); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} } }
+  function draft(random) {
+    var idea = composerIdea(v, random);
+    if (typeof api.setComposerDraft === "function") api.setComposerDraft(idea);
+    else toast(idea, "info");
+  }
+  var quick = (
+    <div className="bc-quickrow" role="toolbar" aria-label="Quick actions">
+      <button type="button" className={"bc-qbtn bc-qbtn-round" + (sheet === "actions" ? " bc-qbtn-on" : "")} aria-label="More actions" aria-expanded={sheet === "actions" ? "true" : "false"} onClick={function () { setSheet(sheet === "actions" ? "" : "actions"); }}><Icon n="plus" s={14} /></button>
+      {busy
+        ? <button type="button" className="bc-qbtn bc-qbtn-busy" onClick={function () { if (typeof api.stopGeneration === "function") api.stopGeneration(); }}><span className="bc-streaming-dot" />{"Writing…"}<b>Stop</b></button>
+        : <button type="button" className="bc-qbtn" onClick={function () { draft(false); }} title="Put a suggestion in the box. Nothing is sent until you press send."><Icon n="star" s={13} />Suggest</button>}
+      <button type="button" className="bc-qbtn" disabled={busy} onClick={function () { draft(true); }} title="Put a random idea in the box. Nothing is sent until you press send."><Icon n="dice" s={13} />Random</button>
+      <span className="bc-qsep" aria-hidden="true" />
+      {inCombat
+        ? [["cast", "Cast", "star"], ["move", "Move", "run"], ["defend", "Defend", "shield"], ["ally", "Allies", "people"], ["item", "Items", "pack"]].map(function (x) {
+            return <button key={x[0]} type="button" className={"bc-qbtn" + (sheet === x[0] ? " bc-qbtn-on" : "")} disabled={busy} onClick={function () { setSheet(sheet === x[0] ? "" : x[0]); }}><Icon n={x[2]} s={13} />{x[1]}</button>;
+          })
+        : cards.map(function (c) {
+            var m = actMeta(c); var on = c === "Rest for a while" && sheet === "rest";
+            return <button key={c} type="button" className={"bc-qbtn bc-qact" + (on ? " bc-qbtn-on" : "")} disabled={busy} onClick={function () { cardAction(c); }}><Icon n={m.icon} s={14} />{c}</button>;
+          })}
+    </div>
+  );
   return (
-    <div className="bc-fill bc-story">
-      <Hero bannerUrl={p.bannerUrl} cls="bc-hero-story" onBack={p.onBack} kingdom={kingdom0}>
-        <div className="bc-hero-chapter"><Icon n="book" s={30} /><div><strong>{chapter}</strong><small>{chapterSub}</small></div></div>
-      </Hero>
-      <div className="bc-statstrip" role="group" aria-label="Your condition">
-        {[["heart", "Body", v.vitality, w(v.vitality, condWord(v.vitality)), "hp"], ["drop", "Mana", v.mana, w(v.mana, levelWord(v.mana)), "mp"], ["run", "Stamina", v.stamina, w(v.stamina, levelWord(v.stamina)), "st"], ["moon", "Fatigue", v.fatigue, w(v.fatigue, fatWord(v.fatigue)), "ft"]].map(function (s) {
-          return (
-            <button type="button" key={s[1]} className={"bc-statcell bc-statcell-" + s[4] + (hudLow(s[4], s[2]) ? " bc-crit" : "")} aria-label={s[1] + ": " + s[3] + ". Open character"} onClick={function () { p.go && p.go("character"); }}>
-              <Icon n={s[0]} s={17} />
-              <div className="bc-statcell-body"><span>{s[1]}</span><div className="bc-statbar"><i style={{ width: clamp(num(s[2], 0), 0, 100) + "%" }} /></div><small>{s[3]}</small></div>
-            </button>
-          );
-        })}
-        <button type="button" className="bc-statcell bc-statcell-sky" aria-label={tod + ", " + clock12(v.world_time) + ", " + str(v.weather) + ". Let time pass"} onClick={function () { p.go && p.go("time"); }}><Icon n={night ? "moon" : "sun"} s={18} /><div className="bc-statcell-body"><span>{tod}</span><small>{str(v.weather).split(",")[0] || clock12(v.world_time)}</small></div></button>
-      </div>
-      {ups.length ? (
+    <div className={"bc-fill bc-story" + (reading ? " bc-reading" : "")}>
+      <header className="bc-storybar">
+        {p.bannerUrl ? <img className="bc-storybar-img" src={p.bannerUrl} alt="" /> : null}
+        <span className="bc-storybar-shade" />
+        {p.onBack ? <button type="button" className="bc-hero-back bc-storybar-back" aria-label="Back" onClick={p.onBack}><Icon n="chevl" s={18} fill={C.goldHi} /></button> : null}
+        <div className="bc-storybar-text"><strong>{chapter}</strong><small>{chapterSub}</small></div>
+        <button type="button" className={"bc-readbtn" + (reading ? " bc-readbtn-on" : "")} aria-pressed={reading ? "true" : "false"} onClick={toggleReading} title={reading ? "Show the status bar and actions again" : "Give the story the whole screen"}><Icon n="book" s={15} />{reading ? "Show all" : "Reading mode"}</button>
+      </header>
+      {reading ? null : (
+        <div className="bc-statstrip" role="group" aria-label="Your condition">
+          {[["heart", "Body", v.vitality, w(v.vitality, condWord(v.vitality)), "hp"], ["drop", "Mana", v.mana, w(v.mana, levelWord(v.mana)), "mp"], ["run", "Stamina", v.stamina, w(v.stamina, levelWord(v.stamina)), "st"], ["moon", "Fatigue", v.fatigue, w(v.fatigue, fatWord(v.fatigue)), "ft"]].map(function (s) {
+            return (
+              <button type="button" key={s[1]} className={"bc-statcell bc-statcell-" + s[4] + (hudLow(s[4], s[2]) ? " bc-crit" : "")} aria-label={s[1] + ": " + s[3] + ". Open character"} onClick={function () { p.go && p.go("character"); }}>
+                <Icon n={s[0]} s={15} />
+                <div className="bc-statcell-body"><span>{s[1]}</span><div className="bc-statbar"><i style={{ width: clamp(num(s[2], 0), 0, 100) + "%" }} /></div><small>{s[3]}</small></div>
+              </button>
+            );
+          })}
+          <button type="button" className="bc-statcell bc-statcell-sky" aria-label={tod + ", " + clock12(v.world_time) + ", " + str(v.weather) + ". Let time pass"} onClick={function () { p.go && p.go("time"); }}><Icon n={night ? "moon" : "sun"} s={16} /><div className="bc-statcell-body"><span>{tod}</span><small>{str(v.weather).split(/[,;.]/)[0] || clock12(v.world_time)}</small></div></button>
+        </div>
+      )}
+      {!reading && ups.length ? (
         <button type="button" className="bc-upcoming" onClick={function () { p.go && p.go("notices"); }}><span>Upcoming</span><em>{str(ups[0].title) + (ups[0].when ? ", " + str(ups[0].when) : "") + (ups[0].where ? ", " + str(ups[0].where) : "")}</em><Icon n="chevr" s={11} /></button>
       ) : null}
       {inCombat ? (
-        <div className="bc-combatbar">
+        <div className={"bc-combatbar" + (reading ? " bc-combatbar-slim" : "")}>
           <div className="bc-combatbar-head"><div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
             {p.openBattle ? <button type="button" className="bc-fightbtn" disabled={busy} onClick={function () { p.openBattle("combat"); }}><Icon n="sword" s={16} fill="#2a0907" />Fight it out</button> : null}</div>
-          {arr(combat.participants).slice(0, 6).map(function (c, i) {
+          {reading ? null : arr(combat.participants).slice(0, 4).map(function (c, i) {
             return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
           })}
         </div>
       ) : null}
       <div className="bc-chat bc-story-chat bc-chronicle-card" aria-label="Living story and NPC dialogue">
-        <div className="bc-chronicle-head" aria-hidden="true">
-          <img src={img("story_head")} alt="" />
-          <div><span><Icon n="clover" s={13} />Chronicle</span><strong>{chapter}</strong></div>
+        <div className="bc-storycard-head">
+          <span className="bc-storycard-label"><Icon n="clover" s={13} />Your Story</span>
+          <div className="bc-cardtools" role="toolbar" aria-label="Latest passage">
+            <button type="button" disabled={!lastAi} onClick={copyLast} aria-label="Copy the latest passage" title="Copy"><Icon n="doc" s={15} /></button>
+            <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }} aria-label="Edit the latest passage" title="Edit"><Icon n="quill" s={15} /></button>
+            <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen} aria-label="Regenerate the latest passage" title="Regenerate"><Icon n="hourglass" s={15} /></button>
+            <button type="button" disabled={!lastAi} onClick={saveLast} aria-label="Save the latest passage to your Life Log" title="Save to Life Log"><Icon n="bookmark" s={15} /></button>
+          </div>
         </div>
         <StoryArtContext.Provider value={p.art}>
           <Chat className="bc-story-native-chat" renderBubble={StoryBubble} />
         </StoryArtContext.Provider>
-        <div className="bc-cardbar" role="toolbar" aria-label="Latest passage">
-          <button type="button" disabled={!lastAi} onClick={copyLast}><Icon n="doc" s={14} />Copy</button>
-          <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }}><Icon n="quill" s={14} />Edit</button>
-          <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen}><Icon n="hourglass" s={14} />Regenerate</button>
-          <span className="bc-cardbar-sep" />
-          <button type="button" disabled={!lastAi} onClick={saveLast}><Icon n="bookmark" s={14} />Save to Journal</button>
-        </div>
       </div>
-      {arr(v.equipment_activity).length ? (
+      {!reading && arr(v.equipment_activity).length ? (
         <div role="status" className="bc-equipnote">
           {arr(v.equipment_activity).slice(-2).map(function (e) { return <div key={e.id}>{str(e.text)}</div>; })}
         </div>
@@ -122,25 +152,7 @@
           </div>
         </Sheet>
       ) : null}
-      {inCombat ? (
-        <div className="bc-chips bc-story-chips">
-          {[["cast", "Cast"], ["move", "Move"], ["defend", "Defend"], ["ally", "Allies"], ["item", "Items"]].map(function (x) { return <Btn key={x[0]} small active={sheet === x[0]} disabled={busy} onClick={function () { setSheet(sheet === x[0] ? "" : x[0]); }} style={{ flexShrink: 0 }}>{x[1]}</Btn>; })}
-        </div>
-      ) : (
-        <div className="bc-actgrid">
-          {cards.map(function (c) {
-            var m = actMeta(c); var isRest = c === "Rest for a while";
-            return (
-              <button key={c} type="button" className={"bc-actcard" + (isRest && sheet === "rest" ? " bc-actcard-on" : "")} disabled={busy} onClick={function () { cardAction(c); }}>
-                <img src={img(m.art)} alt="" /><span className="bc-actcard-shade" />
-                <span className="bc-actcard-icon"><Icon n={m.icon} s={26} /></span>
-                <span className="bc-actcard-text"><strong>{c}</strong><small>{m.sub}</small></span>
-                <Icon n="chevr" s={12} />
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {reading ? null : quick}
     </div>
   );
 }

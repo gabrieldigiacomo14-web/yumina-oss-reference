@@ -223,6 +223,8 @@ var CSS = [
   ".bc-nav-item[aria-current=\"page\"] span{color:#f3dda0}",
   ".bc-nav-item[aria-current=\"page\"]{background:linear-gradient(180deg,rgba(218,176,93,.17),transparent)!important}",
   ".bc-nav-badge{position:absolute;top:4px;left:calc(50% + 3px);min-width:15px;height:15px;border-radius:8px;background:#a3272a;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1px solid #0b0d11}",
+  ".bc-nav-item[aria-current=\"page\"]:after{content:\"\";position:absolute;top:0;left:28%;right:28%;height:2px;background:linear-gradient(90deg,transparent,#e5be71,transparent);pointer-events:none}",
+  ".bc-nav-story-wrap{isolation:isolate}",
   ".bc-nav-story-wrap{flex:1.25;display:flex;justify-content:center}",
   ".bc-nav-story-btn{width:62px;height:62px;margin-top:-17px;border-radius:31px;border:2px solid #d9b463;background:radial-gradient(circle at 50% 38%,#24314a,#070c16 72%);display:flex;align-items:center;justify-content:center;position:relative;z-index:3;box-shadow:0 0 0 3px rgba(5,10,18,.95),0 0 0 4px rgba(217,180,99,.45),0 0 16px rgba(244,209,139,.4)!important}",
   ".bc-nav-story-btn[aria-current=\"page\"]{box-shadow:0 0 0 3px rgba(5,10,18,.95),0 0 0 4px rgba(217,180,99,.7),0 0 22px rgba(244,209,139,.7)!important}",
@@ -737,7 +739,45 @@ var CSS = [
   ".bc-nav{position:relative!important;z-index:30!important;pointer-events:auto!important;touch-action:manipulation}",
   ".bc-nav *{touch-action:manipulation;-webkit-tap-highlight-color:transparent}",
   ".bc-hero{position:relative;z-index:6}",
-  ".bc-scroll{-webkit-overflow-scrolling:auto;overscroll-behavior:auto}"
+  ".bc-scroll{-webkit-overflow-scrolling:auto;overscroll-behavior:auto}",
+  ".bc-storybar{position:relative;z-index:6;flex-shrink:0;display:flex;align-items:center;gap:8px;min-height:54px;padding:calc(6px + env(safe-area-inset-top)) 8px 6px;border-bottom:1px solid rgba(214,174,92,.75);background:#0a1424;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,.4)}",
+  ".bc-storybar-img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:center 32%;opacity:.6}",
+  ".bc-storybar-shade{position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(6,12,22,.94) 0,rgba(6,12,22,.72) 58%,rgba(6,12,22,.4))}",
+  ".bc-storybar .bc-storybar-back{position:relative;left:auto;top:auto;flex-shrink:0;width:40px;height:40px;border-radius:20px}",
+  ".bc-storybar-text{position:relative;flex:1;min-width:0}",
+  ".bc-storybar-text strong{display:block;font-family:Cinzel,Georgia,serif;font-variant:small-caps;font-size:16.5px;line-height:1.15;color:#f6edd7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px #000}",
+  ".bc-storybar-text small{display:block;font-size:12.5px;color:#d8ccb3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px #000}",
+  ".bc-readbtn{position:relative;flex-shrink:0;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 11px;border-radius:17px;border:1px solid rgba(214,174,92,.7);background:rgba(6,12,22,.72);color:#f3dda0;font-family:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;touch-action:manipulation}",
+  ".bc-readbtn-on{background:linear-gradient(180deg,#f0d38a,#b38b3c);border-color:#f5e0a2;color:#2a1d0c}",
+  ".bc-story .bc-statstrip{padding:3px 2px}",
+  ".bc-story .bc-statcell{min-height:30px;gap:3px;padding:0 4px}",
+  ".bc-story .bc-statcell-body{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:4px;align-items:baseline}",
+  ".bc-story .bc-statcell-body span{grid-column:1;grid-row:1;font-size:10.5px}",
+  ".bc-story .bc-statcell-body small{grid-column:2;grid-row:1;font-size:10px}",
+  ".bc-story .bc-statbar{grid-column:1/-1;grid-row:2;height:4px;margin:2px 0 0}",
+  ".bc-story .bc-upcoming{padding:4px 12px;font-size:13px}",
+  ".bc-story .bc-chronicle-card{flex:1 1 auto;min-height:140px;margin:6px 6px 0!important}",
+  ".bc-storycard-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:6px;height:34px;padding:0 4px 0 11px;border-bottom:1px solid rgba(214,174,92,.4);background:linear-gradient(180deg,rgba(26,38,58,.9),rgba(12,20,32,.6))}",
+  ".bc-storycard-label{display:flex;align-items:center;gap:5px;min-width:0;font-family:Cinzel,Georgia,serif;font-variant:small-caps;font-size:13px;color:#d9b463;letter-spacing:.06em;white-space:nowrap}",
+  ".bc-cardtools{display:flex;gap:2px;flex-shrink:0}",
+  ".bc-cardtools button{width:36px;height:30px;display:flex;align-items:center;justify-content:center;border:0;border-radius:7px;background:transparent;color:#e1d6c1;cursor:pointer;touch-action:manipulation}",
+  ".bc-cardtools button:active{background:rgba(217,180,99,.2)}",
+  ".bc-cardtools button:disabled{opacity:.35;cursor:default}",
+  ".bc-quickrow{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:6px 8px 5px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none}",
+  ".bc-quickrow::-webkit-scrollbar{display:none}",
+  ".bc-qbtn{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;border:1px solid rgba(214,174,92,.55);border-radius:17px;background:#0a1320;color:#e9dfc8;font-family:inherit;font-size:13.5px;font-weight:700;white-space:nowrap;cursor:pointer;touch-action:manipulation}",
+  ".bc-qbtn:active{filter:brightness(1.25)}",
+  ".bc-qbtn:disabled{opacity:.45;cursor:default}",
+  ".bc-qbtn-round{width:34px;padding:0;justify-content:center}",
+  ".bc-qbtn-on{border-color:#f3dda0;background:linear-gradient(180deg,#2b2614,#141109);box-shadow:0 0 8px rgba(217,180,99,.3)}",
+  ".bc-qbtn-busy{border-color:#b48ae8;color:#e8dbff}",
+  ".bc-qbtn-busy b{margin-left:4px;padding:1px 7px;border-radius:9px;background:#3c2466;color:#fff;font-size:11.5px}",
+  ".bc-qact{background:linear-gradient(180deg,#16243a,#0b1422);color:#f6edd7}",
+  ".bc-qsep{flex-shrink:0;width:1px;height:22px;background:rgba(214,174,92,.4)}",
+  ".bc-combatbar-slim{padding-top:4px;padding-bottom:4px}",
+  ".bc-reading .bc-chronicle-card{margin-bottom:6px!important}",
+  ".bc-composer{padding:5px 8px 6px!important}",
+  "@media (max-height:640px){.bc-storybar{min-height:46px;padding-top:calc(3px + env(safe-area-inset-top));padding-bottom:3px}.bc-story .bc-upcoming{display:none}}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -1636,10 +1676,10 @@ function Quote() {
 /* ---------- creation data ---------- */
 
 var OPENINGS = {
-  before: ["A year before the ceremony", "Three years before", "Five years before", "A decade before", "A generation before"],
-  during: ["Grimoire Ceremony Day", "Months before the Entrance Exam", "Just after the Entrance Exam", "Asta and Yuno's first year in the Knights"],
+  before: ["One year before the ceremony", "Three years before", "Five years before", "Ten years before", "A generation before"],
+  during: ["The Grimoire Acceptance Ceremony", "The months before the Entrance Exam", "Right after the Entrance Exam", "Asta and Yuno's first year as Magic Knights"],
   later: ["Later era I", "Later era II", "Later era III"],
-  after: ["Just after the published story", "A decade after", "A quarter-century after", "A generation on"],
+  after: ["Right after the published story", "Ten years after", "Twenty-five years after", "A generation later"],
   custom: []
 };
 var KINGDOMS = [
@@ -1716,7 +1756,7 @@ var STEP_HEAD = [
   ["V. Finalize", "Review your life before it begins."]
 ];
 var BLANK = {
-  name: "", sex: "", age: 15, appearance: "", appearance_detail: {}, personality: "", era: "during", opening: "Grimoire Ceremony Day", era_detail: "",
+  name: "", sex: "", age: 15, appearance: "", appearance_detail: {}, personality: "", era: "during", opening: "The Grimoire Acceptance Ceremony", era_detail: "",
   homeland: "Clover", homeland_note: "", origin: "", origin_detail: "", origin_note: "", region: "", settlement: "", settlement_mode: "", custom_place: "",
   family_mode: "Generated family", family_note: "", magic_mode: "Random", attribute_choice: "", attribute_custom: "",
   talent_mode: "Natural", lean_reserves: "Average", lean_control: "Average", lean_physique: "Average", sandbox_note: "", race: "Human",
@@ -2012,7 +2052,7 @@ function Nav(p) {
         if (it[0] === "story") {
           return (
             <div key="story" className="bc-nav-story-wrap">
-              <button className="bc-nav-story-btn" type="button" aria-label="Story" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
+              <button className="bc-nav-story-btn" type="button" aria-label="Return to the living story" title="Return to the living story" aria-current={on ? "page" : undefined} onClick={function () { p.nav("story"); }}>
                 <Icon n="clover" s={38} />
               </button>
             </div>
@@ -2033,17 +2073,17 @@ function Nav(p) {
 
 /* ---------- home ---------- */
 var TILES = [
-  { k: "adventure", t: "Story", s: "Explore. Fight. Grow.", icon: "compass", view: "story" },
-  { k: "grimoire", t: "Magic", s: "Spells. Attributes. Progress.", icon: "book", view: "grimoire" },
-  { k: "character", t: "Character", s: "Profile. Skills. Conditions.", icon: "bust", view: "character" },
-  { k: "relationships", t: "Connections", s: "Friends. Rivals. Romance.", icon: "heart", view: "people" },
-  { k: "squad", t: "Renown", s: "Join. Rise. Make a name.", icon: "people", view: "crown" },
-  { k: "missions", t: "Assignments", s: "Requests. Bounties. Guild.", icon: "scroll", view: "missions" },
-  { k: "map", t: "Realm Map", s: "Travel. Discover. Plan.", icon: "map", view: "map" },
-  { k: "inventory", t: "Satchel", s: "Gear. Materials. Keys.", icon: "pack", view: "pack" },
-  { k: "market", t: "Trading", s: "Buy. Sell. Trade.", icon: "coins", view: "market" },
-  { k: "bank", t: "Treasury", s: "Save. Deposit. Withdraw.", icon: "bank", view: "bank" },
-  { k: "more", t: "More", s: "Records. Codex. Settings.", icon: "dots", view: "menu" }
+  { k: "character", t: "Mage Profile", s: "Identity, skills and condition.", icon: "bust", view: "character" },
+  { k: "grimoire", t: "Spellcraft", s: "Attributes, spells and magical growth.", icon: "book", view: "grimoire" },
+  { k: "adventure", t: "Journey", s: "Live your own story across the kingdoms.", icon: "compass", view: "story" },
+  { k: "map", t: "Kingdom Atlas", s: "Travel routes and discovered places.", icon: "map", view: "map" },
+  { k: "squad", t: "Magic Knights", s: "Squad, standing and merit.", icon: "people", view: "crown" },
+  { k: "missions", t: "Assignments", s: "Duties, requests and opportunities.", icon: "scroll", view: "missions" },
+  { k: "relationships", t: "Connections", s: "Friends, rivals and confidants.", icon: "heart", view: "people" },
+  { k: "inventory", t: "Equipment", s: "Carry, equip and organize.", icon: "pack", view: "pack" },
+  { k: "bank", t: "Treasury", s: "Accounts, savings and deposits.", icon: "bank", view: "bank" },
+  { k: "market", t: "Trade", s: "Buy, sell and barter.", icon: "coins", view: "market" },
+  { k: "more", t: "Life & Settings", s: "Training, routine and world options.", icon: "dots", view: "menu" }
 ];
 var TILE_KEYS = TILES.map(function (t) { return t.k; });
 function Tile(p) {
@@ -2579,7 +2619,7 @@ function StoryView(p) {
   function regen() { if (lastAi && typeof api.regenerateMessage === "function") api.regenerateMessage(lastAi.id); }
   function saveLast() {
     var t = cleanPassage(proseOf(lastAi && lastAi.content)); if (!t) return;
-    savePassage(api, { id: str(lastAi.id) || String(Date.now()), date: str(v.world_date), place: loc.place || loc.settlement, text: t.slice(0, 1200) }, function (ok, dup) { toast(dup ? "Already in your journal." : ok ? "Saved to your journal." : "Couldn't save to the journal.", ok || dup ? "success" : "error"); });
+    savePassage(api, { id: str(lastAi.id) || String(Date.now()), date: str(v.world_date), place: loc.place || loc.settlement, text: t.slice(0, 1200) }, function (ok, dup) { toast(dup ? "Already in your Life Log." : ok ? "Saved to your Life Log." : "Couldn't save to the journal.", ok || dup ? "success" : "error"); });
   }
   function eatSomething() {
     var food = physInv.filter(function (it) { return bcCanConsume(it) && bcIsAccessible(it, physInv, false); })[0];
@@ -2624,51 +2664,81 @@ function StoryView(p) {
   var chapter = loc.place || loc.settlement || "The First Page";
   var chapterSub = loc.place && loc.settlement ? loc.settlement + " · " + dayMonthWD(v.world_date) : (dayMonthWD(v.world_date) || "Where your story begins.");
   var cards = chips.slice(0, 4); var extra = chips.slice(4);
+  var rds = React.useState(false); var reading = rds[0], setReading = rds[1];
+  React.useEffect(function () { var st = getStore(api); if (!st || typeof st.get !== "function") return; try { var pr = st.get("bc_reading_mode"); if (pr && pr.then) pr.then(function (x) { if (x === "1") setReading(true); }, function () {}); } catch (e) {} }, []);
+  function toggleReading() { var n = !reading; setReading(n); setSheet(""); var st = getStore(api); if (st && typeof st.set === "function") { try { var pr = st.set("bc_reading_mode", n ? "1" : "0"); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} } }
+  function draft(random) {
+    var idea = composerIdea(v, random);
+    if (typeof api.setComposerDraft === "function") api.setComposerDraft(idea);
+    else toast(idea, "info");
+  }
+  var quick = (
+    <div className="bc-quickrow" role="toolbar" aria-label="Quick actions">
+      <button type="button" className={"bc-qbtn bc-qbtn-round" + (sheet === "actions" ? " bc-qbtn-on" : "")} aria-label="More actions" aria-expanded={sheet === "actions" ? "true" : "false"} onClick={function () { setSheet(sheet === "actions" ? "" : "actions"); }}><Icon n="plus" s={14} /></button>
+      {busy
+        ? <button type="button" className="bc-qbtn bc-qbtn-busy" onClick={function () { if (typeof api.stopGeneration === "function") api.stopGeneration(); }}><span className="bc-streaming-dot" />{"Writing…"}<b>Stop</b></button>
+        : <button type="button" className="bc-qbtn" onClick={function () { draft(false); }} title="Put a suggestion in the box. Nothing is sent until you press send."><Icon n="star" s={13} />Suggest</button>}
+      <button type="button" className="bc-qbtn" disabled={busy} onClick={function () { draft(true); }} title="Put a random idea in the box. Nothing is sent until you press send."><Icon n="dice" s={13} />Random</button>
+      <span className="bc-qsep" aria-hidden="true" />
+      {inCombat
+        ? [["cast", "Cast", "star"], ["move", "Move", "run"], ["defend", "Defend", "shield"], ["ally", "Allies", "people"], ["item", "Items", "pack"]].map(function (x) {
+            return <button key={x[0]} type="button" className={"bc-qbtn" + (sheet === x[0] ? " bc-qbtn-on" : "")} disabled={busy} onClick={function () { setSheet(sheet === x[0] ? "" : x[0]); }}><Icon n={x[2]} s={13} />{x[1]}</button>;
+          })
+        : cards.map(function (c) {
+            var m = actMeta(c); var on = c === "Rest for a while" && sheet === "rest";
+            return <button key={c} type="button" className={"bc-qbtn bc-qact" + (on ? " bc-qbtn-on" : "")} disabled={busy} onClick={function () { cardAction(c); }}><Icon n={m.icon} s={14} />{c}</button>;
+          })}
+    </div>
+  );
   return (
-    <div className="bc-fill bc-story">
-      <Hero bannerUrl={p.bannerUrl} cls="bc-hero-story" onBack={p.onBack} kingdom={kingdom0}>
-        <div className="bc-hero-chapter"><Icon n="book" s={30} /><div><strong>{chapter}</strong><small>{chapterSub}</small></div></div>
-      </Hero>
-      <div className="bc-statstrip" role="group" aria-label="Your condition">
-        {[["heart", "Body", v.vitality, w(v.vitality, condWord(v.vitality)), "hp"], ["drop", "Mana", v.mana, w(v.mana, levelWord(v.mana)), "mp"], ["run", "Stamina", v.stamina, w(v.stamina, levelWord(v.stamina)), "st"], ["moon", "Fatigue", v.fatigue, w(v.fatigue, fatWord(v.fatigue)), "ft"]].map(function (s) {
-          return (
-            <button type="button" key={s[1]} className={"bc-statcell bc-statcell-" + s[4] + (hudLow(s[4], s[2]) ? " bc-crit" : "")} aria-label={s[1] + ": " + s[3] + ". Open character"} onClick={function () { p.go && p.go("character"); }}>
-              <Icon n={s[0]} s={17} />
-              <div className="bc-statcell-body"><span>{s[1]}</span><div className="bc-statbar"><i style={{ width: clamp(num(s[2], 0), 0, 100) + "%" }} /></div><small>{s[3]}</small></div>
-            </button>
-          );
-        })}
-        <button type="button" className="bc-statcell bc-statcell-sky" aria-label={tod + ", " + clock12(v.world_time) + ", " + str(v.weather) + ". Let time pass"} onClick={function () { p.go && p.go("time"); }}><Icon n={night ? "moon" : "sun"} s={18} /><div className="bc-statcell-body"><span>{tod}</span><small>{str(v.weather).split(",")[0] || clock12(v.world_time)}</small></div></button>
-      </div>
-      {ups.length ? (
+    <div className={"bc-fill bc-story" + (reading ? " bc-reading" : "")}>
+      <header className="bc-storybar">
+        {p.bannerUrl ? <img className="bc-storybar-img" src={p.bannerUrl} alt="" /> : null}
+        <span className="bc-storybar-shade" />
+        {p.onBack ? <button type="button" className="bc-hero-back bc-storybar-back" aria-label="Back" onClick={p.onBack}><Icon n="chevl" s={18} fill={C.goldHi} /></button> : null}
+        <div className="bc-storybar-text"><strong>{chapter}</strong><small>{chapterSub}</small></div>
+        <button type="button" className={"bc-readbtn" + (reading ? " bc-readbtn-on" : "")} aria-pressed={reading ? "true" : "false"} onClick={toggleReading} title={reading ? "Show the status bar and actions again" : "Give the story the whole screen"}><Icon n="book" s={15} />{reading ? "Show all" : "Reading mode"}</button>
+      </header>
+      {reading ? null : (
+        <div className="bc-statstrip" role="group" aria-label="Your condition">
+          {[["heart", "Body", v.vitality, w(v.vitality, condWord(v.vitality)), "hp"], ["drop", "Mana", v.mana, w(v.mana, levelWord(v.mana)), "mp"], ["run", "Stamina", v.stamina, w(v.stamina, levelWord(v.stamina)), "st"], ["moon", "Fatigue", v.fatigue, w(v.fatigue, fatWord(v.fatigue)), "ft"]].map(function (s) {
+            return (
+              <button type="button" key={s[1]} className={"bc-statcell bc-statcell-" + s[4] + (hudLow(s[4], s[2]) ? " bc-crit" : "")} aria-label={s[1] + ": " + s[3] + ". Open character"} onClick={function () { p.go && p.go("character"); }}>
+                <Icon n={s[0]} s={15} />
+                <div className="bc-statcell-body"><span>{s[1]}</span><div className="bc-statbar"><i style={{ width: clamp(num(s[2], 0), 0, 100) + "%" }} /></div><small>{s[3]}</small></div>
+              </button>
+            );
+          })}
+          <button type="button" className="bc-statcell bc-statcell-sky" aria-label={tod + ", " + clock12(v.world_time) + ", " + str(v.weather) + ". Let time pass"} onClick={function () { p.go && p.go("time"); }}><Icon n={night ? "moon" : "sun"} s={16} /><div className="bc-statcell-body"><span>{tod}</span><small>{str(v.weather).split(/[,;.]/)[0] || clock12(v.world_time)}</small></div></button>
+        </div>
+      )}
+      {!reading && ups.length ? (
         <button type="button" className="bc-upcoming" onClick={function () { p.go && p.go("notices"); }}><span>Upcoming</span><em>{str(ups[0].title) + (ups[0].when ? ", " + str(ups[0].when) : "") + (ups[0].where ? ", " + str(ups[0].where) : "")}</em><Icon n="chevr" s={11} /></button>
       ) : null}
       {inCombat ? (
-        <div className="bc-combatbar">
+        <div className={"bc-combatbar" + (reading ? " bc-combatbar-slim" : "")}>
           <div className="bc-combatbar-head"><div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
             {p.openBattle ? <button type="button" className="bc-fightbtn" disabled={busy} onClick={function () { p.openBattle("combat"); }}><Icon n="sword" s={16} fill="#2a0907" />Fight it out</button> : null}</div>
-          {arr(combat.participants).slice(0, 6).map(function (c, i) {
+          {reading ? null : arr(combat.participants).slice(0, 4).map(function (c, i) {
             return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
           })}
         </div>
       ) : null}
       <div className="bc-chat bc-story-chat bc-chronicle-card" aria-label="Living story and NPC dialogue">
-        <div className="bc-chronicle-head" aria-hidden="true">
-          <img src={img("story_head")} alt="" />
-          <div><span><Icon n="clover" s={13} />Story</span><strong>{chapter}</strong></div>
+        <div className="bc-storycard-head">
+          <span className="bc-storycard-label"><Icon n="clover" s={13} />Your Story</span>
+          <div className="bc-cardtools" role="toolbar" aria-label="Latest passage">
+            <button type="button" disabled={!lastAi} onClick={copyLast} aria-label="Copy the latest passage" title="Copy"><Icon n="doc" s={15} /></button>
+            <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }} aria-label="Edit the latest passage" title="Edit"><Icon n="quill" s={15} /></button>
+            <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen} aria-label="Regenerate the latest passage" title="Regenerate"><Icon n="hourglass" s={15} /></button>
+            <button type="button" disabled={!lastAi} onClick={saveLast} aria-label="Save the latest passage to your Life Log" title="Save to Life Log"><Icon n="bookmark" s={15} /></button>
+          </div>
         </div>
         <StoryArtContext.Provider value={p.art}>
           <Chat className="bc-story-native-chat" renderBubble={StoryBubble} />
         </StoryArtContext.Provider>
-        <div className="bc-cardbar" role="toolbar" aria-label="Latest passage">
-          <button type="button" disabled={!lastAi} onClick={copyLast}><Icon n="doc" s={14} />Copy</button>
-          <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }}><Icon n="quill" s={14} />Edit</button>
-          <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen}><Icon n="hourglass" s={14} />Regenerate</button>
-          <span className="bc-cardbar-sep" />
-          <button type="button" disabled={!lastAi} onClick={saveLast}><Icon n="bookmark" s={14} />Save to Life Log</button>
-        </div>
       </div>
-      {arr(v.equipment_activity).length ? (
+      {!reading && arr(v.equipment_activity).length ? (
         <div role="status" className="bc-equipnote">
           {arr(v.equipment_activity).slice(-2).map(function (e) { return <div key={e.id}>{str(e.text)}</div>; })}
         </div>
@@ -2692,25 +2762,7 @@ function StoryView(p) {
           </div>
         </Sheet>
       ) : null}
-      {inCombat ? (
-        <div className="bc-chips bc-story-chips">
-          {[["cast", "Cast"], ["move", "Move"], ["defend", "Defend"], ["ally", "Allies"], ["item", "Items"]].map(function (x) { return <Btn key={x[0]} small active={sheet === x[0]} disabled={busy} onClick={function () { setSheet(sheet === x[0] ? "" : x[0]); }} style={{ flexShrink: 0 }}>{x[1]}</Btn>; })}
-        </div>
-      ) : (
-        <div className="bc-actgrid">
-          {cards.map(function (c) {
-            var m = actMeta(c); var isRest = c === "Rest for a while";
-            return (
-              <button key={c} type="button" className={"bc-actcard" + (isRest && sheet === "rest" ? " bc-actcard-on" : "")} disabled={busy} onClick={function () { cardAction(c); }}>
-                <img src={img(m.art)} alt="" /><span className="bc-actcard-shade" />
-                <span className="bc-actcard-icon"><Icon n={m.icon} s={26} /></span>
-                <span className="bc-actcard-text"><strong>{c}</strong><small>{m.sub}</small></span>
-                <Icon n="chevr" s={12} />
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {reading ? null : quick}
     </div>
   );
 }
@@ -2921,7 +2973,7 @@ function BankView(p) {
   }
   return (
     <Frame className="bc-bank-panel" pad="0 0 8px">
-      <SectionHead art="bank_head" icon="bank" title="Banking" sub="Safekeep your wealth." />
+      <SectionHead art="bank_head" icon="bank" title="Bank & Treasury" sub="Safekeep your wealth." />
       <div className="bc-balance">
         <img src={img("bank_balance")} alt="" /><span className="bc-balance-shade" />
         <div><small>Account Balance</small><strong>{num(bank.balance, 0).toLocaleString() + " Yul"}</strong><span>{acctLabel}</span></div>
@@ -2992,7 +3044,7 @@ function MarketView(p) {
   }
   return (
     <Frame className="bc-market-panel" pad="0 0 8px">
-      <SectionHead art="market_head" icon="coins" title="Trading" sub="Buy, sell and trade across the Kingdom." />
+      <SectionHead art="market_head" icon="coins" title="Market" sub="Buy, Sell, and Trade in the Kingdom." />
       {buyError ? <div role="alert" className="bc-inv-msg" style={{ color: "#efb6a5" }}>{buyError}</div> : null}
       {stock.length ? (
         <div className="bc-stock">
@@ -3022,8 +3074,8 @@ function MissionsView(p) {
   var past = arr(v.known_events).filter(function (e) { return e && /^(done|missed|taken|resolved|expired)$/i.test(str(e.status)); }).slice(-5).reverse();
   return (
     <div>
-      <H>Assignments and commitments</H>
-      {missions.length ? <Frame pad="4px 14px 8px">{missions.map(function (m, i) { return <Row key={m.id || i} k={str(m.title) + (m.issuer ? " (" + str(m.issuer) + ")" : "")} v={str(m.status)} />; })}</Frame> : <Empty>No assignments. Requests come from real problems: squads, officials, villages and people you know.</Empty>}
+      <H>Missions and commitments</H>
+      {missions.length ? <Frame pad="4px 14px 8px">{missions.map(function (m, i) { return <Row key={m.id || i} k={str(m.title) + (m.issuer ? " (" + str(m.issuer) + ")" : "")} v={str(m.status)} />; })}</Frame> : <Empty>No missions. Requests come from real problems: squads, officials, villages and people you know.</Empty>}
       <H m="20px 0 10px">Things you know are coming</H>
       {events.length ? <Frame pad="4px 14px 8px">{events.map(function (e, i) { return <Row key={e.id || i} k={str(e.title)} v={[str(e.when), str(e.where)].filter(Boolean).join(", ")} />; })}</Frame> : <Empty>Nothing on the horizon that you know of.</Empty>}
       {past.length ? <div><H m="20px 0 10px">Recently resolved</H><Frame pad="4px 14px 8px">{past.map(function (e, i) { return <Row key={e.id || i} k={str(e.title)} v={str(e.status)} />; })}</Frame></div> : null}
@@ -3035,7 +3087,7 @@ function PeopleView(p) {
   var os = React.useState(""); var open = os[0], setOpen = os[1];
   return (
     <div style={{ position: "relative" }}>
-      <Eyebrow k={"CONNECTIONS · FRIENDS AND RIVALS"}>{ids.length ? "Every thread you have woven." : "No threads woven yet."}</Eyebrow>
+      <Eyebrow k={"CONNECTIONS · ALLIES AND RIVALS"}>{ids.length ? "Every meeting can change your path." : "Your story has room for others."}</Eyebrow>
       {ids.length ? ids.map(function (id) {
         var r = obj(rel[id]);
         var nm = str(r.name) || id;
@@ -3147,8 +3199,8 @@ function BoundView(p) {
   }
   return (
     <div style={{ position: "relative" }}>
-      <Eyebrow k={"MYSTIC PACTS · SPIRITS AND DEVILS"}>What answers when you call.</Eyebrow>
-      <H>Your bonds</H>
+      <Eyebrow k={"MYSTIC PACTS · SPIRITS AND DEVILS"}>Power shared is never power without consequence.</Eyebrow>
+      <H>Spiritual connections</H>
       {sBond ? <BoundCompactCard art={art} slotKey="spirit" name={sBond} kind="Spirit" subtitle="Your spirit bond" note="A living bond carried in your grimoire state." onOpen={function () { setOpen("spirit"); }} /> : <Frame pad="4px 14px 8px" style={{ marginBottom: 8 }}><Row k="Your spirit bond" v="No spirit bound" /></Frame>}
       {dBond ? <BoundCompactCard art={art} slotKey="devil" name={dBond} kind="Devil" subtitle="Your devil bond" note="A pact or bond carried in your grimoire state." onOpen={function () { setOpen("devil"); }} /> : <Frame pad="4px 14px 8px" style={{ marginBottom: 16 }}><Row k="Your devil bond" v="No devil pact" /></Frame>}
       <H m="18px 0 10px">The great spirits</H>
@@ -3652,7 +3704,7 @@ function GrimoireView(p) {
     <Frame className="bc-bonds-panel" pad="9px 10px" style={{ marginBottom: 12 }}>
       <div className="bc-bonds-head">
         <Icon n="clover" s={30} />
-        <div><strong>Pacts</strong><small>Spirit connections and devil contracts walk different paths. Both leave their mark on your story.</small></div>
+        <div><strong>Spirit & Devil Links</strong><small>Different powers. Different promises. Each bond carries its own consequence.</small></div>
       </div>
       <button type="button" className="bc-bondrow" onClick={p.goBound}>
         <span className="bc-bondrow-icon"><Icon n="wisp" s={26} /></span>
@@ -3973,14 +4025,14 @@ function PackView(p) {
         <span className="bc-purse-icon"><Icon n="coins" s={44} /></span>
         <div className="bc-purse-text"><small>Your Purse</small><strong>{num(v.money, 0).toLocaleString() + " Yul"}</strong><span>{bank.open ? "Bank: " + bcMoney(bank.balance) + " on account." : "The coin of the Clover Kingdom."}</span></div>
       </button>
-      <div className="bc-hubtabs" role="tablist" aria-label="Satchel sections">
-        {[["inventory", "Equipment", "Gear & Materials", "pack"], ["market", "Trading", "Buy · Sell · Trade", "coins"], ["bank", "Banking", "Save · Deposit · Withdraw", "bank"]].map(function (t) {
+      <div className="bc-hubtabs" role="tablist" aria-label="Satchel and treasury sections">
+        {[["inventory", "Equipment", "Items · Materials", "pack"], ["bank", "Accounts", "Deposit · Withdraw", "bank"], ["market", "Trade", "Buy · Sell", "coins"]].map(function (t) {
           return <button key={t[0]} type="button" role="tab" aria-selected={visible === t[0] ? "true" : "false"} className={"bc-hubtab" + (visible === t[0] ? " bc-hubtab-on" : "")} onClick={function () { jump(t[0], true); }}><Icon n={t[3]} s={30} /><span><strong>{t[1]}</strong><small>{t[2]}</small></span></button>;
         })}
       </div>
       <div ref={refs.inventory} data-sec="inventory" className="bc-sec-anchor" />
       <Frame className="bc-inv-panel" pad="0 0 8px">
-        <SectionHead art="inv_head" icon="pack" title="Equipment" sub="Gear, materials and key items you carry."
+        <SectionHead art="inv_head" icon="pack" title="Inventory" sub="Items, Materials, and Key Items you carry."
           right={<span className="bc-inv-tools"><button type="button" className={"bc-capchip" + (carry.band !== "comfortable" ? " bc-crit" : "")} aria-label={"Carried " + Math.round(carry.weight * 10) / 10 + " of " + carry.max + " kilograms, " + carry.band + ". Show load details."} onClick={function () { setDetails(!details); }}>{Math.round(carry.weight * 10) / 10 + " / " + carry.max + " kg"}</button>
             <select aria-label="Sort items" value={sort} onChange={function (e) { setSort(e.target.value); }}><option value="location">Location</option><option value="name">Name</option><option value="weight">Weight</option><option value="type">Type</option></select></span>} />
         <div className="bc-chiprow bc-inv-filters">{[["all", "All"], ["item", "Items"], ["material", "Materials"], ["key", "Key Items"]].map(function (f) { return <Chip key={f[0]} on={filter === f[0]} onClick={function () { setFilter(f[0]); }}>{f[1]}</Chip>; })}</div>
@@ -4198,7 +4250,7 @@ function JournalView(p) {
           </Frame>
         );
       })}
-      <SectionHead icon="doc" iconSize={24} title="Life Log" sub="Your own history, page by page." />
+      <SectionHead icon="doc" iconSize={24} title="Life Log" sub="The events that shaped your mage’s journey." />
       {ch.length ? ch.map(function (c, i) {
         return <Frame key={i} pad="10px 13px" style={{ marginBottom: 8 }}><div style={{ fontSize: 13.5, color: C.gold, fontWeight: 700 }}>{str(c.date)}</div><div style={{ fontFamily: DISPLAY, fontSize: 16.5, color: C.ivory }}>{str(c.title)}</div>{c.summary ? <div style={{ fontSize: 15, color: C.muted, lineHeight: 1.45 }}>{str(c.summary)}</div> : null}</Frame>;
       }) : <Empty>Your history begins with your first day.</Empty>}
@@ -4244,16 +4296,16 @@ function MenuView(p) {
 
 /* ---------- page shell ---------- */
 var PAGE_HERO = {
-  grimoire: { title: "Magic", sub: "Spells. Attributes. Progress.", quote: "“Every spell begins with a single page.”", quoteBy: "Asta", img: "grim_head", big: true, right: false },
+  grimoire: { title: "Grimoire", sub: "Spells. Attributes. Progress.", quote: "“Every spell begins with a single page.”", quoteBy: "Asta", img: "grim_head", big: true, right: false },
   map: { title: "World Map", sub: "Travel · Discover · Plan", tagline: "Explore the Clover Kingdom and beyond. New places, people, and stories await.", big: true, right: "compass" },
-  pack: { tagline: "Your purse, your pack, your savings." },
-  people: { title: "Connections", sub: "Friends. Rivals. Romance.", big: true },
-  journal: { title: "Kingdom Records", sub: "Goals · Assignments · Reports", big: true },
-  bound: { title: "Mystic Pacts", sub: "Spirit connections and devil contracts", big: true },
-  crown: { title: "Renown & Rank", sub: "Advancement · Merit · Reputation", big: true },
+  pack: { title: "Satchel & Treasury", sub: "Equipment · Trading · Banking", tagline: "All you carry, earn and keep." },
+  people: { title: "Connections", sub: "Allies · Rivals · Relationships", big: true },
+  journal: { title: "Kingdom Records", sub: "Life Log · Assignments · Reports", big: true },
+  bound: { title: "Mystic Pacts", sub: "Spirit Companions · Devil Contracts", big: true },
+  crown: { title: "Renown & Rank", sub: "Magic Knights · Merit · Reputation", big: true },
   menu: { title: "More", sub: "Life · Codex · Settings", big: true }
 };
-var TITLES = { grimoire: "Magic", character: "Character", squad: "Renown & Rank", crown: "Renown & Rank", pack: "Satchel & Treasury", bank: "Satchel & Treasury", market: "Satchel & Treasury", missions: "Kingdom Records", map: "Realm Map", people: "Connections", notices: "Kingdom Records",
+var TITLES = { grimoire: "Grimoire", character: "Mage Profile", squad: "Renown & Rank", crown: "Renown & Rank", pack: "Satchel & Treasury", bank: "Satchel & Treasury", market: "Satchel & Treasury", missions: "Kingdom Records", map: "Kingdom Atlas", people: "Connections", notices: "Kingdom Records",
   journal: "Kingdom Records", bound: "Mystic Pacts", menu: "More", train: "Training", time: "Let Time Pass", routine: "Routine", codex: "Codex", household: "Home and Family", art: "Artwork", settings: "Settings", help: "Help" };
 function Page(p) {
   var hero = PAGE_HERO[p.heroKey] || { title: p.title, sub: dayMonthWD(p.date) ? dayMonthWD(p.date) + " · " + clock12(p.time) : "", big: true };
@@ -4396,24 +4448,10 @@ function composerIdea(v, random) {
 }
 function Composer(p) {
   var api = p.api; var busy = !!api.isStreaming; var v = api.variables || {};
-  var ss = React.useState(0); var tick = ss[0], setTick = ss[1];
-  function draft(random) {
-    var idea = composerIdea(v, random);
-    if (typeof api.setComposerDraft === "function") api.setComposerDraft(idea);
-    else if (typeof api.showToast === "function") api.showToast(idea, "info");
-    setTick(tick + 1);
-  }
   return (
     <div className="bc-composer">
       {api.error ? <div role="alert" className="bc-composer-err">{"The GM couldn't answer: " + str(api.error) + ". Send your message again."}</div> : null}
       <MessageInput />
-      <div className="bc-composer-tools">
-        <button type="button" className={"bc-ctool bc-ctool-plus" + (p.sheet === "actions" ? " bc-ctool-on" : "")} aria-label="More actions" aria-expanded={p.sheet === "actions" ? "true" : "false"} onClick={p.onPlus}><Icon n="plus" s={14} /></button>
-        {busy
-          ? <button type="button" className="bc-ctool bc-ctool-busy" onClick={function () { if (typeof api.stopGeneration === "function") api.stopGeneration(); }}><span className="bc-streaming-dot" />{"Writing\u2026"}<b>Stop</b></button>
-          : <button type="button" className="bc-ctool" onClick={function () { draft(false); }} title="Put a suggestion in the box. Nothing is sent until you press send."><Icon n="star" s={14} />Suggest</button>}
-        <button type="button" className="bc-ctool" disabled={busy} onClick={function () { draft(true); }} title="Put a random idea in the box. Nothing is sent until you press send."><Icon n="dice" s={14} />Random</button>
-      </div>
     </div>
   );
 }
@@ -4478,13 +4516,21 @@ function GreenRibbon(p) {
     </div>
   );
 }
+// UI-only titles: the stable OPENINGS values remain unchanged for lore / era routing and old saves.
+var OPENING_DISPLAY = {
+  "The Grimoire Acceptance Ceremony": "Ceremony Day · At the Grimoire Tower",
+  "The months before the Entrance Exam": "Training Season · Before the Magic Knights Exam",
+  "Right after the Entrance Exam": "Knight Selection · After the Entrance Exam",
+  "Asta and Yuno's first year as Magic Knights": "Rising Knights · Asta and Yuno's First Year"
+};
+function openingDisplay(value) { return OPENING_DISPLAY[value] || value; }
 function OpeningSheet(p) {
   var opts = OPENINGS[p.era] || [];
   return (
     <Sheet title="Opening Preference" onClose={p.close}>
       {p.era === "later" ? <div style={{ fontSize: 14.5, color: C.muted, marginBottom: 10 }}>Details stay hidden at your spoiler level. The world knows what has happened; you'll find out by living.</div> : null}
       {opts.map(function (o, i) {
-        return <Opt key={o} on={p.value === o} title={o} tag={p.era === "during" && i === 0 ? "Recommended" : null} onClick={function () { p.onPick(o); p.close(); }} />;
+        return <Opt key={o} on={p.value === o} title={openingDisplay(o)} tag={p.era === "during" && i === 0 ? "Suggested Start" : null} onClick={function () { p.onPick(o); p.close(); }} />;
       })}
     </Sheet>
   );
@@ -4623,7 +4669,7 @@ function Creator(p) {
           <CField label="Opening Preference">
             <button type="button" className="bc-openbtn" aria-label="Opening preference" onClick={function () { setSheet("opening"); }}>
               <Icon n="book" s={28} />
-              <span><strong>{f.opening || "Choose an opening"}</strong>{f.era === "during" && f.opening === OPENINGS.during[0] ? <small>Recommended</small> : null}</span>
+              <span><strong>{openingDisplay(f.opening) || "Choose an opening"}</strong>{f.era === "during" && f.opening === OPENINGS.during[0] ? <small>Suggested Start</small> : null}</span>
               <Icon n="chevr" s={14} />
             </button>
           </CField>
@@ -4693,7 +4739,7 @@ function Creator(p) {
         ) : null}
         <CField label="Talent" note="Choose how your magic behaves. The world will add variance.">
           <div role="radiogroup" aria-label="Talent">
-            <ListOpt on={f.talent_mode === "Natural"} icon="leaf" title="World-Generated Talent" tag="Recommended" desc="Your abilities come from lineage, circumstance, variance and fate. You discover them by living." onClick={function () { set("talent_mode", "Natural"); }} />
+            <ListOpt on={f.talent_mode === "Natural"} icon="leaf" title="World-Generated Talent" tag="Lore-Grounded" desc="Your abilities come from lineage, circumstance, variance and fate. You discover them by living." onClick={function () { set("talent_mode", "Natural"); }} />
             <ListOpt on={f.talent_mode === "Guided"} icon="book" title="Guided" desc="Choose broad leaning. The world still adds variance." onClick={function () { set("talent_mode", "Guided"); }} />
             <ListOpt on={f.talent_mode === "Sandbox"} icon="star" title="Full sandbox" desc="Specify exactly what you want. The world reacts honestly to it." onClick={function () { set("talent_mode", "Sandbox"); }} />
           </div>
@@ -4770,7 +4816,7 @@ function Creator(p) {
       { k: "Social Origin", v: [f.origin, f.origin_detail].filter(Boolean).join(", "), pg: 1, i: "people" },
       { k: "Magical Leaning", v: f.magic_mode === "Random" ? "Random" : (f.magic_mode === "Choose" ? f.attribute_choice : "Described by you"), pg: 2, i: "star" },
       { k: "Origin Region", v: (f.region ? f.region + ": " : "") + (place || ""), pg: 3, i: "pin" },
-      { k: "Opening Preference", v: f.era === "custom" ? f.era_detail : f.opening, pg: 0, i: "book" },
+      { k: "Opening Preference", v: f.era === "custom" ? f.era_detail : openingDisplay(f.opening), pg: 0, i: "book" },
       { k: "Starting Mode", v: eraT, pg: 0, i: "compass" }
     ];
     head = <PanelHead title="Finalize Your Story" sub="Confirm your choices. Your legend is about to begin." />;
@@ -4798,7 +4844,7 @@ function Creator(p) {
           </Frame>
           <Frame className="bc-final-modes" pad="8px 9px">
             <div className="bc-final-h"><Icon n="gear" s={18} />Narrative Mode Options</div>
-            {[["leaf", "World-Generated Talent", "A living world that moves on its own.", f.talent_mode === "Natural", function (on) { set("talent_mode", on ? "Natural" : "Guided"); }],
+            {[["leaf", "World-Generated Talent", "Your aptitude comes from the simulated world.", f.talent_mode === "Natural", function (on) { set("talent_mode", on ? "Natural" : "Guided"); }],
               ["book", "Story Guidance", "Receive direction and key story prompts.", f.canon_guidance !== "Off", function (on) { set("canon_guidance", on ? "Balanced" : "Off"); }],
               ["compass", "Sandbox Elements", "Freedom to explore beyond the main story.", f.content_continuity === "Full Official Sandbox", function (on) { set("content_continuity", on ? "Full Official Sandbox" : "Core Canon"); }]].map(function (m) {
               return (
