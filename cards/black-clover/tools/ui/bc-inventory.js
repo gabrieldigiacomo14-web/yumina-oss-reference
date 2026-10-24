@@ -2,14 +2,21 @@
 // storage/placement and encumbrance principles. No narration/AI is needed for
 // local transfers. Canonical variable remains `inventory`.
 
+// Listed head to toe, outer layer first. 'clothes' is a ONE-PIECE outfit
+// (dress, uniform, "everyday clothes") worn instead of a separate shirt and
+// trousers; a squad robe or cloak goes over everything in 'cloak'.
 export const BC_SLOTS = [
-  ['main-hand','Main hand'], ['off-hand','Off hand'], ['head','Head'],
-  ['shoulders','Shoulders'], ['torso','Torso'], ['arms','Arms'],
-  ['hands','Hands'], ['legs','Legs'], ['feet','Feet'], ['clothes','Clothes'],
-  ['waist','Waist'], ['back','Back'], ['accessory','Accessory'],
+  ['head','Head'], ['cloak','Cloak / Squad robe'], ['clothes','Full outfit (one piece)'],
   ['base-upper','Shirt / Upper clothes'], ['base-lower','Trousers / Lower clothes'],
+  ['torso','Coat / Armour'], ['shoulders','Shoulders'], ['arms','Arms'], ['hands','Hands'],
+  ['legs','Leg armour'], ['feet','Feet'], ['waist','Belt / Waist'], ['hip','Hip / Holster'],
+  ['back','Back'], ['accessory','Accessory'], ['main-hand','Main hand'], ['off-hand','Off hand'],
+  ['grimoire','Grimoire'],
   ['under-upper','Undergarment (upper)'], ['under-lower','Undergarment (lower)']
 ];
+// A worn item recorded in an older or wrong slot is moved to the slot its
+// kind belongs in (a squad robe saved as 'clothes' becomes the cloak).
+const SLOT_REMAP = {cloak:['shoulders','clothes','torso','back'], grimoire:['accessory','main-hand','off-hand','waist','hip','back'], hip:['waist','accessory','back']};
 const SLOT_LABELS = Object.fromEntries(BC_SLOTS);
 export const BC_STORAGE = {
   belt_pouch: { label:'Belt pouch', slots:[
@@ -32,6 +39,10 @@ export const BC_STORAGE = {
   magic_tool_case: { label:'Magic-tool case', slots:[
     {id:'lined', label:'Padded compartment', bulkCap:8, weightCap:8, access:'ready', allowed:['magic-tool','small']},
     {id:'accessory', label:'Component pocket', bulkCap:3, weightCap:3, access:'quick', allowed:['small','material','magic-tool']}
+  ]},
+  holster: { label:'Holster', slots:[
+    {id:'blade', label:'Blade loop', bulkCap:7, weightCap:5, access:'quick', allowed:['weapon']},
+    {id:'grimoire', label:'Grimoire holder', bulkCap:2.5, weightCap:2, access:'quick', allowed:['grimoire']}
   ]},
   quiver: { label:'Quiver', slots:[
     {id:'arrows', label:'Arrow sleeve', bulkCap:8, weightCap:6, access:'quick', allowed:['arrow','ammo']}
@@ -57,6 +68,7 @@ export function bcSpec(it) {
     else if (has(name,/\b(satchel|travel pack|shoulder bag|traveler.s bag)\b/)) storage='travel_satchel';
     else if (has(name,/\b(magic.tool case|enchanter.s case)\b/)) storage='magic_tool_case';
     else if (has(name,/\bquiver\b/)) storage='quiver';
+    else if (has(name,/\b(holsters?|scabbards?|sheaths?|baldrics?|sword belt|grimoire (holder|belt|chain|strap|case)|book holder)\b/)) storage='holster';
   }
   const tags=Array.isArray(it&&it.tags) ? it.tags.slice() : [];
   const tag = t => {if(tags.indexOf(t)<0) tags.push(t);};
@@ -64,30 +76,33 @@ export function bcSpec(it) {
   if (storage) {
     weight=storage==='field_pack' ? 2.0 : storage==='travel_satchel' ? .8 : .3;
     bulk=storage==='field_pack' ? 9 : storage==='travel_satchel' ? 5 : 2;
-    slot=storage==='belt_pouch' ? 'waist' : 'back';
-  } else if (has(name+' '+type, /grimoire/)) {weight=.8; bulk=2; slot='accessory';tag('grimoire');}
+    if (storage==='holster') {weight=.5;bulk=1.5;}
+    slot=storage==='belt_pouch' ? 'waist' : storage==='holster' ? 'hip' : 'back';
+  } else if (has(name+' '+type, /grimoire/)) {weight=.8; bulk=2; slot='grimoire';tag('grimoire');}
   else if (has(name+' '+type, /broom/)) {weight=2.5;bulk=8;tag('tool');}
-  else if (has(name+' '+type, /sword|sabre|rapier|dagger|knife|spear|staff|wand|mace|axe|bow|weapon/)) {weight=1.5;bulk=5;slot='main-hand';tag('weapon');}
+  else if (has(name+' '+type, /sword|sabre|saber|rapier|katana|wakizashi|tanto|odachi|scimitar|cutlass|claymore|halberd|glaive|dagger|knife|spear|staff|wand|mace|\baxe|\bbows?\b|weapon|warhammer|flail/) && !has(name+' '+type, /\b(kit|oil|whetstone|polish|care|sheath|scabbard|holster)\b/)) {weight=1.5;bulk=5;slot='main-hand';tag('weapon');}
   else if (has(name+' '+type, /underwear|underpants|briefs|boxers|panties|drawers|loincloth/)) {weight=.1;bulk=.3;slot='under-lower';tag('clothing');}
   else if (has(name+' '+type, /bra|bandeau|undershirt|chemise/)) {weight=.15;bulk=.4;slot='under-upper';tag('clothing');}
   else if (has(name+' '+type, /trousers|pants|leggings|breeches|shorts|skirt|kilt|slacks/)) {weight=.4;bulk=1.8;slot='base-lower';tag('clothing');}
   else if (has(name+' '+type, /shirt|blouse|tunic|jersey|sweater|pullover|waistcoat/)) {weight=.45;bulk=2;slot='base-upper';tag('clothing');}
+  else if (has(name+' '+type, /\b(cloaks?|capes?|mantles?|ponchos?|shawls?|squad robes?|knight'?s robes?|captain'?s robes?)\b/) || has(name+' '+type, /(black bulls?|golden dawn|silver eagles?|crimson lions?|blue roses?|green mantis|coral peacocks?|purple orcas?|aqua deer|azure deer|magic knight).{0,24}\brobes?\b/)) {weight=1;bulk=3.5;slot='cloak';}
   else if (has(name+' '+type, /dress|gown|robe|onesie|jumpsuit|outfit|uniform|everyday clothes|traveling clothes|civilian clothes|travelling clothes|clothes|clothing|garments|rags/)) {weight=.9;bulk=3.5;slot='clothes';tag('clothing');}
-  else if (has(name+' '+type, /armor|armour|breastplate|chestguard|coat|vest|jacket/)) {weight=2;bulk=5;slot='torso';}
+  else if (has(name+' '+type, /\b(vests?|aprons?|smocks?)\b/)) {weight=.45;bulk=1.5;slot='torso';}
+  else if (has(name+' '+type, /armor|armour|breastplate|chestguard|coat|jacket/)) {weight=2;bulk=5;slot='torso';}
   else if (has(name+' '+type, /boot|shoe/)) {weight=.8;bulk=3;slot='feet';}
   else if (has(name+' '+type, /glove|gauntlet/)) {weight=.35;bulk=2;slot='hands';}
-  else if (has(name+' '+type, /cloak|mantle/)) {weight=1;bulk=4;slot='shoulders';}
-  else if (has(name+' '+type, /hat|cap|helmet/)) {weight=.5;bulk=3;slot='head';}
-  else if (has(name+' '+type, /ring|amulet|necklace|charm|bracelet/)) {weight=.08;bulk=.3;slot='accessory';tag('small');}
+  else if (has(name+' '+type, /\b(hats?|caps?|helmets?|helms?|hoods?|circlets?)\b/)) {weight=.5;bulk=3;slot='head';}
+  else if (has(name+' '+type, /\b(rings?|earrings?|amulets?|necklaces?|charms?|bracelets?|pendants?|brooch(es)?|lockets?)\b/)) {weight=.08;bulk=.3;slot='accessory';tag('small');}
   else if (has(name+' '+type, /potion|vial|flask|bottle|waterskin|salve|medicine/)) {weight=.45;bulk=1;tag('small');tag('bottle');}
   else if (has(name+' '+type, /bread|apple|ration|food|herb|berry/)) {weight=.3;bulk=.6;tag('small');}
   else if (has(name+' '+type, /arrow|bolt|dart|ammo/)) {weight=.04;bulk=.15;tag('arrow');tag('ammo');tag('small');}
-  else if (has(name+' '+type, /ore|metal|wood|lumber|crystal|stone|material|gem/)) {weight=.6;bulk=1;tag('material');}
+  else if (has(name+' '+type, /\b(ores?|metal|wood|lumber|crystals?|stones?|materials?|gems?|ingots?)\b/)) {weight=.6;bulk=1;tag('material');}
   else if (has(name+' '+type, /magic tool|enchanted|magic-tool|relic|artifact/)) {weight=.65;bulk=1.5;tag('magic-tool');}
+  else if (has(name+' '+type, /\b(kits?|flint|strikers?|tinder\w*|whetstones?|toolkits?|tools?|lanterns?|compass|needles?|thread|sewing)\b/)) {weight=.4;bulk=1;tag('small');tag('tool');}
   else if (has(name+' '+type, /rope/)) {weight=2;bulk=5;tag('rope');tag('tool');}
   else if (has(name+' '+type, /bedroll|blanket/)) {weight=1.4;bulk=5;tag('bedroll');}
   else if (has(name+' '+type, /yul|coins?|banknotes?|currency|money/)) {weight=.005;bulk=.02;tag('coin');tag('small');}
-  else if (has(name+' '+type, /letter|key|map|document|ticket/)) {weight=.05;bulk=.2;tag('small');}
+  else if (has(name+' '+type, /\b(letters?|keys?|maps?|documents?|tickets?|notes?|papers?)\b/)) {weight=.05;bulk=.2;tag('small');}
   let w = Math.max(0,nval(it&&it.weight,weight));
   let b = Math.max(0,nval(it&&it.bulk,bulk));
   const givenSlot=txt(it&&it.slot||it&&it.equip_slot||'');
@@ -96,6 +111,7 @@ export function bcSpec(it) {
     // Old saves often stored every piece of clothing as 'clothes', which
     // destroyed layering by displacing shirts and trousers. Recover by name.
     if (it&&it.coverage==='full') slot='clothes';
+    else if (SLOT_REMAP[slot]&&SLOT_REMAP[slot].includes(givenSlot)) {}
     else if (!(['clothes','torso','legs'].includes(givenSlot)&&['base-upper','base-lower','under-upper','under-lower'].includes(slot))) slot=givenSlot;
   }
   if (['clothes','base-upper','base-lower','under-upper','under-lower'].includes(slot))tag('clothing');
@@ -163,7 +179,7 @@ export function bcFits(inv,item,dest) {
   if(used.weight+bcWeight(item)>slot.weightCap+1e-8)return fail('Compartment weight limit exceeded.');
   return {ok:true};
 }
-export function bcFindSpot(inv,item) {
+export function bcFindSpot(inv,item,noArms) {
   if(!bcStorageOf(item)) {
     const slots=[];
     (inv||[]).forEach(bag=>{
@@ -174,7 +190,7 @@ export function bcFindSpot(inv,item) {
     slots.sort((a,b)=>(Number(b.special)-Number(a.special))||(a.access-b.access));
     for(const p of slots) if(bcFits(inv,item,p).ok) return {kind:'container',containerId:p.containerId,slotId:p.slotId};
   }
-  if(bcFits(inv,item,{kind:'loose'}).ok)return {kind:'loose'};
+  if(!noArms&&bcFits(inv,item,{kind:'loose'}).ok)return {kind:'loose'};
   return null;
 }
 export function bcDestinations(inv,it) {
@@ -185,13 +201,13 @@ export function bcDestinations(inv,it) {
       if(bcFits(inv,it,p).ok)dest.push({placement:p,label:txt(c.name)+' · '+slot.label,access:slot.access});
     });
   });
-  if(!(it.placement&&it.placement.kind==='loose')&&bcFits(inv,it,{kind:'loose'}).ok)dest.push({placement:{kind:'loose'},label:'In your arms',access:'quick'});
+  if(!(it.placement&&it.placement.kind==='loose'&&it.placement.held)&&bcFits(inv,it,{kind:'loose'}).ok)dest.push({placement:{kind:'loose',held:true},label:'Hold in your hands',access:'quick'});
   return dest;
 }
 export function bcPlaceLabel(inv,it) {
   const p=it.placement||{};
   if(p.kind==='body')return 'Worn · '+(SLOT_LABELS[p.slot]||p.slot);
-  if(p.kind==='loose')return 'In your arms';
+  if(p.kind==='loose')return p.held?'In your hands':'Carried loose (no room in your bags)';
   if(p.kind==='container'){
     const bag=(inv||[]).find(x=>x.id===p.containerId),s=bag&&bcStorageOf(bag);
     const slot=s&&s.slots.find(x=>x.id===p.slotId);
@@ -226,8 +242,12 @@ export function bcNormalize(raw,context) {
   ordered.forEach(it=>{
     const p=it.placement;
     const repairedSlot=bcSpec(it).slot;
-    const legacyGarmentSlot=p&&p.kind==='body' && repairedSlot && ['clothes','base-upper','base-lower','under-upper','under-lower'].includes(repairedSlot) && ['clothes','torso','legs'].includes(p.slot);
-    const target=legacyGarmentSlot?repairedSlot:p&&p.slot;
+    const legacyGarmentSlot=p&&p.kind==='body' && repairedSlot && ((['clothes','base-upper','base-lower','under-upper','under-lower'].includes(repairedSlot) && ['clothes','torso','legs'].includes(p.slot)) || (SLOT_REMAP[repairedSlot]&&SLOT_REMAP[repairedSlot].includes(p.slot)));
+    let target=legacyGarmentSlot?repairedSlot:p&&p.slot;
+    // the grimoire rides in a worn holster when there is one
+    if(p&&p.kind==='body'&&repairedSlot==='grimoire'&&p.slot!=='grimoire'){later.push(it);return;}
+    // a bag, pouch or holster carried in the arms is meant to be worn
+    if(bcStorageOf(it)&&p&&p.kind==='loose'&&!p.held&&repairedSlot&&!picked.some(x=>x.placement&&x.placement.kind==='body'&&x.placement.slot===repairedSlot)){picked.push(setPlace(it,{kind:'body',slot:repairedSlot}));return;}
     if(p&&p.kind==='body'&&bcAllowedSlots(it).includes(target) && !picked.some(x=>x.placement&&x.placement.kind==='body'&&x.placement.slot===target)) picked.push(setPlace(it,{kind:'body',slot:target}));
     else later.push(it);
   });
@@ -235,7 +255,14 @@ export function bcNormalize(raw,context) {
     const p=it.placement;
     if(p&&p.kind==='world') {picked.push(setPlace(it,p));return;}
     if(p&&p.kind==='container' && picked.some(x=>x.id===p.containerId) && (picked.find(x=>x.id===p.containerId).placement.kind!=='body'||bcFits(picked,it,p).ok)){picked.push(setPlace(it,p));return;}
-    if(p&&p.kind==='loose') {picked.push(setPlace(it,p));return;}
+    if(p&&p.kind==='loose'&&p.held) {picked.push(setPlace(it,p));return;}
+    if(p&&p.kind==='loose'||bcSpec(it).tags.includes('grimoire')&&!(p&&p.kind==='container')) {
+      // items added without a real place go into the best free compartment, not the arms
+      const stow=bcFindSpot(picked,it,true);
+      if(stow){picked.push(setPlace(it,stow));return;}
+      if(bcSpec(it).slot==='grimoire'&&!picked.some(x=>x.placement&&x.placement.kind==='body'&&x.placement.slot==='grimoire')){picked.push(setPlace(it,{kind:'body',slot:'grimoire'}));return;}
+      picked.push(setPlace(it,{kind:'loose'}));return;
+    }
     if(!p){
       const area=areaFromLegacy(txt(it.place).toLowerCase());
       if(area){picked.push(setPlace(it,{kind:'world',area,location:txt(it.place_location||it.location)||(area==='home'?home:where)}));return;}
@@ -389,7 +416,7 @@ export function bcSocialPresentation(inv, context, appearance) {
   const originText=txt(profile.social_origin||ctx.social_origin||'');
   const origin=/^royal\b/i.test(originText)?'Royal':/^noble\b/i.test(originText)?'Noble':/^commoner\b/i.test(originText)?'Commoner':/^peasant\b/i.test(originText)?'Peasant':'Unspecified';
   const equipped=(inv||[]).filter(it=>it&&it.placement&&it.placement.kind==='body');
-  const outerGarments=equipped.filter(it=>bcIsClothing(it)||['torso','shoulders','legs','head'].includes(it.placement.slot)&&/cloak|mantle|coat|jacket|robe|tunic|uniform/i.test(txt(it.name)+' '+txt(it.type)));
+  const outerGarments=equipped.filter(it=>bcIsClothing(it)||['cloak','torso','shoulders','legs','head'].includes(it.placement.slot)&&/cloak|mantle|coat|jacket|robe|tunic|uniform/i.test(txt(it.name)+' '+txt(it.type)));
   let finery=0,wear=0,formal=false,uniform=false;
   const signals=[];
   outerGarments.forEach(it=>{

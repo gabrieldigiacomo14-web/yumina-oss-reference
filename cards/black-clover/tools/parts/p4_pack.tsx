@@ -10,16 +10,19 @@ var KIND_LABEL = { item: "Item", material: "Material", key: "Key Item" };
 function itemIcon(it) {
   var t = (str(it.type) + " " + arr(it.tags).join(" ") + " " + str(it.name)).toLowerCase();
   if (/potion|elixir|tonic|vial/.test(t)) return ["drop", "#d64545"];
+  if (/grimoire/.test(t) && !/holster|holder|belt|case|strap/.test(t)) return ["book", "#d9b463"];
+  if (/holster|scabbard|sheath/.test(t)) return ["sword", "#c79a5a"];
   if (/herb|plant|leaf|flower/.test(t)) return ["leaf", "#5fbf5f"];
   if (/crystal|gem|mana stone|magic stone/.test(t)) return ["gem", "#58a6e8"];
   if (/ore|iron|metal|stone/.test(t)) return ["mountain", "#b9bec7"];
   if (/page|scroll|letter|book|document|map/.test(t)) return ["scroll", "#d9b463"];
   if (/food|bread|loaf|meat|ration|fruit|cheese|bun/.test(t)) return ["food", "#e0a35a"];
-  if (/sword|blade|knife|dagger|spear|axe|weapon/.test(t)) return ["sword", "#c9ced6"];
+  if (/sword|blade|knife|dagger|spear|axe|weapon|katana|sabre|saber|rapier|scimitar|cutlass/.test(t) && !/kit|oil|care/.test(t)) return ["sword", "#c9ced6"];
   if (/shield|armor|armour|helm/.test(t)) return ["shield", "#c9ced6"];
   if (/satchel|bag|pack|pouch|case|backpack/.test(t)) return ["pack", "#c79a5a"];
   if (/broom/.test(t)) return ["wisp", "#d9b463"];
-  if (/clothing|tunic|trousers|boots|cloak|coat|shirt|dress|robe|hat/.test(t)) return ["bust", "#a99bd6"];
+  if (/clothing|tunic|trousers|boots|cloak|cape|mantle|coat|shirt|dress|robe|hat|vest|apron/.test(t)) return ["bust", "#a99bd6"];
+  if (/kit|flint|tool|whetstone/.test(t)) return ["hammer", "#c9ced6"];
   return ["star", "#d9b463"];
 }
 function PackView(p) {
@@ -182,7 +185,13 @@ function PackView(p) {
             <div className="bc-note">{'Comfortable ≤ ' + carry.comfortable + ' kg · Heavy ≤ ' + carry.heavy + ' kg · Arms ' + carry.armsBulk + ' / ' + BC_ARMS_BULK + ' bulk · purse ' + bcWalletProfile(v.money).weightKg.toFixed(3) + ' kg'}</div>
             {carry.band !== 'comfortable' ? <div className="bc-note" style={{ color: over ? '#f1b8a8' : C.goldHi }}>{carry.band === 'immobile' ? 'Immobile: drop weight before moving.' : carry.band === 'overloaded' ? 'Overloaded: substantial penalties to travel, dodging and stamina.' : 'Heavy: movement and stamina are impaired.'}</div> : null}
             <H size={15} m="12px 0 4px">Equipment slots</H>
-            {BC_SLOTS.map(function (pair) { var eq = inv.find(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; }); return <Row key={pair[0]} k={pair[1]} v={eq ? str(eq.name) : '—'} />; })}
+            {BC_SLOTS.filter(function (pair) { return EQUIP_ALWAYS[pair[0]] || inv.some(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; }); }).map(function (pair) {
+              var eq = inv.find(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; });
+              var val = eq ? str(eq.name) : '—';
+              if (pair[0] === 'grimoire' && !eq) { var held = inv.find(function (x) { return x.placement && x.placement.kind === 'container' && bcSpec(x).tags.indexOf('grimoire') >= 0; }); var bag = held && inv.find(function (x) { return x.id === held.placement.containerId; }); val = held ? str(held.name) + ' · in ' + str(bag ? bag.name : 'its holder') : isTrue(v.has_grimoire) ? 'Floats at your side' : 'Not yet received'; }
+              return <Row key={pair[0]} k={pair[1]} v={val} />;
+            })}
+            <div className="bc-note">{'"Full outfit" is one-piece clothing (a dress, a uniform, "everyday clothes") worn instead of a separate shirt and trousers. A squad robe or cloak goes over your clothes in "Cloak / Squad robe".'}</div>
             <H size={15} m="12px 0 4px">Visible appearance</H>
             <div className="bc-note" style={{ color: C.ivory }}>{appearance.summary}</div>
             {appearance.social ? <div className="bc-note">{'Social presentation · ' + appearance.social.outfitTier + ' dress · setting: ' + appearance.social.setting}</div> : null}
@@ -200,3 +209,4 @@ function PackView(p) {
     </div>
   );
 }
+var EQUIP_ALWAYS = { cloak: 1, 'base-upper': 1, 'base-lower': 1, feet: 1, hip: 1, back: 1, grimoire: 1 };

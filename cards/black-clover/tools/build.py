@@ -215,9 +215,9 @@ V['character_created']['behaviorRules'] = "Set by the creation screen."
 V['money']['behaviorRules'] = ("Yul value of cash carried in the purse (integer; never one coin per Yul, never mirrored as items). "
     "Use +/- for purchases and civilian pay. Knight salary and bank transfers are handled by the interface — never [money: +salary].")
 V['inventory']['behaviorRules'] = ("Unique physical item instances: {id,name,qty,cond,weight,bulk,type,tags,slot,placement}. placement = "
-    "{\"kind\":\"body\",\"slot\":\"back\"} | {\"kind\":\"container\",\"containerId\":\"it-id\",\"slotId\":\"main\"} | {\"kind\":\"loose\"} | "
+    "{\"kind\":\"body\",\"slot\":\"cloak|clothes|base-upper|base-lower|hip|back|...\"} | {\"kind\":\"container\",\"containerId\":\"it-id\",\"slotId\":\"main\"} | {\"kind\":\"loose\",\"held\":true} (only if truly in hand) | "
     "{\"kind\":\"world\",\"area\":\"ground|home|storage|companion\",\"location\":\"exact place\"}. New items must fit a real slot; never conjure bags or move items remotely; "
-    "the grimoire is never an inventory item. The interface normalizes records and handles UI moves, purchases and storage.")
+    "squad robes and cloaks use slot cloak (over clothes). The interface stows unplaced items into bags, holsters the grimoire, and handles UI moves, purchases and storage.")
 V['mk_status']['behaviorRules'] = ("New recruits start at Junior Magic Knight, 5th Class regardless of birth. Promotion is institutional, never automatic (Junior/Intermediate/Senior × 5th→1st). "
     "merit = recognition; personal_stars = confirmed individual merit stars only (squad star totals are separate). Salary is paid by the interface — never credit it yourself.")
 w['variables'].append({"id": "bank_summary", "name": "Bank summary", "type": "string", "category": "resource", "aiAccess": "read",
@@ -298,9 +298,9 @@ w['settings'].update({
         "every promise, debt and favor (who owes whom), how each named NPC feels about the character and why, grimoire/spell milestones, "
         "squad and rank changes, crimes and witnesses, and every way the story has diverged from canon."},
 })
-w["version"] = "21.8.1"
+w["version"] = "21.9.0"
 w['description'] = d['description'] + \
-    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
+    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
 
 # ---------------------------------------------------------------- 7. interface files
 files = w['rootComponent']['files']

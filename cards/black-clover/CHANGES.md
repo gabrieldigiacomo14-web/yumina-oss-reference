@@ -1,6 +1,44 @@
-# Black Clover: A Mage's Tale — v21.8.1
+# Black Clover: A Mage's Tale — v21.9
 
-Import `Black_Clover_A_Mages_Tale_v21.8.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.9.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.9 — squad robes, holsters, and nothing stuck "in your arms"
+
+Reported by a player:
+- the "Clothes" slot was confusing next to the shirt and trousers slots
+- there was nowhere to wear a squad robe
+- a robe put on in the story still showed "In your arms"
+- most belongings showed "In your arms" even with room in the travel bag
+- the grimoire sat in the Accessory slot instead of its holster
+
+**Slots** (`bc-inventory.js`), listed head to toe:
+- **Cloak / Squad robe** is new, an outer layer over your clothes. Squad robes, cloaks, capes and mantles go here. A worn squad robe shows as visible squad garments in the appearance the AI reads, so NPCs can react to it.
+- **Hip / Holster** is new.
+- **Grimoire** is new.
+- "Clothes" is now **Full outfit (one piece)**, for a dress, a uniform or "everyday clothes" worn instead of a separate shirt and trousers. A note under the slot list explains this.
+- Old saves are repaired automatically: a squad robe stored as "Clothes" or "Shoulders" moves to the cloak slot, and a grimoire stored as "Accessory" moves to the grimoire slot or holster.
+
+**Holsters:** holsters, scabbards, sheaths, baldrics and grimoire holders are now containers with a **blade loop** and a **grimoire holder**. They're worn on the hip, so a "Sword & Grimoire Belt Holster" carries the sword and the grimoire.
+
+**Nothing left in your arms by accident:**
+- **Stowing:** an item added without a real place now goes into the best free bag, pouch or holster compartment. The grimoire goes to its holster first.
+- **Bags carried loose:** a bag, pouch or holster that was "in your arms" is put on if its slot is free.
+- **Held on purpose:** an item stays in hand only if it was put there on purpose ("Hold in your hands"). Otherwise the label reads "Carried loose (no room in your bags)", which only happens when the bags really are full.
+
+**Recognising items:**
+- **Weapons:** katana, wakizashi, scimitar, cutlass, claymore, halberd, glaive, warhammer and flail now count as weapons. Blade-care kits and oils don't.
+- **Tools:** kits, flint, whetstones and similar tools are now small tools, so they fit pouches and outer pockets.
+- **Light clothing:** vests and aprons now count as light torso wear, not 5-bulk armour.
+- **Whole words only:** "Charmy's" is no longer read as a charm, and "chat" no longer as a hat.
+
+**Satchel screen:** the equipment list shows only filled slots plus the key ones (cloak, shirt, trousers, feet, hip, back, grimoire), instead of 20 rows of dashes. The grimoire row says where it rides ("in Sword & Grimoire Belt Holster", or "Floats at your side"). Item icons now cover katanas, grimoires, holsters and kits.
+
+**AI rules:**
+- Body slots now include cloak, a one-piece outfit, shirt, trousers, hip and grimoire.
+- Putting something on, taking it off, drawing it or sheathing it in the story must update that item's placement in the same reply.
+- Unplaced items are stowed by the interface.
+- The grimoire's inventory record is only where it physically rides.
+- This adds about 225 tokens per turn.
 
 ## v21.8.1 — world map land lines up with places
 
