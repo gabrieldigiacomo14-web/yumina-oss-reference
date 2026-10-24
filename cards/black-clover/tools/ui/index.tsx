@@ -5002,7 +5002,7 @@ function applyBattle(api, v, r, opts) {
     var sev = lost >= 45 ? "serious" : lost >= 25 ? "moderate" : "minor";
     patch.conditions = arr(v.conditions).concat([{ id: "battle-" + log.length + "-" + str(v.world_date).replace(/\W+/g, ""), kind: "injury", location: "various", type: "battle wounds", severity: sev, effects: sev === "serious" ? "bleeding, impaired movement" : sev === "moderate" ? "deep bruising, cuts" : "bruises and scrapes", treatment: "", healing: "0%", since: str(v.world_date) }]);
   }
-  var title = { victory: "victory", defeat: "defeat", fled: "escape", yielded: "surrender" }[r.outcome];
+  var title = { victory: "victory", defeat: "defeat", fled: "escape", yielded: "surrender", endured: "stalemate" }[r.outcome];
   var hidden = "[UI:BATTLE] The fight was PLAYED OUT in the battle arena and its results are ALREADY APPLIED to state. Outcome: " + r.outcome.toUpperCase() +
     " after about " + Math.max(1, Math.round(r.seconds / 20)) + (Math.max(1, Math.round(r.seconds / 20)) === 1 ? " minute" : " minutes") + " of fighting. Foes: " + r.foes.map(function (f) { return f.name + " (" + f.outcome + ")"; }).join(", ") +
     ". The character took " + r.taken + " damage (vitality " + r.hp0 + "→" + vit + "), spent " + Math.round(manaFrac * 100) + "% of their mana" +
@@ -5010,7 +5010,7 @@ function applyBattle(api, v, r, opts) {
     "; best combo " + r.bestCombo + ", " + r.perfect + (r.perfect === 1 ? " perfect dodge, " : " perfect dodges, ") + r.interrupts + (r.interrupts === 1 ? " interrupted attack" : " interrupted attacks") + (r.log.length ? "; moments: " + r.log.join("; ") : "") +
     ". Narrate the end of this fight and its immediate aftermath in prose that matches this result exactly (a short, vivid summary, not a blow-by-blow replay). " +
     "Do NOT write vitality, stamina, fatigue, mana, mana_reserve, conditions, in_combat, combat or world_time for it, and emit no spell_events for these casts — all already applied. " +
-    "You still own the consequences: what defeated or fled foes do next, loot actually present, witnesses, reputation, crimes, and relationships." + (r.outcome === "defeat" ? " The character has collapsed; what the enemy does now is decided by them and the world (in_combat is still true — you own combat and in_combat from here)." : "");
+    "You still own the consequences: what defeated or fled foes do next, loot actually present, witnesses, reputation, crimes, and relationships." + (r.outcome === "endured" ? " The character SURVIVED but did NOT beat them: the stronger foe was never truly beaten or seriously hurt, and ended or paused the fight on their own terms. Do not describe the character winning. The foe decides what happens next (spares them, tests or teaches them, lets them go, or someone else steps in), true to who they are." : "") + (r.outcome === "defeat" ? " The character has collapsed; what the enemy does now is decided by them and the world (in_combat is still true — you own combat and in_combat from here)." : "");
   bcPatch(api, patch, function (ok) {
     if (!ok) { if (typeof api.showToast === "function") api.showToast("Couldn't save the battle result.", "error"); return; }
     tellGM(api, hidden, "⚔ The battle ends in " + title + ".");

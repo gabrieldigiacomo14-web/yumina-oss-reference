@@ -1,6 +1,34 @@
-# Black Clover: A Mage's Tale — v21.13
+# Black Clover: A Mage's Tale — v21.14
 
-Import `Black_Clover_A_Mages_Tale_v21.13.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.14.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.14 — strong foes are strong
+
+A tester beat Yami Sukehiro with a brand-new Magic Knight. Why it happened: foe strength came from a label the narrator wrote (or a guess from words in the notes). "Captain" in the notes only gave `elite` (175 HP), and even the top tier (290 HP) was beatable by dodging. The player's own level never mattered.
+
+- **Canon power table** (`tools/ui/bc-canon-power.js`): captains, the Wizard King, Mereoleona, devils, Licht and Patri, squad seniors and the main cast. A named canon character is never weaker than the table, whatever the narrator rated them. Unknown NPCs still use the narrator's rating and the old word guesses. Two new tiers sit above captain: `legend` and `apex`.
+- **Power gap:** the arena compares the foe's tier with the player's (from `magic_profile.output`) and scales the fight: foe health, your damage against them, their damage, speed and attack rate. Your own tier also adds a little damage, so training and rank matter.
+- **Overwhelming foes (3+ tiers above you):**
+  - The fight screen warns "far beyond you" and offers *Fight anyway*, *Run*, or *Let the story decide instead*.
+  - The foe can't go below 1 HP in the arena.
+  - They get serious at 20 s and again at 42 s.
+  - Surviving 45 s ends it as a new outcome, `endured` ("You held out"). The narrator is told the character did not win and the foe decides what happens next.
+- **Better fights at every level:**
+  - Strong foes and above add a ring sweep.
+  - Elite foes and above chain slams (1 extra at elite, 2 at captain and above).
+  - Captain-class foes break shields faster and throw a second blast where you are running; casters do this every third cast.
+  - A foe at elite or above gets enraged below half health (the unbeatable ones use the time phases instead).
+  - A single hit is capped at 45 damage.
+  - Signature attack names appear for captains.
+- **Prompt:** the `combat` variable now accepts `legend|apex` and asks the narrator to rate famous fighters by canon rank (+44 tokens: 18,545 early, 22,542 late).
+
+Test run with a simple bot (`tools/fight-yami.mjs`), not human play:
+- A rookie (output 40) against "Yami" labelled `average`: the warning appeared and the fight was lost in about 20 s, with Yami left alive.
+- A captain-tier player against Yami: a real, even fight (223 of 290 damage dealt before losing).
+- A rookie against a bandit: won.
+- The `endured` path was checked with a 5-second endure time; the narrator message was correct.
+
+The numbers are first guesses. They sit in the `GAP`, `ENDURE_SECONDS`, `MAX_HIT` and `PLAYER_DMG` constants at the top of `bc-battle.tsx` and can be tuned from play-testing.
 
 ## v21.13 — the inventory follows the story
 

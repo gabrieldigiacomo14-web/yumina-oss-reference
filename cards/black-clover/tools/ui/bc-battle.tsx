@@ -5,6 +5,7 @@
  * When the fight ends, BattleArena hands a result to onFinish(); the caller
  * applies it to state and asks the GM for one aftermath narration. */
 import { bcCastPlan, bcSpellMechanics, bcReserve, bcManaMax } from "./bc-spell-engine.js";
+import { canonPower } from "./bc-canon-power.js";
 
 function n(v, d) { var z = Number(v); return isFinite(z) ? z : (d === undefined ? 0 : d); }
 function s(v) { return v === undefined || v === null ? "" : String(v); }
@@ -21,9 +22,19 @@ function attrCol(x) { var k = low(x).replace(/\(.*\)/, "").trim().split(/\s+/)[0
 export var THREATS = {
   weak: { hp: 46, atk: 6, spd: 66, cd: 1.7, label: "Weak" }, average: { hp: 78, atk: 8, spd: 76, cd: 1.45, label: "Average" },
   strong: { hp: 118, atk: 11, spd: 86, cd: 1.25, label: "Strong" }, elite: { hp: 175, atk: 15, spd: 94, cd: 1.1, label: "Elite" },
-  captain: { hp: 290, atk: 20, spd: 104, cd: 0.95, label: "Captain-class" }
+  captain: { hp: 290, atk: 20, spd: 104, cd: 0.95, label: "Captain-class" },
+  legend: { hp: 420, atk: 26, spd: 112, cd: 0.85, label: "Legendary" }, apex: { hp: 600, atk: 34, spd: 120, cd: 0.75, label: "Beyond mortal" }
 };
-var THREAT_ORDER = ["weak", "average", "strong", "elite", "captain"];
+var THREAT_ORDER = ["weak", "average", "strong", "elite", "captain", "legend", "apex"];
+/* How much stronger a foe is than the player, in tiers, changes the whole fight.
+   Tuning lives here: index = gap (0 = even). A gap of 3 or more is "overwhelming":
+   the foe cannot be beaten in the arena, only survived (see ENDURE_SECONDS). */
+var GAP = { hp: [1, 1.2, 1.7, 3.2, 4.5, 6, 8], dmg: [1, 0.92, 0.75, 0.5, 0.38, 0.28, 0.2], atk: [1, 1.04, 1.12, 1.25, 1.4, 1.55, 1.7],
+  spd: [1, 1, 1.04, 1.08, 1.12, 1.16, 1.2], cd: [1, 1, 0.96, 0.9, 0.85, 0.8, 0.75] };
+var UNBEATABLE_GAP = 3, ENDURE_SECONDS = 45, MAX_HIT = 45;
+var PLAYER_DMG = [0.9, 1, 1.1, 1.22, 1.35, 1.5, 1.6]; // training and rank make your own spells bite
+function tierIdx(t) { var i = THREAT_ORDER.indexOf(t); return i < 0 ? 1 : i; }
+function playerTierIdx(v) { var out = n(o(v.magic_profile).output, -1); return out < 0 ? 1 : tierIdx(threatFromOutput(out)); }
 function threatFromOutput(out) { out = n(out, -1); if (out < 0) return ""; return out < 25 ? "weak" : out < 45 ? "average" : out < 65 ? "strong" : out < 85 ? "elite" : "captain"; }
 
 /* Build the opposing side from combat.participants (and their saved NPC
@@ -43,13 +54,18 @@ export function buildFoes(v, mode) {
     var text = low([p.name, p.notes, p.kind, p.role, p.threat, npc.role, npc.occupation].map(s).join(" "));
     var threat = THREATS[low(p.threat)] ? low(p.threat) : threatFromOutput(mp.output) ||
       (/captain|wizard king|general|vice-captain|royal knight|witch queen/.test(text) ? "elite" : /elite|veteran|knight|strong|noble mage|commander/.test(text) ? "strong" : /weak|novice|child|thug|petty|untrained/.test(text) ? "weak" : "average");
-    var kind = /^(brute|caster|beast)$/.test(low(p.kind)) ? low(p.kind) :
+    var kind = /^(brute|caster|beast)$/.test(low(p.kind)) ? low(p.kind) : canon && canon.k ? canon.k :
       /beast|wolf|boar|bear|monster|creature|drake|serpent|hound|spider/.test(text) ? "beast" :
       (a(npc.spells).length || /mage|caster|wizard|witch|sorcer|knight|magic/.test(text)) ? "caster" : "brute";
+    // a named canon character is never weaker than the table says, whatever the narrator wrote
+    var canon = canonPower(p.name) || canonPower(npc.name);
+    if (canon && tierIdx(canon.t) > tierIdx(threat)) threat = canon.t;
     var T = THREATS[threat]; var cond = low(p.condition);
+    var gap = Math.max(0, tierIdx(threat) - playerTierIdx(v)), gi = Math.min(gap, GAP.hp.length - 1);
     var hpMul = /badly|critical|near death/.test(cond) ? 0.35 : /wounded|injured/.test(cond) ? 0.6 : /hurt|bruised|winded/.test(cond) ? 0.82 : 1;
-    var attr = s(p.attribute || mp.attribute);
-    return { key: key, name: s(p.name) || "Foe " + (i + 1), kind: kind, threat: threat, attr: attr, hp: Math.round(T.hp * hpMul), max: T.hp,
+    var attr = s(p.attribute || mp.attribute || (canon && canon.a));
+    return { key: key, name: s(p.name) || "Foe " + (i + 1), kind: kind, threat: threat, attr: attr, hp: Math.round(T.hp * GAP.hp[gi] * hpMul), max: Math.round(T.hp * GAP.hp[gi]),
+      gap: gap, unbeatable: gap >= UNBEATABLE_GAP, dmgMul: GAP.dmg[gi], atkMul: GAP.atk[gi], spdMul: GAP.spd[gi], cdMul: GAP.cd[gi], poiseMax: T.hp * 0.32, sig: s(canon && canon.sig),
       manaPool: kind === "caster" ? Math.round(40 + THREAT_ORDER.indexOf(threat) * 30) : 0, persisted: !!npcs[key] };
   });
 }
@@ -231,6 +247,7 @@ export function BattleArena(p) {
       units: reserve.currentUnits, maxUnits: reserve.maxUnits, units0: reserve.currentUnits,
       foes: foes, allies: allies, shots: [], zones: [], seals: [], fx: [], texts: [], hitstop: 0, aim: null, drag: null, shake: 0, slow: 0, time: 0, focus: 0, combo: 0, comboT: 0, bestCombo: 0,
       dealt: 0, taken: 0, perfect: 0, interrupts: 0, casts: {}, target: null, keys: {}, stick: { x: 0, y: 0, on: false, id: null, ox: 0, oy: 0 },
+      pMul: PLAYER_DMG[playerTierIdx(v)], endureAt: foes.some(function (f) { return f.unbeatable; }) ? ENDURE_SECONDS : 0,
       fleeT: 0, gate: mode === "combat" ? { x: AW / 2, y: AH - 14, w: 90 } : null, over: false, finisher: false, log: []
     };
   }
@@ -272,11 +289,13 @@ export function BattleArena(p) {
     var interrupt = f.state === "windup" || f.state === "charge";
     if (interrupt) { dmg *= 1.5; f.state = "idle"; f.cd = f.cd + 0.9; f.stun = Math.max(f.stun, 0.6); S.interrupts++; S.focus = cl(S.focus + 15, 0, 100); say("INTERRUPT!", f.x, f.y - 34, "#ffd84a", true); }
     if (f.stagger > 0) dmg *= 1.25;
-    dmg = Math.max(1, Math.round(dmg)); f.hp -= dmg; f.hitFlash = 0.15; S.dealt += dmg;
+    dmg *= (S.pMul || 1) * (f.dmgMul || 1);
+    dmg = Math.max(1, Math.round(dmg)); f.hp -= dmg; if (f.unbeatable && f.hp < 1) f.hp = 1; f.hitFlash = 0.15; S.dealt += dmg;
+    if (f.dmgMul <= 0.5 && S.R() < 0.2) say(f.unbeatable ? "Barely a scratch" : "Shrugged off", f.x, f.y - 52, "#c4c8cf");
     S.hitstop = Math.max(S.hitstop, dmg >= 18 ? 0.075 : 0.035);
-    if (kx !== undefined) { var kl = Math.hypot(kx, ky) || 1, kp = (knock || 10) * (f.kind === "beast" ? 1.2 : 1) / (f.threat === "captain" ? 2.2 : f.threat === "elite" ? 1.6 : 1); f.x += kx / kl * kp; f.y += ky / kl * kp; pushOut(f); }
+    if (kx !== undefined) { var kl = Math.hypot(kx, ky) || 1, kp = (knock || 10) * (f.kind === "beast" ? 1.2 : 1) / (tierIdx(f.threat) >= 4 ? 2.2 : f.threat === "elite" ? 1.6 : 1); f.x += kx / kl * kp; f.y += ky / kl * kp; pushOut(f); }
     f.poise = (f.poise || 0) + dmg;
-    if (f.poise >= f.max * 0.32 && !(f.stagger > 0)) { f.poise = 0; f.stagger = 1.1; f.stun = Math.max(f.stun, 1.1); f.state = "idle"; say("STAGGERED", f.x, f.y - 46, "#f3dda0", true); S.focus = cl(S.focus + 10, 0, 100); }
+    if (f.poise >= (f.poiseMax || f.max * 0.32) && !(f.stagger > 0)) { f.poise = 0; f.stagger = 1.1; f.stun = Math.max(f.stun, 1.1); f.state = "idle"; say("STAGGERED", f.x, f.y - 46, "#f3dda0", true); S.focus = cl(S.focus + 10, 0, 100); }
     S.combo = S.comboT > 0 ? S.combo + 1 : 1; S.comboT = 2.2; S.bestCombo = Math.max(S.bestCombo, S.combo);
     S.focus = cl(S.focus + dmg * 0.55, 0, 100);
     say(String(dmg), f.x + (S.R() - 0.5) * 16, f.y - 22, col || "#fff6dc", dmg >= 25);
@@ -288,12 +307,13 @@ export function BattleArena(p) {
   }
   function hurtPlayer(dmg, src) {
     var S = g(), P = S.player; if (S.over) return;
+    dmg = Math.min(dmg, MAX_HIT);
     if (P.iframe > 0) {
       if (src && src.windEnd !== undefined && Math.abs(S.time - src.windEnd) < 0.22) { S.perfect++; S.focus = cl(S.focus + 25, 0, 100); S.slow = 0.35; say("PERFECT DODGE", P.x, P.y - 34, "#5fe0b4", true); }
       return;
     }
     if (P.barrier > 0) { var ab = Math.min(P.barrier, dmg); P.barrier -= ab; dmg -= ab; burst(P.x, P.y, S.col, 6, 90); if (dmg <= 0) { say("Blocked", P.x, P.y - 30, S.col); return; } }
-    if (shieldCovers(src)) { var sh = P.shield, ab2 = Math.min(sh.hp, dmg); sh.hp -= ab2; dmg -= ab2; sh.flash = 0.18; matBurst(P.x + Math.cos(sh.face) * (P.r + 12), P.y + Math.sin(sh.face) * (P.r + 12), sh.st, 8, 110); if (sh.hp <= 0) { P.shield = null; say("Shield broken", P.x, P.y - 34, "#ff8a7a"); } if (dmg <= 0) { say("Blocked", P.x, P.y - 30, sh.st.glow); return; } }
+    if (shieldCovers(src)) { var sh = P.shield, bk = src && src.breaker ? 2.4 : 1, ab2 = Math.min(sh.hp, dmg * bk); sh.hp -= ab2; dmg -= ab2 / bk; sh.flash = 0.18; matBurst(P.x + Math.cos(sh.face) * (P.r + 12), P.y + Math.sin(sh.face) * (P.r + 12), sh.st, 8, 110); if (sh.hp <= 0) { P.shield = null; say("Shield broken", P.x, P.y - 34, "#ff8a7a"); } if (dmg <= 0) { say("Blocked", P.x, P.y - 30, sh.st.glow); return; } }
     if (P.guard) dmg *= S.guardTech ? 0.3 : 0.5;
     if (mode === "spar") dmg *= 0.45;
     dmg = Math.max(1, Math.round(dmg));
@@ -375,11 +395,11 @@ export function BattleArena(p) {
     var P = S.player;
     var foes = S.foes.map(function (f) { return { key: f.key, name: f.name, outcome: !f.alive ? "defeated" : f.hp < f.max * 0.5 ? "badly hurt" : f.hp < f.max ? "hurt" : "unharmed", hpPct: Math.round(100 * Math.max(0, f.hp) / f.max), persisted: f.persisted }; });
     var secs = Math.round(S.time);
-    var grade = outcome !== "victory" ? (outcome === "fled" ? "C" : "D") : (S.taken <= 6 && secs < 70 ? "S" : S.taken <= 18 ? "A" : S.taken <= 35 ? "B" : "C");
+    var grade = outcome !== "victory" ? (outcome === "endured" ? (S.taken <= 30 ? "B" : "C") : outcome === "fled" ? "C" : "D") : (S.taken <= 6 && secs < 70 ? "S" : S.taken <= 18 ? "A" : S.taken <= 35 ? "B" : "C");
     var r = { outcome: outcome, mode: mode, seconds: secs, hp: Math.max(0, Math.round(P.hp)), hp0: Math.round(P.hp0), st: Math.round(cl(P.st0 - P.spent * 0.3 - secs * 0.05, 0, 100)), st0: Math.round(P.st0),
       units: Math.round(S.units * 100) / 100, units0: S.units0, maxUnits: S.maxUnits, dealt: Math.round(S.dealt), taken: Math.round(S.taken), perfect: S.perfect,
       interrupts: S.interrupts, bestCombo: S.bestCombo, grade: grade, foes: foes, spellsUsed: S.moves.filter(function (m) { return m.uses; }).map(function (m) { return { id: m.id, name: m.name, uses: m.uses, freeform: !!m.freeform }; }), log: S.log.slice(-6) };
-    setTimeout(function () { setResult(r); setPhase("result"); }, outcome === "victory" ? 900 : 600);
+    setTimeout(function () { setResult(r); setPhase("result"); }, outcome === "victory" || outcome === "endured" ? 900 : 600);
   }
 
   // ---- main loop ----
@@ -426,7 +446,7 @@ export function BattleArena(p) {
     if (S.over) { stepFx(dt); return; }
     // player movement
     var k = S.keys, mx = S.stick.on ? S.stick.x : (k.r ? 1 : 0) - (k.l ? 1 : 0), my = S.stick.on ? S.stick.y : (k.d ? 1 : 0) - (k.u ? 1 : 0);
-    var ml = Math.hypot(mx, my); if (ml > 1) { mx /= ml; my /= ml; }
+    var ml = Math.hypot(mx, my); if (ml > 1) { mx /= ml; my /= ml; } if (ml > 0.2) { P.mdx = mx / Math.max(1, ml); P.mdy = my / Math.max(1, ml); }
     if (P.dash > 0) { P.dash -= dt; P.x += P.dvx * dt; P.y += P.dvy * dt; }
     else { var sp = P.speed * (P.guard ? 0.45 : 1) * (P.st < 10 ? 0.75 : 1); P.x += mx * sp * dt; P.y += my * sp * dt; if (ml > 0.2) P.face = Math.atan2(my, mx); }
     pushOut(P);
@@ -478,11 +498,12 @@ export function BattleArena(p) {
       burst(z.x, z.y, z.col, 18, 200); S.shake = Math.max(S.shake, 5);
       if (z.own === "p") { if (z.st) matBurst(z.x, z.y, z.st, 26, 230); S.obs = S.obs.filter(function (q) { if (q.kind === "crate" && Math.hypot(q.x - z.x, q.y - z.y) < z.r + q.r * 0.5) { matBurst(q.x, q.y, { a: "#a07a50", b: "#5b3d22", fx: "chunk" }, 12, 160); return false; } return true; }); S.foes.forEach(function (f) { if (f.alive && Math.hypot(f.x - z.x, f.y - z.y) < z.r + f.r) hurtFoe(f, z.dmg, z.col, "", f.x - z.x, f.y - z.y, 22); }); }
       else if (inSelfSeal(z.x, z.y)) { say("Sealed", z.x, z.y - 10, "#fff6dc"); }
-      else if (Math.hypot(P.x - z.x, P.y - z.y) < z.r + P.r * 0.6) hurtPlayer(z.dmg, { windEnd: z.born + z.wind, x: z.x, y: z.y, aoe: true });
+      else if (Math.hypot(P.x - z.x, P.y - z.y) < z.r + P.r * 0.6) hurtPlayer(z.dmg, { windEnd: z.born + z.wind, x: z.x, y: z.y, aoe: true, breaker: !!z.breaker });
       return false;
     });
     stepFx(dt);
     if (S.foes.every(function (f) { return !f.alive; })) finish("victory");
+    else if (S.endureAt && S.time >= S.endureAt && S.foes.every(function (f) { return !f.alive || f.unbeatable; })) { var endFoe = S.foes.filter(function (f) { return f.unbeatable; })[0]; S.log.push((endFoe ? endFoe.name : "Your foe") + " called a stop to it"); say("It's over", P.x, P.y - 40, "#9fc7e8", true); finish("endured"); }
   }
   function stepFx(dt) {
     var S = g();
@@ -490,9 +511,13 @@ export function BattleArena(p) {
     if (S.fx.length > 420) S.fx.splice(0, S.fx.length - 420);
     S.texts = S.texts.filter(function (t) { t.life -= dt; t.y -= 28 * dt; return t.life > 0; });
   }
+  function foeStats(f) { var T = THREATS[f.threat]; return { atk: T.atk * (f.atkMul || 1) * (f.phaseAtk || 1), cd: T.cd * (f.cdMul || 1) * (f.phaseCd || 1), spd: T.spd * (f.spdMul || 1) }; }
   function foeAI(f, dt) {
-    var S = g(), P = S.player, T = THREATS[f.threat];
+    var S = g(), P = S.player, T = foeStats(f);
     if (f.stun > 0) { f.stun -= dt; return; }
+    // overwhelming foes get serious the longer you last
+    if (f.unbeatable && (f.phase || 0) < 2 && S.time > (f.phase ? 42 : 20)) { f.phase = (f.phase || 0) + 1; f.phaseAtk = (f.phaseAtk || 1) * 1.12; f.phaseCd = (f.phaseCd || 1) * 0.88; say(f.phase === 1 ? "Getting serious" : "No more holding back", f.x, f.y - 52, "#ff9a7a", true); S.shake = Math.max(S.shake, 6); }
+    else if (!f.unbeatable && !f.enraged && tierIdx(f.threat) >= 3 && f.hp < f.max * 0.5) { f.enraged = true; f.phaseAtk = 1.15; f.phaseCd = 0.88; say("Enraged", f.x, f.y - 52, "#ff9a7a", true); }
     var dx = P.x - f.x, dy = P.y - f.y, d = Math.hypot(dx, dy) || 1;
     f.cd -= dt;
     if (f.state === "windup" && (f.sealedT > 0 || inSelfSeal(f.x, f.y))) { f.state = "idle"; f.cd = Math.max(f.cd, 0.8); say("Sealed", f.x, f.y - 30, "#fff6dc"); return; }
@@ -500,7 +525,8 @@ export function BattleArena(p) {
       f.t -= dt;
       if (f.t <= 0) {
         f.state = "recover"; f.t = 0.35; var wEnd = S.time;
-        if (f.atk === "slam") { if (Math.hypot(P.x - f.x, P.y - f.y) < 58 + P.r * 0.5) hurtPlayer(T.atk * 1.15, { windEnd: wEnd, x: f.x, y: f.y }); burst(f.x, f.y, "#ff6a5a", 14, 180); S.shake = Math.max(S.shake, 4); f.dmgDealt++; }
+        if (f.atk === "slam") { if (Math.hypot(P.x - f.x, P.y - f.y) < 58 + P.r * 0.5) hurtPlayer(T.atk * 1.15, { windEnd: wEnd, x: f.x, y: f.y, breaker: tierIdx(f.threat) >= 4 }); burst(f.x, f.y, "#ff6a5a", 14, 180); S.shake = Math.max(S.shake, 4); f.dmgDealt++;
+          if (f.chain > 0) { f.chain--; f.state = "windup"; f.t = 0.36; f.atk = "slam"; var cx = P.x - f.x, cy = P.y - f.y, cdd = Math.hypot(cx, cy) || 1, stp = Math.min(40, cdd * 0.6); f.x += cx / cdd * stp; f.y += cy / cdd * stp; pushOut(f); } }
         else if (f.atk === "charge" || f.atk === "lunge") { f.state = "charge"; f.t = f.atk === "lunge" ? 0.26 : 0.42; f.chargeSpd = f.atk === "lunge" ? 470 : 400; f.hitOnce = false; f.windEnd = wEnd; }
         else if (f.atk === "volley") { var cnt = f.threat === "weak" ? 1 : 3; for (var i = 0; i < cnt; i++) { var an = f.aim + (i - (cnt - 1) / 2) * 0.22; S.shots.push({ own: "e", x: f.x, y: f.y, vx: Math.cos(an) * 250, vy: Math.sin(an) * 250, r: 7, life: 2.2, dmg: T.atk * 0.85, col: attrCol(f.attr || "dark"), windEnd: wEnd, hit: {} }); } }
       }
@@ -515,7 +541,7 @@ export function BattleArena(p) {
     if (f.state === "recover") { f.t -= dt; if (f.t <= 0) f.state = "idle"; return; }
     if (f.side > 0) { f.side -= dt; f.x += f.svx * dt; f.y += f.svy * dt; pushOut(f); return; }
     f.dodgeCd = (f.dodgeCd || 0) - dt;
-    var hardD = THREAT_ORDER.indexOf(f.threat);
+    var hardD = Math.min(4, tierIdx(f.threat));
     if (f.dodgeCd <= 0 && hardD >= 1) {
       var inc = S.shots.filter(function (sh) { if (sh.own !== "p" || sh.kind === "wave") return false; var rx = f.x - sh.x, ry = f.y - sh.y, rd = Math.hypot(rx, ry); var sv = Math.hypot(sh.vx, sh.vy) || 1; return rd < 120 && (rx * sh.vx + ry * sh.vy) / (rd * sv) > 0.85; })[0];
       if (inc) { f.dodgeCd = 1.6; var fast = Math.hypot(inc.vx, inc.vy) > 560; if (S.R() < (0.18 + hardD * 0.1) * (fast ? 0.45 : 1)) { var sgn = S.R() < 0.5 ? -1 : 1, il = Math.hypot(inc.vx, inc.vy) || 1; f.side = 0.16; f.svx = -inc.vy / il * 330 * sgn; f.svy = inc.vx / il * 330 * sgn; say("Dodge", f.x, f.y - 28, "#c7cfdb"); return; } }
@@ -533,17 +559,18 @@ export function BattleArena(p) {
     f.x = nx; f.y = ny; pushOut(f);
     if (f.cd > 0) return;
     // choose attack (telegraphed so it can be read and dodged)
-    var hard = THREAT_ORDER.indexOf(f.threat);
+    var hard = Math.min(5, tierIdx(f.threat));
     if (f.kind === "caster" && f.manaPool > 0) {
       f.casts++; f.manaPool -= 12;
-      if (f.casts % 3 === 0) { S.zones.push({ own: "e", x: P.x, y: P.y, r: 46 + hard * 4, t: 0, wind: 0.95 - hard * 0.05, dmg: T.atk * 1.3, col: attrCol(f.attr || "fire"), born: S.time }); f.cd = T.cd + 0.4; }
+      if (f.casts % 3 === 0) { S.zones.push({ own: "e", x: P.x, y: P.y, r: 46 + hard * 4, t: 0, wind: 0.95 - hard * 0.05, dmg: T.atk * 1.3, col: attrCol(f.attr || "fire"), born: S.time }); if (hard >= 4) S.zones.push({ own: "e", x: cl(P.x + (P.mdx || 0) * 72, 10, AW - 10), y: cl(P.y + (P.mdy || 0) * 72, 10, AH - 10), r: 46 + hard * 4, t: 0, wind: 0.95 - hard * 0.05, dmg: T.atk * 1.3, col: attrCol(f.attr || "fire"), born: S.time, breaker: true }); f.cd = T.cd + 0.4; }
       else { f.state = "windup"; f.t = 0.45; f.atk = "volley"; f.aim = Math.atan2(dy, dx); f.cd = T.cd; }
       if (f.manaPool <= 0) say("Out of mana!", f.x, f.y - 30, "#9fc7e8");
       return;
     }
     if (f.kind === "beast" && d < 230 && d > 50) { f.state = "windup"; f.t = 0.55 - hard * 0.04; f.atk = "charge"; f.aim = Math.atan2(dy, dx); f.cd = T.cd + 0.3; return; }
-    if (d < 70) { f.state = "windup"; f.t = 0.62 - hard * 0.05; f.atk = "slam"; f.cd = T.cd; return; }
-    if (f.kind !== "caster" && d >= 90 && d < 190 && S.R() < 0.02 + hard * 0.01) { f.state = "windup"; f.t = 0.5 - hard * 0.04; f.atk = "lunge"; f.aim = Math.atan2(dy, dx); f.cd = T.cd + 0.5; }
+    if (hard >= 2 && d < 125 && S.R() < 0.26 + hard * 0.03) { S.zones.push({ own: "e", x: f.x, y: f.y, r: 82 + hard * 7, t: 0, wind: 0.8 - hard * 0.04, dmg: T.atk * 1.1, col: attrCol(f.attr || "blood"), born: S.time, breaker: hard >= 4 }); f.state = "recover"; f.t = 0.8; f.cd = T.cd + 0.25; if (hard >= 4 && f.sig) say(f.sig, f.x, f.y - 52, attrCol(f.attr || "blood"), true); return; }
+    if (d < 70) { f.state = "windup"; f.t = 0.62 - hard * 0.05; f.atk = "slam"; f.cd = T.cd; f.chain = hard >= 4 ? 2 : hard >= 3 ? 1 : 0; if (hard >= 4 && f.sig) say(f.sig, f.x, f.y - 52, attrCol(f.attr || "blood"), true); return; }
+    if (f.kind !== "caster" && d >= 90 && d < 190 && S.R() < 0.02 + hard * 0.012 + (hard >= 4 ? 0.04 : 0)) { f.state = "windup"; f.t = 0.5 - hard * 0.04; f.atk = "lunge"; f.aim = Math.atan2(dy, dx); f.cd = T.cd + 0.5; }
   }
   function allyAI(al, dt) {
     var S = g(); var t = nearestFoe(al.x, al.y); if (!t) return;
@@ -710,23 +737,25 @@ export function BattleArena(p) {
         <div className="bcb-vs">
           <div className="bcb-vs-side bcb-vs-you"><div className="bcb-vs-portrait" style={{ borderColor: S0.col }}>{p.portrait ? <img src={p.portrait} alt="" /> : <span>{initials(v.player_name || "You")}</span>}</div><strong>{s(v.player_name) || "You"}</strong><small>{S0.attr ? S0.attr + " magic" : "Untested magic"}</small></div>
           <div className="bcb-vs-mark">VS</div>
-          <div className="bcb-vs-side bcb-vs-foes">{foesList.map(function (f) { return <div key={f.key} className="bcb-vs-foe"><span className="bcb-vs-chip" style={{ borderColor: attrCol(f.attr || "blood") }}>{f.kind === "beast" ? "\u{1F43A}" : initials(f.name)}</span><div><strong>{f.name}</strong><small>{THREATS[f.threat].label + " · " + (f.kind === "caster" ? "Caster" : f.kind === "beast" ? "Beast" : "Brawler") + (f.attr ? " · " + f.attr : "")}</small></div></div>; })}</div>
+          <div className="bcb-vs-side bcb-vs-foes">{foesList.map(function (f) { return <div key={f.key} className="bcb-vs-foe"><span className="bcb-vs-chip" style={{ borderColor: attrCol(f.attr || "blood") }}>{f.kind === "beast" ? "\u{1F43A}" : initials(f.name)}</span><div><strong>{f.name}</strong><small>{THREATS[f.threat].label + (f.gap >= 3 ? " — far beyond you" : f.gap === 2 ? " — stronger than you" : "") + " · " + (f.kind === "caster" ? "Caster" : f.kind === "beast" ? "Beast" : "Brawler") + (f.attr ? " · " + f.attr : "")}</small></div></div>; })}</div>
         </div>
         {S0.moves.length ? <div className="bcb-spellread" aria-label="How your spells work here">{S0.moves.map(function (m) { return <div key={m.id}><span className="bcb-spellread-dot" style={{ background: m.st ? m.st.b : "#f3dda0", boxShadow: "0 0 8px " + (m.st ? m.st.glow : "#f3dda0") }} /><strong>{m.name}</strong><em>{m.label}</em></div>; })}</div> : null}
+        {foesList.some(function (f) { return f.unbeatable; }) ? <div className="bcb-warn" role="alert"><strong>{foesList.filter(function (f) { return f.unbeatable; }).map(function (f) { return f.name; }).join(", ")} is far beyond you.</strong> You cannot win this fight here. Survive about 45 seconds, or run, and let the story decide what happens next.</div> : null}
         <div className="bcb-howto">
           <div><b>Move</b> left stick / WASD</div><div><b>Dodge-roll</b> → invulnerable for a moment. Roll through an attack as it lands for a <i>Perfect Dodge</i>.</div>
           <div><b>Red zones</b> are attacks winding up — get out, or hit the foe first to <i>Interrupt</i>.</div><div><b>Spells</b> cost your real mana. <b>Tap</b> a spell to cast at the nearest foe, or <b>drag from it</b> to aim. Fill <b>Focus</b> for a Full-output cast.</div>
           {mode === "combat" ? <div><b>Escape</b> by standing in the green gate for 2 seconds with no one on you.</div> : <div>Sparring ends when either of you takes a clean beating. No AI turn is used.</div>}
         </div>
         <div className="bcb-intro-btns">
-          <button type="button" className="bcb-big" onClick={function () { setPhase("fight"); }}>{mode === "spar" ? "Begin sparring" : "Fight!"}</button>
+          <button type="button" className="bcb-big" onClick={function () { setPhase("fight"); }}>{mode === "spar" ? "Begin sparring" : foesList.some(function (f) { return f.unbeatable; }) ? "Fight anyway" : "Fight!"}</button>
+          {foesList.some(function (f) { return f.unbeatable; }) ? <button type="button" className="bcb-ghost" onClick={function () { g().log.push("You ran before it began"); finish("fled"); }}>Run</button> : null}
           <button type="button" className="bcb-ghost" onClick={p.onCancel}>{mode === "spar" ? "Not now" : "Let the story decide instead"}</button>
         </div>
       </div>
     );
   }
   if (phase === "result" && result) {
-    var R2 = result; var title = { victory: "Victory", defeat: "Defeated", fled: "Escaped", yielded: mode === "spar" ? "You yield" : "Surrendered" }[R2.outcome];
+    var R2 = result; var title = { victory: "Victory", defeat: "Defeated", fled: "Escaped", yielded: mode === "spar" ? "You yield" : "Surrendered", endured: "You held out" }[R2.outcome];
     return (
       <div className="bcb-root bcb-result" role="dialog" aria-label="Battle result">
         <div className={"bcb-res-title bcb-res-" + R2.outcome}>{title}</div>
@@ -862,7 +891,7 @@ export var BATTLE_CSS = [
   ".bcb-spell.aiming{outline:2px solid #f3dda0;transform:scale(1.04)}",
   ".bcb-intro-btns{display:flex;flex-direction:column;gap:8px;width:100%;max-width:360px}",
   ".bcb-res-title{font:800 30px Cinzel,Georgia,serif;letter-spacing:.08em}",
-  ".bcb-res-victory{color:#f3dda0}.bcb-res-defeat{color:#e05a4b}.bcb-res-fled{color:#5fe0b4}.bcb-res-yielded{color:#c4c8cf}",
+  ".bcb-res-victory{color:#f3dda0}.bcb-res-defeat{color:#e05a4b}.bcb-res-fled{color:#5fe0b4}.bcb-res-yielded{color:#c4c8cf}.bcb-res-endured{color:#9fc7e8}.bcb-warn{margin:8px auto;max-width:420px;padding:9px 12px;border:1px solid rgba(224,90,75,.7);border-radius:10px;background:rgba(80,12,12,.55);color:#ffd9d4;font-size:13px;line-height:1.35;text-align:left}",
   ".bcb-grade{width:84px;height:84px;border-radius:42px;border:3px solid #f3dda0;display:flex;align-items:center;justify-content:center;font:900 44px Cinzel,Georgia,serif;color:#f3dda0;box-shadow:0 0 24px rgba(243,221,160,.4);animation:bcbPop .5s ease-out}",
   ".bcb-res-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;max-width:420px}",
   ".bcb-res-grid div{padding:6px;border:1px solid rgba(214,174,92,.4);border-radius:7px;background:rgba(10,18,30,.8);text-align:center}",
