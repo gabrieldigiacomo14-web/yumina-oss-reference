@@ -9,6 +9,7 @@ function Game(p) {
   useSpellEventWatcher(api);
   useHousekeeping(api);
   useAiLabeler(api);
+  useSquadRoster(api);
   var vs = React.useState("home"); var view = vs[0], setView = vs[1];
   var hs = React.useState([]); var hist = hs[0], setHist = hs[1];
   var prs = React.useState(null); var preset = prs[0], setPreset = prs[1];
@@ -40,7 +41,7 @@ function Game(p) {
     var inner = null;
     if (base === "grimoire") inner = <GrimoireView api={api} art={art} goTrain={goTrain} toStory={toStory} goBound={function () { go("bound"); }} />;
     else if (base === "character") inner = <CharacterView api={api} portrait={art.portrait} setPortrait={art.setPortrait} hasStore={art.hasStore} mediaError={art.mediaError} />;
-    else if (base === "crown") inner = <CrownView api={api} />;
+    else if (base === "crown") inner = <CrownView api={api} toStory={toStory} />;
     else if (base === "pack") inner = <PackView api={api} toStory={toStory} focus={packFocus} setFocus={setPackFocus} />;
     else if (base === "map") inner = <MapView api={api} toStory={toStory} />;
     else if (base === "people") inner = <PeopleView api={api} art={art} />;

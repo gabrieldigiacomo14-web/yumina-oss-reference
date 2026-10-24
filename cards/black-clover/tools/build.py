@@ -247,6 +247,7 @@ V['known_locations']['behaviorRules'] += (" If exact coordinates are unknown, gi
 combat['content'] += ("\nARENA: the player may settle a fight in the interface's battle arena instead of turn-by-turn. A [UI:BATTLE] message then reports the outcome; "
     "its results are already applied.")
 uiap = E['ui-action-protocol']
+uiap['content'] += (" [UI:SQUAD] → file one squad_events join per squadmate the character knows (as the message asks); narrate briefly or not at all.")
 uiap['content'] += (" [UI:BATTLE] outcome · foes · duration · damage → the fight was played out in the battle arena and the interface has ALREADY applied vitality, stamina, fatigue, mana, "
     "mana_reserve, conditions, in_combat, combat and world_time — do not write those or spell_events for it. Narrate the decisive moments and aftermath consistent with the report "
     "(who fell, fled or yielded), then update relationships, world_truth, loot, missions and everything else as usual.")
@@ -259,6 +260,15 @@ w['variables'].append({"id": "ai_labels", "name": "AI labels", "type": "json", "
 V['player_x']['behaviorRules'] = "Km east of the Royal Capital. Set with player_y whenever the character relocates in the narration (the interface also sets them on a completed UI:TRAVEL). Use the gazetteer or the place's known_locations coordinates."
 V['player_y']['behaviorRules'] = "Km north of the Royal Capital; see player_x."
 E['kingdom-spade']['content'] += (" GEOGRAPHY: Spade is a land of ice and mountains. The Strong Magic Region, a wide band of Grand Magic Zones full of violent, dense mana, lies in the neutral land between Spade and the other kingdoms; crossing it takes very strong mana, and Spade's armies cross in a mobile fortress fed by the mana of captured citizens [C].")
+# squad roster (interface-owned; the narrator files events, as in the Barbarian card's party system)
+w['variables'].append({"id": "squad_roster", "name": "Squad roster", "type": "json", "category": "custom", "aiAccess": "none", "defaultValue": {},
+    "description": "Squadmates per squad: role, rank, magic, condition, last known place, when they joined (interface-owned, not sent to the AI)."})
+w['variables'].append({"id": "squad_summary", "name": "squad_summary", "type": "string", "category": "custom", "aiAccess": "read", "defaultValue": "",
+    "description": "Interface-kept line: which squadmates are with the character, where the others were last known to be, who joined recently.",
+    "behaviorRules": "Truth about the character's squadmates as far as the record goes. Squadmates have their own duties and are only present when this line or the scene says so."})
+w['variables'].append({"id": "squad_events", "name": "squad_events", "type": "json", "category": "custom", "defaultValue": [],
+    "description": "Queue the interface applies to the squad roster, then clears.",
+    "behaviorRules": "Push one {type,name,...} per real change to someone in the character's squad: join (a member the character meets or who joins; role,rank,magic; joined:\"before\" if already a member), update (location, condition, mission, notes), seen, leave, death. with:true/false when they join or part from the character in the scene. Never rewrite squad_summary."})
 V['last_train_report']['behaviorRules'] = "When a training block resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual training time this reply). The interface then applies stamina, mana, fatigue and the clock — don't write those. Otherwise leave \"\"."
 V['last_travel_report']['behaviorRules'] = "When a travel leg resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual travel time this reply). The interface then applies stamina, mana, fatigue and the clock; you still write current_location, known_locations, food and money. Otherwise leave \"\"."
 
@@ -310,9 +320,9 @@ w['settings'].update({
 for v in w['variables']:
     if v.get('aiAccess') != 'none' and (v.get('behaviorRules') or v.get('updateHints')):
         v['name'] = v['id']
-w["version"] = "21.11.4"
+w["version"] = "21.12.0"
 w['description'] = d['description'] + \
-    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
+    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.12: squad roster (names, whereabouts, condition, recent joins). v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
 
 # ---------------------------------------------------------------- 7. interface files
 files = w['rootComponent']['files']

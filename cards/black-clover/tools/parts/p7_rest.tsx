@@ -195,7 +195,7 @@ function CrownView(p) {
   var v = p.api.variables || {}; var rep = obj(v.reputation); var keys = Object.keys(rep);
   return (
     <div>
-      <SquadView api={p.api} />
+      <SquadView api={p.api} toStory={p.toStory} />
       <BattleRecord v={v} />
       <SectionHead icon="crown" iconSize={24} title="Standing" sub="How communities and institutions see you." />
       {keys.length ? <Frame pad="4px 14px 8px">{keys.map(function (k) { var r = rep[k]; return <Row key={k} k={k} v={typeof r === "object" && r ? [str(r.band), str(r.note)].filter(Boolean).join(" — ") : str(r)} />; })}</Frame> : <Empty>No one outside your home has formed an opinion of you yet.</Empty>}

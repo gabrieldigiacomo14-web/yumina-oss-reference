@@ -1,6 +1,31 @@
-# Black Clover: A Mage's Tale — v21.11.4
+# Black Clover: A Mage's Tale — v21.12
 
-Import `Black_Clover_A_Mages_Tale_v21.11.4.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.12.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.12 — squad roster
+
+A player asked to see their squadmates: who they are, where they are right now, how they're doing, and who joined recently. Modelled on the party system of *Surviving the Game as a Barbarian*, adapted so squadmates have their own duties instead of travelling with the character.
+
+**How it works (`parts/p12_squad.tsx`):**
+- **The AI files events.** When the story meets or changes a squadmate, the AI files a short entry in `squad_events`:
+  - `join`: a new member, or one already in the squad when the character arrived (`joined: "before"`)
+  - `update`: location, condition, mission or notes
+  - `seen`, `leave` and `death`
+- **The interface keeps the roster.** It applies the events to `squad_roster`, which the AI never sees. It records each squadmate's role, rank, magic, condition and health, last known place (and how long ago), mission, join date and a short history. Then it clears the queue.
+- **The AI gets one line.** `squad_summary` (read-only) gives who is with you, where the others were last known to be, and who joined recently.
+- **Not always with you:**
+  - **In your party:** a squadmate is "with you" while they're in your `party` (their condition is copied from it), or while a `with: true` event says so and you haven't moved on.
+  - **Leaving without them:** they stay where you left them.
+  - **When they leave your party:** the roster remembers where you parted.
+
+**On the Renown & Rank page:** a **Squadmates** panel with filters (All · With you · Elsewhere · Joined recently).
+- **The cards:** each squadmate shows a condition badge and health bar, and where they are ("With you", "On a mission: …", "Black Bulls Hideout · as of yesterday", "Whereabouts unknown"). New members (joined within 30 in-world days) get a NEW badge.
+- **Tap a card** for the join date, notes, recent history, and **Go find them** / **Ask after them** / **Talk**.
+- **Empty squad:** **Fill in my squad's roster** asks the AI once (`[UI:SQUAD]`) to list the members the character knows, as the era allows.
+
+**Also fixed:** a location line like "Black Bulls Hideout — Clover Kingdom (Common Realm)" made the corner banner read "Common Realm Kingdom". The kingdom and realm are now read from the right parts.
+
+**Cost:** about 190 tokens per turn (the squad rules and the one-line summary).
 
 ## v21.11.4 — realm circles
 

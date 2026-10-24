@@ -83,7 +83,7 @@ a = s.index('  return <div>\n    <Eyebrow k="CLOVER KINGDOM', bv); b = s.index('
 s = s[:a] + P('p6_bank_return.tsx') + s[b:]
 # remaining parts before App
 app = s.index('\nexport default function App(')
-s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + s[app:]
+s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + s[app:]
 # css
 # the original 430px media rule never closed its block, swallowing every later rule on wider screens
 s = s.replace('scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}",', 'scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}}",', 1)
@@ -101,6 +101,13 @@ def label(old, new, n=1):
     s = s.replace(old, new)
 for old, new in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'distinct_labels.json'), encoding='utf-8')):
     label(old, new)
+# location lines like "Black Bulls Hideout — Clover Kingdom (Common Realm)": the kingdom is the middle part and the brackets hold the realm
+label('function splitKR(s, out) { var kr = str(s).split(","); out.kingdom = (kr[0] || "").trim(); out.region = kr.slice(1).join(",").trim(); }',
+      'function splitKR(s, out) { var kr = str(s).split(",").map(function (x) { return x.trim(); }); if (kr.length === 1 && /realm$/i.test(kr[0])) { out.kingdom = ""; out.region = kr[0]; } else { out.kingdom = kr[0] || ""; out.region = kr.slice(1).join(", "); } if (!out.kingdom && /noble realm|common realm|forsaken realm/i.test(out.region)) out.kingdom = "Clover"; }')
+label('  if (m) { out.place = m[1]; out.settlement = m[2]; splitKR(m[3], out); return out; }',
+      '  if (m) { out.place = m[1]; out.settlement = m[2]; splitKR(m[3], out); if (/^(clover|diamond|heart|spade)( kingdom)?$/i.test(out.settlement.trim())) { out.kingdom = out.settlement.trim().replace(/ kingdom$/i, ""); out.settlement = out.place; out.place = ""; } return out; }')
+# squad roster on the Renown page, and "With you now" names who it is
+label('      <H>Organizations</H>\n      {aff.length ?', '      {inSquad ? <SquadRoster api={p.api} toStory={p.toStory} /> : null}\n      <H>Organizations</H>\n      {aff.length ?')
 label('  var api = useYumina();\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">', '  var api = useYumina();\n  if (api && typeof api.resolveAssetUrl === "function") ART_RESOLVE = function (ref) { return api.resolveAssetUrl(ref); };\n  var aiLabels0 = obj(obj(api && api.variables).ai_labels); bcSetLabels(obj(aiLabels0.items)); setSpellLabels(obj(aiLabels0.spells));\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">')
 open(sys.argv[2], 'w').write(s)
 print('ok', len(s))
