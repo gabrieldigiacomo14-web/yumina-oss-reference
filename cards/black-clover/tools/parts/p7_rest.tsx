@@ -22,8 +22,10 @@ function MapView(p) {
     setTimeout(function () { if (travelRef.current && travelRef.current.scrollIntoView) { try { travelRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} } }, 30);
   }
   var dest = tr.dest && tr.dest !== "Somewhere else" ? tr.dest : tr.other.trim();
-  var here = { x: num(v.player_x, 0), y: num(v.player_y, 0) };
-  var destCoords = dest ? findCoords(dest, locs) : null;
+  var mapPlaces = layoutPlaces(v);
+  var here = playerXY(v, mapPlaces);
+  var destPlace = dest ? mapPlaces.filter(function (q) { return q.name === dest; })[0] : null;
+  var destCoords = destPlace ? { x: destPlace.x, y: destPlace.y } : (dest ? findCoords(dest, locs) : null);
   var km = destCoords ? Math.round(distanceKm(here, destCoords)) : null;
   var eta = km !== null ? travelEta(km, tr.mode, tr.pace) : null;
   var destLoc = null; locs.forEach(function (l) { if (str(l.name) === tr.dest) destLoc = l; });

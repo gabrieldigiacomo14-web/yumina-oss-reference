@@ -1,6 +1,31 @@
-# Black Clover: A Mage's Tale — v21.10.1
+# Black Clover: A Mage's Tale — v21.11
 
-Import `Black_Clover_A_Mages_Tale_v21.10.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.11.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.11 — a bigger map, built the way the Universal World Engine builds one
+
+**What a player reported:** a Clover village (Hage) drew inside the Heart Kingdom, and the green "you" dot said they were in Hage when they were at the Black Bulls headquarters.
+
+**Why:** the old map painted the kingdoms from fixed circles, so wherever the AI happened to record a place decided which kingdom it landed in. The "you" dot used only a simple text match on the location line, and fell back to a saved coordinate (the starting village) when nothing matched.
+
+**New map generator (`bc-cartography.js`)**, modelled on the Universal World Engine map (`src/cartography`):
+- **Land cells:** the world is about 1,300 irregular land and sea cells (Voronoi) with elevation, moisture and temperature. Those give 12 biomes: grassland, forest, spruce forest, hills, mountains, snow, tundra, fen, steppe, wasteland, coast and sea.
+- **Detail at any zoom:** the terrain is redrawn for the current view with finer noise as you zoom in, and the edges between biomes are blended.
+- **Rivers and roads:** nine rivers run downhill to the sea. Roads between the places you know follow the easiest ground (a minimum spanning tree of the known places, found by path-finding).
+- **Kingdoms:** each kingdom is flooded outward from its capital, with rivers and mountains slowing it. Canon constraints: every canon place is dry land inside its kingdom, and the Noble, Common and Forsaken Realm bands stay centred on the Royal Capital.
+- **Kingdom shapes:** places the story pins to a kingdom (a known place with `"kingdom":"Clover"` and coordinates) become seeds for that kingdom's land, so a Clover village is always drawn inside Clover.
+- **Canon wins:** a canon place saved far from its canon position is drawn where canon puts it.
+- **Fog:** only places you have seen are drawn clearly. Cells around the places you know, your trail and the Royal Capital's heartland are clear; the rest is shaded.
+- **Same settings shape as UWE:** `width`, `height`, `kmPerUnit`, `cells`, `seaLevel`, biomes. When UWE's map gets updates, re-port them into this one file.
+
+**The map's size:** the world frame grew from 500 × 350 km to 620 × 420 km, with room for the full Spade Kingdom. The map box is about 400–680px tall (it was 300px), and zooms from the whole world out to about 100 m a pixel. The default Realms toggle became a **Layers** menu (realms and borders, unexplored shading, mountains and trees, roads).
+
+**Where you are:**
+- The "you" dot now follows the place named in your current location. It matches any part of the line ("Room 5, Black Bulls Headquarters" finds "Black Bulls Headquarters"), and ignores generic words like room and village.
+- When no place matches, it uses the kingdom and realm in the line, drawn as an approximate spot with a dashed halo and a note.
+- **I'm here:** tap the map, then choose "I'm here (place name)". The card saves that place's coordinates, marks it visited and updates `player_x` / `player_y`, which fixes the position permanently.
+- The travel planner measures distance from the same resolved spot.
+- The AI's `player_x` / `player_y` rules now say to set them whenever the character relocates in the story.
 
 ## v21.10.1 — kingdom banner text
 
