@@ -11,7 +11,7 @@
  * Pure functions, deterministic, no DOM and no AI. Coordinates are km from the
  * Royal Capital (+x east, +y north). */
 
-export var FRAME = { X0: -330, X1: 290, Y0: -90, Y1: 330 };
+export var FRAME = { X0: -330, X1: 290, Y0: -125, Y1: 330 };
 export var GEN = { kmPerUnit: 0.5, spacingKm: 14, seaLevel: 0.32, seed: "black-clover-v1" };
 var W = FRAME.X1 - FRAME.X0, H = FRAME.Y1 - FRAME.Y0;
 export var UW = Math.round(W / GEN.kmPerUnit), UH = Math.round(H / GEN.kmPerUnit); // map units
@@ -23,7 +23,7 @@ export var KINGDOMS = [
   { k: "Spade", at: [0, 212], r: 112, label: "Spade Kingdom", capital: [0, 212] }
 ];
 export var KINGDOM_TINT = { Clover: "#6fa05a", Diamond: "#c89a5a", Heart: "#3f9e72", Spade: "#9aa6c0" };
-var EXTRA_LAND = [[66, 70, 44], [-88, 48, 52], [0, 112, 66], [-120, 140, 62], [104, 142, 52], [48, 58, 22], [150, -10, 34], [-190, -20, 30], [-70, 90, 40], [80, 110, 40]];
+var EXTRA_LAND = [[0, -18, 54], [-46, -14, 40], [66, 70, 44], [-88, 48, 52], [0, 112, 66], [-120, 140, 62], [104, 142, 52], [48, 58, 22], [150, -10, 34], [-190, -20, 30], [-70, 90, 40], [80, 110, 40]];
 // canon places and the kingdom they belong to (km from the Royal Capital)
 export var GAZ = {
   "royal capital": [0, 0], "clover castle": [0, 0], "castle town": [0, 2], "kikka": [2, 12], "nean": [-8, 26], "hecairo": [6, 28], "hage": [-2, 52],
@@ -132,8 +132,11 @@ function landField(x, y) {
   KINGDOMS.forEach(function (K) { var dx = (x - K.at[0]) / K.r, dy = (y - K.at[1]) / (K.r * 0.92); f += Math.exp(-(dx * dx + dy * dy) * 1.25); });
   EXTRA_LAND.forEach(function (e) { var dx = (x - e[0]) / e[2], dy = (y - e[1]) / e[2]; f += 0.8 * Math.exp(-(dx * dx + dy * dy) * 1.3); });
   f += (NOISE.shape.fbm(x / 40, y / 40, 4) - 0.5) * 0.6;
-  var coast = -12 + 7 * Math.sin(x / 33) + 5 * Math.sin(x / 13 + 1.7); // the southern sea: Raquey and the First Dungeon sit on it
+  // The Royal Capital is the middle of Clover, so the open sea is far to the south. The coast is reached at two bays: Raquey's (with the
+  // Seabed Temple offshore and a Grand Magic Zone) and the First Dungeon's east of Kiten.
+  var coast = -74 + 6 * Math.sin(x / 33) + 4 * Math.sin(x / 13 + 1.7);
   if (y < coast) f -= (coast - y) / 9;
+  [[28, -38, 19, 26, 4.2], [90, -12, 19, 18, 3.4]].forEach(function (b) { var dx = (x - b[0]) / b[2], dy = (y - b[1]) / b[3]; f -= b[4] * Math.exp(-(dx * dx + dy * dy) * 1.6); });
   if (y > 300) f -= (y - 300) / 10;
   return f;
 }

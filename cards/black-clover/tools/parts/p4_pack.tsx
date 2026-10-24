@@ -188,7 +188,13 @@ function PackView(p) {
             {BC_SLOTS.filter(function (pair) { return EQUIP_ALWAYS[pair[0]] || inv.some(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; }); }).map(function (pair) {
               var eq = inv.find(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; });
               var val = eq ? str(eq.name) : '—';
-              if (pair[0] === 'grimoire' && !eq) { var held = inv.find(function (x) { return x.placement && x.placement.kind === 'container' && bcSpec(x).tags.indexOf('grimoire') >= 0; }); var bag = held && inv.find(function (x) { return x.id === held.placement.containerId; }); val = held ? str(held.name) + ' · in ' + str(bag ? bag.name : 'its holder') : isTrue(v.has_grimoire) ? 'Floats at your side' : 'Not yet received'; }
+              if (pair[0] === 'grimoire' && !eq) {
+                var gi = inv.find(function (x) { return bcSpec(x).tags.indexOf('grimoire') >= 0; }), gp = gi && gi.placement ? gi.placement : null;
+                if (gp && gp.kind === 'container') { var bag = inv.find(function (x) { return x.id === gp.containerId; }); val = str(gi.name) + ' \u00b7 in ' + str(bag ? bag.name : 'its holder'); }
+                else if (gp && gp.kind === 'world') val = 'Left ' + (gp.area === 'ground' ? 'on the ground' : gp.area === 'home' ? 'at home' : gp.area === 'storage' ? 'in storage' : 'behind') + (gp.location ? ' \u00b7 ' + str(gp.location) : '') + ' \u2014 not with you';
+                else if (gp && gp.kind === 'loose') val = 'In your hands';
+                else val = isTrue(v.has_grimoire) ? 'Floats at your side' : 'Not yet received';
+              }
               return <Row key={pair[0]} k={pair[1]} v={val} />;
             })}
             <div className="bc-note">{'"Full outfit" is one-piece clothing (a dress, a uniform, "everyday clothes") worn instead of a separate shirt and trousers. A squad robe or cloak goes over your clothes in "Cloak / Squad robe".'}</div>

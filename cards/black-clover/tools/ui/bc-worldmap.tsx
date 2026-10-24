@@ -361,7 +361,7 @@ export function WorldMap(p) {
               {view.z > 0.9 ? <text x={sx(0)} y={sy(0) - REALM_BOUNDS.common * kmPx - 4} className="bcwm-ringlabel">Common Realm</text> : null}
               {view.z > 0.7 ? <text x={sx(-14)} y={sy(0) - (REALM_BOUNDS.common + 22) * kmPx} className="bcwm-ringlabel">Forsaken Realm</text> : null}
               {kLabels.map(function (K) { return <text key={K.k} x={sx(K.x)} y={sy(K.y + (K.k === "Clover" ? 40 : 0))} className="bcwm-klabel" style={{ fontSize: Math.max(11, Math.min(22, 9 + view.z * 3)) + "px", opacity: view.z > 3.5 ? 0.45 : 0.85 }}>{K.label}</text>; })}
-              <text x={sx(20)} y={sy(-46)} className="bcwm-sea">Southern Sea</text>
+              <text x={sx(10)} y={sy(-104)} className="bcwm-sea">Southern Sea</text>
             </g>
           ) : null}
           {lay.canon ? CANON_AREAS.map(function (ar) {

@@ -1,6 +1,18 @@
-# Black Clover: A Mage's Tale — v21.11.1
+# Black Clover: A Mage's Tale — v21.11.2
 
-Import `Black_Clover_A_Mages_Tale_v21.11.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.11.2.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.11.2 — the capital is in the middle of Clover; the grimoire row tells the truth
+
+**Royal Capital position:** it sat close to the south coast. The sea now begins about 70 km south of the capital, and Clover spreads about 70 km south, 130 north and 120 west of it. The coordinates did not change (the capital is still 0,0 and every canon place keeps its gazetteer position), so saved games stay valid. The sea comes in only at two bays: Raquey's (with the Seabed Temple offshore and a Grand Magic Zone) and the coast east of Kiten at the First Dungeon. The "Southern Sea" label moved south, and the map frame grew to 620 × 455 km.
+
+**Grimoire on the equipment list:** it said "Floats at your side" even when the character had put the grimoire on a desk. The row now follows the grimoire's inventory record:
+- in a holster: "in Sword & Grimoire Belt Holster"
+- in hand: "In your hands"
+- set down or left: "Left on the ground · the desk in Room 5 — not with you"
+- no record: "Floats at your side"
+
+The AI rule now says: when the character sets the grimoire down or leaves it, record its exact spot as a world placement. It floats at the owner's side unless a record says otherwise, and it stops responding when far from its owner.
 
 ## v21.11.1 — canon lore areas are always on the map
 
