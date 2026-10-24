@@ -1,6 +1,11 @@
   var eds = React.useState(null); var editing = eds[0], setEditing = eds[1];
   var ms0 = arr(api.messages); var lastAi = null;
   for (var mi = ms0.length - 1; mi >= 0; mi--) { if (ms0[mi] && ms0[mi].role === "assistant" && ms0[mi].status !== "failed") { lastAi = ms0[mi]; break; } }
+  // a gear note belongs to the moment it happened: it goes with the next message, or after 12 seconds
+  var gearNotes = arr(v.equipment_activity).filter(function (e) { return e && e.msgs === ms0.length; }).slice(-2);
+  var gearLast = gearNotes.length ? str(gearNotes[gearNotes.length - 1].id) : "";
+  var gnh = React.useState(""); var gearHidden = gnh[0], setGearHidden = gnh[1];
+  React.useEffect(function () { if (!gearLast) return; var t = setTimeout(function () { setGearHidden(gearLast); }, 12000); return function () { clearTimeout(t); }; }, [gearLast]);
   function toast(m, t) { if (typeof api.showToast === "function") api.showToast(m, t || "info"); }
   function copyLast() {
     var t = cleanPassage(proseOf(lastAi && lastAi.content)); if (!t) return;
@@ -128,9 +133,9 @@
           <Chat className="bc-story-native-chat" renderBubble={StoryBubble} />
         </StoryArtContext.Provider>
       </div>
-      {!reading && arr(v.equipment_activity).length ? (
-        <div role="status" className="bc-equipnote">
-          {arr(v.equipment_activity).slice(-2).map(function (e) { return <div key={e.id}>{str(e.text)}</div>; })}
+      {!reading && gearNotes.length && gearHidden !== gearLast ? (
+        <div role="status" className="bc-equipnote" onClick={function () { setGearHidden(gearLast); }} title="Tap to dismiss">
+          {gearNotes.map(function (e) { return <div key={e.id}>{str(e.text)}</div>; })}
         </div>
       ) : null}
       {sheet ? (

@@ -1,6 +1,27 @@
-# Black Clover: A Mage's Tale — v21.12
+# Black Clover: A Mage's Tale — v21.13
 
-Import `Black_Clover_A_Mages_Tale_v21.12.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.13.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.13 — the inventory follows the story
+
+Fixes for four bugs a tester reported.
+
+**1. "Taking off my shirt" in the story left it worn in the Satchel.** The narrator is told to move items itself, but it often only narrates the move. `parts/p13_invsync.tsx` now syncs the inventory from the story after each reply:
+- **When it checks:** only when the player's message or the reply has a moving verb (take off, put on, set down, pick up, draw, stow, float…) within about 70 characters of one of the character's own things. Most turns make no call.
+- **The check:** a short classifier call (`ai.complete`, no history or lore, at most 140 tokens out) that reads only that turn and the numbered list of belongings.
+- **Applying the moves:** wear, remove, hold, stow, leave (with the spot, e.g. "on the desk") and float (grimoire). They use the same rules as the Satchel buttons: a taken-off shirt goes into a free compartment, or your hands if no compartment is free.
+- **After the move:** a short note under the story says what changed. `inv_sync` (hidden) remembers which reply was checked, so it never runs twice.
+
+**2. The grimoire went "backwards"** (floating when set on the desk, then on the desk after being picked up). This was the same missing sync. Setting it down records the spot ("Left on the desk · Mira's Bakery"). Picking it up and letting it float puts it back in the grimoire slot, and the Grimoire row now reads "Grimoire · floats at your side". Older saves that stored "on the desk" as the location can still be picked up.
+
+**3. The "You undo the fastenings and take off…" note never went away.** Gear notes now belong to the moment they happened. They disappear with the next message, after 12 seconds, or when tapped.
+
+**4. Regenerate didn't rewind stamina/inventory.**
+- **What Yumina rewinds:** regenerate restores the state from before the reply. That includes every interface change made after it, such as spell costs and the new story sync.
+- **Travel and training (fixed):** their pending choices were kept in browser storage and deleted once used. A regenerated travel or training reply then fell back to the defaults (on foot, moderate), so stamina dropped again by a different amount. They now live in a hidden variable, `bc_pending`, which rewinds with the turn.
+- **What stays (by design):** a change you made yourself with a button before sending, such as Rest, a Satchel button or a finished arena fight. Regenerate only re-rolls the narrator's reply to that action, not the action itself.
+
+Per-turn prompt cost is unchanged (early 18,501, late 22,498 tokens). The two new variables are hidden from the narrator.
 
 ## v21.12 — squad roster
 

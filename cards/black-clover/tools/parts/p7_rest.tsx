@@ -92,7 +92,7 @@ function MapView(p) {
                 (km !== null ? "; estimated_distance_km=" + km : "") +
                 ". Resolve this leg as usual — interruptions, encounters, arrival. Among your own directives (current_location, known_locations, food, money), set last_travel_report to exactly \"hours=<number>;interrupted=<true or false>\" for the ACTUAL travel time this reply covers. The interface applies stamina, mana, fatigue, time and position from that value — do not write those yourself for this leg.";
               var visible = "I set out for " + dest + ", travelling " + tr.mode.toLowerCase() + " at a " + tr.pace.toLowerCase() + " pace.";
-              if (api.storage) api.storage.set("bc_pending_travel", JSON.stringify({ mode: tr.mode, pace: tr.pace, dest: dest }));
+              canWrite(api) && api.setVariable("bc_pending", Object.assign({}, obj(v.bc_pending), { travel: { mode: tr.mode, pace: tr.pace, dest: dest } }));
               tellGM(api, hidden, visible);
               p.toStory();
             }}><Icon n="clover" s={18} fill="#2a1d0c" />Travel<Icon n="chevr" s={14} fill="#2a1d0c" /></button>

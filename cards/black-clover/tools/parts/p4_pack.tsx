@@ -60,7 +60,7 @@ function PackView(p) {
     var line = bcEventText(kind, it, normalized, appearance);
     appearance.lastChangedId = nextId;
     var event = { id: nextId, kind: kind, itemId: it && it.id, item: it && it.name, text: line, location: str(v.current_location), at: str(v.world_time),
-      appearance: appearance.coverage, meaningful: kind === 'equip' || kind === 'remove' || kind === 'drop', observed: false };
+      msgs: arr(api.messages).length, appearance: appearance.coverage, meaningful: kind === 'equip' || kind === 'remove' || kind === 'drop', observed: false };
     var patch = Object.assign({ inventory: normalized, carry_state: bcCarryProfile(normalized, obj(v.body_profile), bcWalletProfile(v.money).weightKg),
       appearance_state: appearance, equipment_activity: existing.concat([event]).slice(-6), equipment_event_seq: num(v.equipment_event_seq, 0) + 1 }, bcClockForInventory(v, minutes == null ? 1 : minutes));
     try {
@@ -187,7 +187,7 @@ function PackView(p) {
             <H size={15} m="12px 0 4px">Equipment slots</H>
             {BC_SLOTS.filter(function (pair) { return EQUIP_ALWAYS[pair[0]] || inv.some(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; }); }).map(function (pair) {
               var eq = inv.find(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; });
-              var val = eq ? str(eq.name) : '—';
+              var val = eq ? str(eq.name) + (pair[0] === 'grimoire' ? ' \u00b7 floats at your side' : '') : '—';
               if (pair[0] === 'grimoire' && !eq) {
                 var gi = inv.find(function (x) { return bcSpec(x).tags.indexOf('grimoire') >= 0; }), gp = gi && gi.placement ? gi.placement : null;
                 if (gp && gp.kind === 'container') { var bag = inv.find(function (x) { return x.id === gp.containerId; }); val = str(gi.name) + ' \u00b7 in ' + str(bag ? bag.name : 'its holder'); }
