@@ -357,10 +357,11 @@ export function WorldMap(p) {
           })}
           {lay.realms ? (
             <g>
-              {[["Noble Realm", REALM_BOUNDS.noble], ["Common Realm", REALM_BOUNDS.common]].map(function (r) { return <circle key={r[0]} cx={sx(0)} cy={sy(0)} r={r[1] * kmPx} className="bcwm-ring" />; })}
-              {view.z > 1.4 ? <text x={sx(0)} y={sy(0) - REALM_BOUNDS.noble * kmPx - 4} className="bcwm-ringlabel">Noble Realm</text> : null}
-              {view.z > 0.9 ? <text x={sx(0)} y={sy(0) - REALM_BOUNDS.common * kmPx - 4} className="bcwm-ringlabel">Common Realm</text> : null}
-              {view.z > 0.7 ? <text x={sx(-14)} y={sy(0) - (REALM_BOUNDS.common + 22) * kmPx} className="bcwm-ringlabel">Forsaken Realm</text> : null}
+              <circle cx={sx(0)} cy={sy(0)} r={REALM_BOUNDS.noble * kmPx} className="bcwm-noble" />
+              {[["Common Realm", REALM_BOUNDS.common], ["Forsaken Realm", REALM_BOUNDS.forsaken]].map(function (r) { return <circle key={r[0]} cx={sx(0)} cy={sy(0)} r={r[1] * kmPx} className="bcwm-ring" />; })}
+              {view.z > 1.8 ? <text x={sx(0)} y={sy(0) + REALM_BOUNDS.noble * kmPx + 12} className="bcwm-ringlabel">Noble Realm</text> : null}
+              {view.z > 0.7 ? <text x={sx(0)} y={sy(0) - REALM_BOUNDS.common * kmPx - 4} className="bcwm-ringlabel">Common Realm</text> : null}
+              {view.z > 0.45 ? <text x={sx(0)} y={sy(0) - REALM_BOUNDS.forsaken * kmPx - 4} className="bcwm-ringlabel">Forsaken Realm</text> : null}
               {kLabels.map(function (K) { return <text key={K.k} x={sx(K.x)} y={sy(K.y + (K.k === "Clover" ? 40 : 0))} className="bcwm-klabel" style={{ fontSize: Math.max(11, Math.min(22, 9 + view.z * 3)) + "px", opacity: view.z > 3.5 ? 0.45 : 0.85 }}>{K.label}</text>; })}
               <text x={sx(10)} y={sy(-104)} className="bcwm-sea">Southern Sea</text>
             </g>
@@ -431,7 +432,7 @@ export function WorldMap(p) {
       {selCanon ? (
         <div className="bcwm-card">
           <div className="bcwm-card-head"><strong>{selCanon.name}</strong><em>Canon landmark</em></div>
-          <small>{describe(selCanon.x, selCanon.y).where}</small>
+          <small>{selCanon.realm ? "Clover Kingdom \u2014 Common Realm" : describe(selCanon.x, selCanon.y).where}</small>
           <span>{selCanon.line}</span>
           <span className="bcwm-card-dist">{dist < 1 ? "You are here." : "About " + dist + " km away as the crow flies"}</span>
           <div className="bcwm-card-btns">
@@ -482,6 +483,7 @@ export var WORLDMAP_CSS = [
   ".bcwm-laymenu label{display:flex;align-items:center;gap:8px;min-height:32px;font-size:13.5px;color:#e1d6c1;white-space:nowrap}.bcwm-laymenu input{width:18px;height:18px;accent-color:#d9b463}",
   ".bcwm-approx{position:absolute;left:8px;right:52px;top:8px;padding:5px 9px;border:1px solid rgba(159,199,232,.6);border-radius:7px;background:rgba(9,15,26,.9);font-size:12px;line-height:1.3;color:#cfe3f5;pointer-events:none}",
   ".bcwm-mtn{fill:#6b5a44;stroke:#2a2015;stroke-width:1}.bcwm-tree{fill:#21492f;stroke:#0f2416;stroke-width:.8}.bcwm-hill{fill:none;stroke:#3e5a33;stroke-width:1.4}",
+  ".bcwm-noble{fill:rgba(243,221,160,.10);stroke:none}",
   ".bcwm-ring{fill:none;stroke:#f3dda0;stroke-opacity:.45;stroke-width:1.2;stroke-dasharray:5 5}",
   ".bcwm-ringlabel{fill:#f3dda0;fill-opacity:.75;font:600 10px Cinzel,Georgia,serif;text-anchor:middle;letter-spacing:.08em;paint-order:stroke;stroke:#0a1220;stroke-width:3px}",
   ".bcwm-klabel{fill:#fff3cf;font-family:Cinzel,Georgia,serif;font-weight:600;text-anchor:middle;letter-spacing:.12em;opacity:.8;paint-order:stroke;stroke:#0a1220;stroke-width:4px;font-variant:small-caps}",

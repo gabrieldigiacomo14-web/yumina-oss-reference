@@ -43,7 +43,7 @@ export var CANON_PLACES = [
   { name: "Hage", x: -2, y: 52, kind: "village", line: "Forsaken Realm village: the church-orphanage of Father Orsi and Sister Lily, and a grimoire tower." },
   { name: "Rayaka", x: 14, y: 46, kind: "village", line: "Forsaken Realm village." },
   { name: "Saussy (Sosshi)", x: -32, y: 44, kind: "village", line: "Forsaken Realm village attacked by the Eye of the Midnight Sun early in canon." },
-  { name: "Kiten", x: 58, y: 18, kind: "town", line: "City near the Diamond border; site of a major Diamond attack." },
+  { name: "Kiten", x: 58, y: 18, kind: "town", realm: "common", line: "Common Realm city near the Diamond border; site of a major Diamond attack." },
   { name: "First Dungeon", x: 62, y: 8, kind: "ruin", line: "A coastal dungeon east of Kiten." },
   { name: "Seabed Temple", x: 14, y: -31, kind: "ruin", line: "Beneath the sea off Raquey." },
   { name: "Witches' Forest", x: 48, y: 58, kind: "forest", line: "Neutral land between Clover and Diamond, ruled by the Witch Queen." }
@@ -59,7 +59,8 @@ export var CANON_AREAS = [
 export var BARRIER = { y: 150, half: 24 };
 export function barrierY(x) { return BARRIER.y + 8 * Math.sin(x / 40) + 5 * Math.sin(x / 17 + 0.8); }
 export function barrierStrength(x, y) { var d = Math.abs(y - barrierY(x)); return d >= BARRIER.half ? 0 : 1 - d / BARRIER.half; }
-export var REALM_BOUNDS = { noble: 11, common: 40 }; // km from the Royal Capital; beyond is the Forsaken Realm
+// km from the Royal Capital: the Noble Realm is the capital's heart, the Common Realm surrounds it, and the Forsaken Realm reaches out to the borders.
+export var REALM_BOUNDS = { noble: 10, common: 48, forsaken: 105 };
 
 export var BIOMES = [
   { id: "ocean", name: "Sea", color: "#2b4f6e", travel: 99, passable: false },
@@ -317,7 +318,7 @@ export function politics(pins) {
   cells.forEach(function (c) { if (c.water || owner[c.i] >= 0 || inBand(c)) return; var best = 0, bd = 1e18; KINGDOMS.forEach(function (K, ki) { var d = Math.hypot(c.x - K.at[0], c.y - K.at[1]) / K.r; if (d < bd) { bd = d; best = ki; } }); owner[c.i] = best; });
   return { owner: owner, base: B };
 }
-export function realmOfPoint(x, y) { var d = Math.hypot(x, y); return d <= REALM_BOUNDS.noble ? "noble" : d <= REALM_BOUNDS.common ? "common" : "forsaken"; }
+export function realmOfPoint(x, y) { var d = Math.hypot(x, y); if (Math.hypot(x - 58, y - 18) < 12) return "common"; /* Kiten is a Common Realm city */ return d <= REALM_BOUNDS.noble ? "noble" : d <= REALM_BOUNDS.common ? "common" : "forsaken"; }
 
 /* ---------- queries ---------- */
 export function cellAtKm(x, y) { var B = baseWorld(), uv = toU(x, y); return nearestIn(B, Math.max(0, Math.min(UW, uv[0])), Math.max(0, Math.min(UH, uv[1]))); }

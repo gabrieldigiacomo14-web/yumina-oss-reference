@@ -1,6 +1,10 @@
-# Black Clover: A Mage's Tale — v21.11.3
+# Black Clover: A Mage's Tale — v21.11.4
 
-Import `Black_Clover_A_Mages_Tale_v21.11.3.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.11.4.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.11.4 — realm circles
+
+The two circles around the Royal Capital are now the **Common Realm** (radius 48 km) and the **Forsaken Realm** (radius 105 km, out to the kingdom's edges), with the **Noble Realm** as the small tinted heart of the capital (10 km) inside them. Before they were Noble (11 km) and Common (40 km), with Forsaken only a label. Each place's realm is worked out from these (Kikka, Nean, Hecairo, Nairn and Raquey are Common; Hage, Rayaka and Saussy are Forsaken). Kiten is also Common, as the lore says, even though it lies 61 km out.
 
 ## v21.11.3 — Spade is ice and mountains, behind the Strong Magic Region
 
