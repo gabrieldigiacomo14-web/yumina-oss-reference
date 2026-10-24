@@ -1,6 +1,10 @@
-# Black Clover: A Mage's Tale — v21.10
+# Black Clover: A Mage's Tale — v21.10.1
 
-Import `Black_Clover_A_Mages_Tale_v21.10.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.10.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.10.1 — kingdom banner text
+
+The date and time in the corner banner ran down into the point where the banner narrows, and the time was hard to read. The right banner is now taller (112px instead of 90px) with the clover at the top, and the kingdom name, date and time sit in the straight part, clear of the point. The date and time text is slightly larger and brighter.
 
 ## v21.10 — the AI labels things, the engine stays in charge
 

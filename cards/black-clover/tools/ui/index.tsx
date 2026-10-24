@@ -778,7 +778,11 @@ var CSS = [
   ".bc-combatbar-slim{padding-top:4px;padding-bottom:4px}",
   ".bc-reading .bc-chronicle-card{margin-bottom:6px!important}",
   ".bc-composer{padding:5px 8px 6px!important}",
-  "@media (max-height:640px){.bc-storybar{min-height:46px;padding-top:calc(3px + env(safe-area-inset-top));padding-bottom:3px}.bc-story .bc-upcoming{display:none}}"
+  "@media (max-height:640px){.bc-storybar{min-height:46px;padding-top:calc(3px + env(safe-area-inset-top));padding-bottom:3px}.bc-story .bc-upcoming{display:none}}",
+  ".bc-pennant-r{width:64px;height:112px}",
+  ".bc-pennant-r .bc-pennant-in{padding-top:calc(6px + env(safe-area-inset-top));gap:2px}",
+  ".bc-pennant-r .bc-pennant-label{font-size:10px;padding:0 4px}",
+  ".bc-pennant-r .bc-pennant-sub{font-size:10px;line-height:1.18;color:#f0e3bf;padding:0 4px;margin-top:2px;text-shadow:0 1px 2px #000}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
