@@ -1,6 +1,20 @@
-# Black Clover: A Mage's Tale — v21.11
+# Black Clover: A Mage's Tale — v21.11.1
 
-Import `Black_Clover_A_Mages_Tale_v21.11.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.11.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.11.1 — canon lore areas are always on the map
+
+The map now builds the canon places and areas from the card's own lore, even for a new character with nothing recorded yet. `bc-cartography.js` lists them (`CANON_PLACES`, `CANON_AREAS`) with the gazetteer's coordinates.
+
+- **Places:** Royal Capital (Clover Castle, Castle Town, Magic Knights HQ), Kikka, Nean, Hecairo, Nairn, Hage with its grimoire tower, Rayaka, Saussy (Sosshi), Raquey, Kiten, the First Dungeon and the Seabed Temple off Raquey. Each is a small gold marker with its lore line. Tap one for the card and "Plan travel here".
+- **Areas that reshape the land:**
+  - **Witches' Forest:** neutral forest between Clover and Diamond.
+  - **Diamond:** mines and wasteland.
+  - **Spade:** a winter wall in the far north.
+- **Grand Magic Zones:** drawn as dashed violet rings, one near Raquey and one on the neutral border. The second position is derived from the lore (it says only "in the neutral lands").
+- **Not invented:** the lore names the Ultime-Volcano region and the other kingdoms' settlements without positions, so they aren't drawn. The map follows the lore's own rule against inventing canon.
+- **Yours stay on top:** a place the story has recorded (for example Hage with its own pin) replaces the canon marker. The new **Canon landmarks and lore areas** layer toggle turns all of this off.
+- **Travel:** "Plan travel here" works from a canon landmark even if you haven't learned it yet, and measures from where you are.
 
 ## v21.11 — a bigger map, built the way the Universal World Engine builds one
 

@@ -1,7 +1,7 @@
 import { BC_IMG } from "./bc-art.js";
 import { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS } from "./bc-battle";
 import { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS } from "./bc-inventory.js";
-import { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY } from "./bc-worldmap";
+import { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY, canonPlace } from "./bc-worldmap";
 import {bcManaMax,bcReserve,bcIsMagicless,bcSpellMechanics,bcNormalizeSpells,bcCastPlan,bcApplyPlayerCast,bcProcessEvents} from "./bc-spell-engine.js";
 import {bcWalletProfile,bcBankState,bcBankHere,bcBankOpen,bcBankTransfer} from "./bc-banking.js";
 import { BC_SLOTS, BC_STORAGE, BC_ARMS_BULK, bcSpec, bcStorageOf, bcAllowedSlots, bcNormalize, bcCarryProfile, bcWeight, bcBulk, bcCarried, bcIsAccessible, bcPlaceLabel, bcDestinations, bcFindSpot, bcMoveQty, bcReceive, bcHomeUsed, bcAtSquadLocker, bcWorldStoreUsed, bcAppearance, bcRestoreLegacyClothes, bcEventText, bcLocalExamine, bcCanConsume, bcConsume } from "./bc-inventory.js";
@@ -4115,14 +4115,16 @@ function MapView(p) {
   var travelRef = React.useRef(null);
   var ls0 = React.useState(false); var locSheet = ls0[0], setLocSheet = ls0[1];
   function pick(name) {
-    var n = Object.assign({}, tr, { dest: name }); setTr(n);
+    var isKnown = locs.some(function (l) { return str(l.name) === name; });
+    var n = Object.assign({}, tr, isKnown ? { dest: name } : { dest: "Somewhere else", other: name }); setTr(n);
     setTimeout(function () { if (travelRef.current && travelRef.current.scrollIntoView) { try { travelRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} } }, 30);
   }
   var dest = tr.dest && tr.dest !== "Somewhere else" ? tr.dest : tr.other.trim();
   var mapPlaces = layoutPlaces(v);
   var here = playerXY(v, mapPlaces);
   var destPlace = dest ? mapPlaces.filter(function (q) { return q.name === dest; })[0] : null;
-  var destCoords = destPlace ? { x: destPlace.x, y: destPlace.y } : (dest ? findCoords(dest, locs) : null);
+  var destCanon = dest && !destPlace ? canonPlace(dest) : null;
+  var destCoords = destPlace ? { x: destPlace.x, y: destPlace.y } : destCanon ? { x: destCanon.x, y: destCanon.y } : (dest ? findCoords(dest, locs) : null);
   var km = destCoords ? Math.round(distanceKm(here, destCoords)) : null;
   var eta = km !== null ? travelEta(km, tr.mode, tr.pace) : null;
   var destLoc = null; locs.forEach(function (l) { if (str(l.name) === tr.dest) destLoc = l; });

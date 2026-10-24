@@ -6,7 +6,7 @@
  * terrain re-rendered for the current zoom, with fog over what the character
  * has not seen, and an SVG layer of pins, rivers, roads and labels on top.
  * Purely interface: no AI calls. */
-import { FRAME, KINGDOMS, KINGDOM_TINT, GAZ, REALM_BOUNDS, BIOMES, baseWorld, politics, renderTerrain, pointInKingdom, revealCells, symbolsInView, kingdomLabels, roadNetwork, realmOfPoint, ownerAtKm, cellAtKm, rng as mapRng } from "./bc-cartography.js";
+import { CANON_PLACES, CANON_AREAS, FRAME, KINGDOMS, KINGDOM_TINT, GAZ, REALM_BOUNDS, BIOMES, baseWorld, politics, renderTerrain, pointInKingdom, revealCells, symbolsInView, kingdomLabels, roadNetwork, realmOfPoint, ownerAtKm, cellAtKm, rng as mapRng } from "./bc-cartography.js";
 
 function n(v, d) { var z = Number(v); return isFinite(z) ? z : (d === undefined ? 0 : d); }
 function s(v) { return v === undefined || v === null ? "" : String(v); }
@@ -174,7 +174,9 @@ var KIND_GLYPH = {
 var STATUS_COL = { visited: "#f3dda0", known: "#e8e2d2", rumored: "#b48ae8", approximate: "#9fc7e8" };
 /* ---------- component ---------- */
 var STATUS_COL = { visited: "#f3dda0", known: "#e8e2d2", rumored: "#b48ae8", approximate: "#9fc7e8" };
-var DEF_LAYERS = { realms: true, fog: true, symbols: true, roads: true };
+var DEF_LAYERS = { realms: true, fog: true, symbols: true, roads: true, canon: true };
+var CANON_OTHER = { diamond: "Diamond Kingdom", heart: "Heart Kingdom", spade: "Spade Kingdom" };
+export function canonPlace(name) { var k = baseName(name); for (var i = 0; i < CANON_PLACES.length; i++) if (baseName(CANON_PLACES[i].name) === k || baseName(CANON_PLACES[i].name).indexOf(k) === 0 && k.length > 3) return CANON_PLACES[i]; return null; }
 export function WorldMap(p) {
   var v = p.v || {};
   var rs0 = React.useState(MAP_READY); var ready = rs0[0], setReady = rs0[1];
@@ -247,7 +249,9 @@ export function WorldMap(p) {
   function onWheel(e) { var r = boxRef.current.getBoundingClientRect(); zoomBy(e.deltaY < 0 ? 1.18 : 1 / 1.18, e.clientX - r.left, e.clientY - r.top); }
   function tap(name) { setSel(sel === name ? "" : name); setProbe(null); if (fresh.indexOf(name) >= 0) markSeen(); }
   var selQ = places.filter(function (q) { return q.name === sel; })[0];
-  var dist = selQ ? Math.round(Math.hypot(selQ.x - me.x, selQ.y - me.y)) : 0;
+  var selCanon = !selQ && /^canon:/.test(sel) ? CANON_PLACES.filter(function (c) { return "canon:" + c.name === sel; })[0] : null;
+  var dist = selQ ? Math.round(Math.hypot(selQ.x - me.x, selQ.y - me.y)) : selCanon ? Math.round(Math.hypot(selCanon.x - me.x, selCanon.y - me.y)) : 0;
+  var knownKeys = {}; places.forEach(function (q) { knownKeys[baseName(q.name)] = 1; });
   var trail = a(p.trail).filter(function (t) { return isFinite(t.x) && isFinite(t.y); });
   var showLabels = view.z > 1.35;
 
@@ -360,6 +364,30 @@ export function WorldMap(p) {
               <text x={sx(20)} y={sy(-46)} className="bcwm-sea">Southern Sea</text>
             </g>
           ) : null}
+          {lay.canon ? CANON_AREAS.map(function (ar) {
+            var x = sx(ar.x), y = sy(ar.y), r = ar.r * kmPx; if (x + r < 0 || y + r < 0 || x - r > size.w || y - r > size.h) return null;
+            var zone = !ar.terrain;
+            return (
+              <g key={ar.id} className={"bcwm-area" + (zone ? " zone" : "")} pointerEvents="none">
+                {zone ? <circle cx={x} cy={y} r={r} className="bcwm-zonering" /> : null}
+                {zone ? <circle cx={x} cy={y} r={r * 0.62} className="bcwm-zonering in" /> : null}
+                {view.z > 0.9 && view.z < 6 ? <text x={x} y={zone ? y + 3 : y} className={"bcwm-arealabel" + (zone ? " zone" : "")} style={{ fontSize: Math.max(9, Math.min(15, 8 + view.z * 2)) + "px" }}>{ar.name}</text> : null}
+              </g>
+            );
+          }) : null}
+          {lay.canon ? CANON_PLACES.map(function (c) {
+            if (knownKeys[baseName(c.name)] || (c.name === "Royal Capital" && knownKeys["royal capital"])) return null;
+            var x = sx(c.x), y = sy(c.y); if (x < -30 || y < -30 || x > size.w + 30 || y > size.h + 30) return null;
+            var on = sel === "canon:" + c.name; var big = c.kind === "castle" || c.kind === "town" || c.kind === "forest";
+            if (c.kind === "forest") return null;
+            return (
+              <g key={c.name} transform={"translate(" + x.toFixed(1) + " " + y.toFixed(1) + ")"} className={"bcwm-canon" + (on ? " on" : "")} onClick={function () { setSel(on ? "" : "canon:" + c.name); setProbe(null); }} role="button" tabIndex={0} aria-label={c.name + ", canon landmark"} onKeyDown={function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSel(on ? "" : "canon:" + c.name); setProbe(null); } }}>
+                <circle r="13" className="bcwm-canonhit" />
+                <path d="M0 -6 L5 0 L0 6 L-5 0 Z" className="bcwm-canonmark" />
+                {(view.z > 1.5 || on || (big && view.z > 0.9)) ? <text y="18" className="bcwm-canonlabel">{c.name}</text> : null}
+              </g>
+            );
+          }) : null}
           {trail.length > 1 ? <path d={"M" + trail.map(function (t) { return sx(t.x).toFixed(1) + " " + sy(t.y).toFixed(1); }).join("L")} className="bcwm-trail" /> : null}
           {selQ ? <line x1={meX} y1={meY} x2={sx(selQ.x)} y2={sy(selQ.y)} className="bcwm-route" /> : null}
           {home ? <g transform={"translate(" + sx(home.x) + " " + (sy(home.y) - 20) + ")"}><path d="M-6 3 L0 -4 L6 3 V8 H-6 Z" className="bcwm-home" /></g> : null}
@@ -377,7 +405,7 @@ export function WorldMap(p) {
         </div>
         {layMenu ? (
           <div className="bcwm-laymenu" role="group" aria-label="Map layers">
-            {[["realms", "Realms and borders"], ["fog", "Unexplored shading"], ["symbols", "Mountains and trees"], ["roads", "Roads"]].map(function (r) {
+            {[["realms", "Realms and borders"], ["canon", "Canon landmarks and lore areas"], ["fog", "Unexplored shading"], ["symbols", "Mountains and trees"], ["roads", "Roads"]].map(function (r) {
               return <label key={r[0]}><input type="checkbox" checked={!!lay[r[0]]} onChange={function () { var nx = Object.assign({}, lay); nx[r[0]] = !nx[r[0]]; setLay(nx); }} />{r[1]}</label>;
             })}
           </div>
@@ -398,7 +426,20 @@ export function WorldMap(p) {
           </div>
         </div>
       ) : null}
-      {probe && !selQ ? (
+      {selCanon ? (
+        <div className="bcwm-card">
+          <div className="bcwm-card-head"><strong>{selCanon.name}</strong><em>Canon landmark</em></div>
+          <small>{describe(selCanon.x, selCanon.y).where}</small>
+          <span>{selCanon.line}</span>
+          <span className="bcwm-card-dist">{dist < 1 ? "You are here." : "About " + dist + " km away as the crow flies"}</span>
+          <div className="bcwm-card-btns">
+            {dist >= 1 && p.onTravel && selCanon.kind !== "forest" && selCanon.name !== "Seabed Temple" ? <button type="button" className="bcwm-go" onClick={function () { p.onTravel(selCanon.name); setFull(false); }}>Plan travel here</button> : null}
+            <button type="button" onClick={function () { setView({ cx: selCanon.x, cy: selCanon.y, z: Math.max(view.z, 4) }); }}>Zoom here</button>
+            <button type="button" onClick={function () { setSel(""); }}>Close</button>
+          </div>
+        </div>
+      ) : null}
+      {probe && !selQ && !selCanon ? (
         <div className="bcwm-card">
           <div className="bcwm-card-head"><strong>{probeInfo.biome || "Unknown ground"}</strong></div>
           <small>{probeInfo.where}</small>
@@ -428,6 +469,10 @@ export var WORLDMAP_CSS = [
   ".bcwm-river{fill:none;stroke:#6fb4e8;stroke-opacity:.8;stroke-linecap:round;stroke-linejoin:round}",
   ".bcwm-road{fill:none;stroke:#e8c98a;stroke-opacity:.85;stroke-width:1.6;stroke-dasharray:6 3;stroke-linecap:round;stroke-linejoin:round}",
   ".bcwm-fen{fill:none;stroke:#2e4a35;stroke-width:1.2}",
+  ".bcwm-zonering{fill:rgba(180,138,232,.07);stroke:#c4a2f5;stroke-opacity:.7;stroke-width:1.4;stroke-dasharray:3 4}.bcwm-zonering.in{fill:none;stroke-opacity:.45}",
+  ".bcwm-arealabel{fill:#e9dcb8;fill-opacity:.85;font:italic 600 11px 'Cormorant Garamond',Georgia,serif;text-anchor:middle;letter-spacing:.08em;paint-order:stroke;stroke:#0a1220;stroke-width:3.5px}.bcwm-arealabel.zone{fill:#e0cffa}",
+  ".bcwm-canon{cursor:pointer}.bcwm-canonhit{fill:transparent}.bcwm-canonmark{fill:#f3dda0;fill-opacity:.85;stroke:#2a1d0c;stroke-width:1}.bcwm-canon.on .bcwm-canonmark{fill:#fff3c9}",
+  ".bcwm-canonlabel{fill:#f3e6c4;fill-opacity:.92;font:italic 600 11px 'Cormorant Garamond',Georgia,serif;text-anchor:middle;paint-order:stroke;stroke:#0a1220;stroke-width:3.2px}",
   ".bcwm-me-halo{fill:rgba(95,209,169,.14);stroke:#5fd1a9;stroke-opacity:.8;stroke-dasharray:4 4}",
   ".bcwm-probe{fill:rgba(243,221,160,.25);stroke:#f3dda0;stroke-width:1.5}.bcwm-probe-x{stroke:#f3dda0;stroke-width:1.5}",
   ".bcwm-laymenu{position:absolute;right:50px;top:8px;display:flex;flex-direction:column;gap:2px;padding:6px 10px;border:1px solid #f3dda0;border-radius:8px;background:rgba(9,15,26,.96);box-shadow:0 6px 18px rgba(0,0,0,.6);z-index:3}",

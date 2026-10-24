@@ -31,6 +31,30 @@ export var GAZ = {
   "witches' forest": [48, 58], "witches forest": [48, 58], "nairn": [-20, 20], "diamond kingdom": [145, 36], "heart kingdom": [-170, 18], "spade kingdom": [0, 212]
 };
 var GAZ_KINGDOM = { "diamond kingdom": "Diamond", "heart kingdom": "Heart", "spade kingdom": "Spade" };
+/* Canon lore, generated into every map. Coordinates are the gazetteer's (km from the Royal Capital); places the
+   lore names without a position are not invented here. "terrain" areas also reshape the land so it fits the lore. */
+export var CANON_PLACES = [
+  { name: "Royal Capital", x: 0, y: 0, kind: "castle", line: "Noble Realm: Clover Castle, Castle Town and the Magic Knights headquarters." },
+  { name: "Kikka", x: 2, y: 12, kind: "town", line: "Common Realm town." },
+  { name: "Nean", x: -8, y: 26, kind: "village", line: "Common Realm: the church-orphanage community." },
+  { name: "Hecairo", x: 6, y: 28, kind: "town", line: "Common Realm town." },
+  { name: "Nairn", x: -20, y: 20, kind: "town", line: "Common Realm town." },
+  { name: "Raquey", x: 14, y: -8, kind: "water", line: "Seaside resort town. A Grand Magic Zone lies nearby and the Seabed Temple beneath the sea offshore." },
+  { name: "Hage", x: -2, y: 52, kind: "village", line: "Forsaken Realm village: the church-orphanage of Father Orsi and Sister Lily, and a grimoire tower." },
+  { name: "Rayaka", x: 14, y: 46, kind: "village", line: "Forsaken Realm village." },
+  { name: "Saussy (Sosshi)", x: -32, y: 44, kind: "village", line: "Forsaken Realm village attacked by the Eye of the Midnight Sun early in canon." },
+  { name: "Kiten", x: 58, y: 18, kind: "town", line: "City near the Diamond border; site of a major Diamond attack." },
+  { name: "First Dungeon", x: 62, y: 8, kind: "ruin", line: "A coastal dungeon east of Kiten." },
+  { name: "Seabed Temple", x: 14, y: -31, kind: "ruin", line: "Beneath the sea off Raquey." },
+  { name: "Witches' Forest", x: 48, y: 58, kind: "forest", line: "Neutral land between Clover and Diamond, ruled by the Witch Queen." }
+];
+export var CANON_AREAS = [
+  { id: "witches", name: "Witches' Forest", x: 48, y: 58, r: 20, terrain: "forest", line: "Neutral land between Clover and Diamond." },
+  { id: "gmz-raquey", name: "Grand Magic Zone", x: 28, y: -20, r: 20, line: "A zone of violent mana in the neutral lands near Raquey." },
+  { id: "gmz-border", name: "Grand Magic Zone", x: 104, y: 78, r: 20, line: "Neutral land between the nations (position derived from the lore)." },
+  { id: "diamond-mines", name: "Diamond mines and wasteland", x: 168, y: 46, r: 46, terrain: "badlands", line: "A harsh land of mines and wasteland." },
+  { id: "spade-winter", name: "Spade's winter wall", x: 0, y: 292, r: 60, terrain: "snow", line: "Winter and fog across the far north." }
+];
 export var REALM_BOUNDS = { noble: 11, common: 40 }; // km from the Royal Capital; beyond is the Forsaken Realm
 
 export var BIOMES = [
@@ -148,6 +172,7 @@ export function baseWorld() {
   var canonPins = [];
   Object.keys(GAZ).forEach(function (name) { if (name === "diamond kingdom" || name === "heart kingdom" || name === "spade kingdom") return; canonPins.push({ x: GAZ[name][0], y: GAZ[name][1], name: name, k: "Clover" }); });
   KINGDOMS.forEach(function (K) { if (K.k !== "Clover") canonPins.push({ x: K.capital[0], y: K.capital[1], name: K.k + " capital", k: K.k }); });
+  CANON_AREAS.filter(function (ar) { return ar.terrain === "forest"; }).forEach(function (ar) { cells.forEach(function (c) { if (Math.hypot(c.x - ar.x, c.y - ar.y) < ar.r * 0.8 && c.water) { c.water = false; c.elev = GEN.seaLevel + 0.06; } }); });
   canonPins.forEach(function (pn) { var c = nearestCell(cells, toU(pn.x, pn.y)); if (c.water || c.elev < GEN.seaLevel + 0.03) { c.water = false; c.elev = GEN.seaLevel + 0.05; } });
   // distance from the sea, for moisture
   var hop = cells.map(function () { return 1e9; }), qd = [];
@@ -177,6 +202,11 @@ export function baseWorld() {
     var lat = (c.y - FRAME.Y0) / H;
     c.temp = Math.max(0, Math.min(1, 0.9 - lat * 0.78 - Math.max(0, c.elev - GEN.seaLevel) * 0.45 + (NOISE.temp.sample(c.x / 40, c.y / 40) - 0.5) * 0.15));
     c.biome = BIOME_IDX[pickBiome(c)];
+  });
+  // canon areas reshape the ground (only land cells, and never the sea around Raquey)
+  CANON_AREAS.forEach(function (ar) {
+    if (!ar.terrain) return;
+    cells.forEach(function (c) { if (c.water || Math.hypot(c.x - ar.x, c.y - ar.y) > ar.r) return; if (c.biome === BIOME_IDX.peaks && ar.terrain !== "snow") return; c.biome = BIOME_IDX[ar.terrain]; if (ar.terrain === "forest" || ar.terrain === "taiga") c.moist = Math.max(c.moist, 0.7); });
   });
   BASE = { cells: cells, rivers: rivers, g: sp, hop: hop };
   buildGrid(BASE);
