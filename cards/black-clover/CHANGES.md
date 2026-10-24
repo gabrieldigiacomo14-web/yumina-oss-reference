@@ -1,6 +1,33 @@
-# Black Clover: A Mage's Tale — v21.9
+# Black Clover: A Mage's Tale — v21.10
 
-Import `Black_Clover_A_Mages_Tale_v21.9.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.10.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.10 — the AI labels things, the engine stays in charge
+
+The engine used word lists to decide what an item or spell is. That missed things like "katana", and it misread "Charmy's" as a charm. Now the AI supplies labels, the engine checks them against fixed lists, and everything else stays in the engine. The AI never keeps state in this design: it answers a closed question once, the answer is saved, and the engine applies it.
+
+**1. Labels in the narrator's reply (no extra call).** When the narrator creates an item, it adds:
+- `"kind"`: weapon, garment, armor, container, tool, food, drink, medicine, material, valuable, document, magic-tool or other
+- `"wear"`, if the item is worn or held ready: a body slot such as cloak, clothes, hip or main-hand
+- for bags, pouches and holsters, also `"holds"` (general, small, blade, grimoire, bottle, arrows) and `"size"` (small, medium, large)
+
+New spells get `"arena"`: lance, wave, bolt, burst, bind, wall, barrier, dome, seal, seal-foe, heal or blink.
+
+The engine reads these before its word lists. A labelled container gets matching compartments; for example, a harness that holds a blade gets a blade loop. The rule text for this replaced the slot sentence added in v21.9, so the narrator's prompt barely grew.
+
+**2. A rare backup classifier (`parts/p11_labels.tsx`).** It runs only when an item or spell has no label and the word lists can't place it either. Ordinary items like bread, boots and swords never trigger it.
+- **When it runs:** after a reply has finished, as one batched call for at most 8 items and 6 spells.
+- **What it sends:** a short system prompt with no story history and no lore, a JSON-only answer, temperature 0, and an output cap of 80 + 45 tokens per name.
+- **Checking:** every answer is checked against the fixed lists. Anything else is dropped; an invented slot like "flying-carpet" is ignored while a valid kind is kept.
+- **Saving:** answers are saved in `ai_labels`, which the narrator never sees. Each name is asked about once, even if the answer was unusable.
+- **Failures:** if the call fails or isn't available (no mushies, preview), nothing is saved and it waits 5 minutes. There's also a 45-second gap between calls.
+- **Why a raw call:** Yumina's built-in card-AI type also sends up to about 1,000 tokens of the card's always-on rules with every call, so the raw call is much cheaper. The card's own code does the checking.
+
+**3. Leaner prompt.** Yumina heads each variable's rules with `[id | display name]` when the two differ. Variables the AI can see now use their ID as their name, which saves about 300 tokens every turn. Hidden interface variables keep friendly names.
+
+**Cost per turn:** about 18,250 early and 22,250 late, down from 18,430 and 22,430 in v21.9, even with the label rules added. The always-on rules contain no per-turn values, so the provider's prompt cache (which Yumina's billing passes on) keeps working.
+
+**Other:** common foods (loaf, bun, cheese, jerky, stew…) are now recognised without asking.
 
 ## v21.9 — squad robes, holsters, and nothing stuck "in your arms"
 

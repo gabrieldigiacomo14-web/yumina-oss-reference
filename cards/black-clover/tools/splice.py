@@ -35,7 +35,7 @@ def remove_var(src, name):
         i += 1
     return src[:start] + '\n' + src[i + 1:]
 
-s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS } from "./bc-battle";\nimport { WorldMap, WORLDMAP_CSS } from "./bc-worldmap";\nimport {bcManaMax', 1)
+s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS } from "./bc-battle";\nimport { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS } from "./bc-inventory.js";\nimport { WorldMap, WORLDMAP_CSS } from "./bc-worldmap";\nimport {bcManaMax', 1)
 # the hero banner is a hosted image (bc-art.js), not an embedded data: URI
 s, nb = re.subn(r'banner:\s*"data:image/[a-z]+;base64,[A-Za-z0-9+/=]+"', 'banner: (BC_IMG && BC_IMG.banner) || ""', s, count=1)
 assert nb == 1, "banner data URI not found"
@@ -83,7 +83,7 @@ a = s.index('  return <div>\n    <Eyebrow k="CLOVER KINGDOM', bv); b = s.index('
 s = s[:a] + P('p6_bank_return.tsx') + s[b:]
 # remaining parts before App
 app = s.index('\nexport default function App(')
-s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + s[app:]
+s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + s[app:]
 # css
 # the original 430px media rule never closed its block, swallowing every later rule on wider screens
 s = s.replace('scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}",', 'scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}}",', 1)
@@ -101,6 +101,6 @@ def label(old, new, n=1):
     s = s.replace(old, new)
 for old, new in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'distinct_labels.json'), encoding='utf-8')):
     label(old, new)
-label('  var api = useYumina();\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">', '  var api = useYumina();\n  if (api && typeof api.resolveAssetUrl === "function") ART_RESOLVE = function (ref) { return api.resolveAssetUrl(ref); };\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">')
+label('  var api = useYumina();\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">', '  var api = useYumina();\n  if (api && typeof api.resolveAssetUrl === "function") ART_RESOLVE = function (ref) { return api.resolveAssetUrl(ref); };\n  var aiLabels0 = obj(obj(api && api.variables).ai_labels); bcSetLabels(obj(aiLabels0.items)); setSpellLabels(obj(aiLabels0.spells));\n  var v = (api && api.variables) || {};\n  useRelationshipIdentityGuard(api);\n  var art = useArt(api);\n  return (\n    <div className="bc-root">')
 open(sys.argv[2], 'w').write(s)
 print('ok', len(s))

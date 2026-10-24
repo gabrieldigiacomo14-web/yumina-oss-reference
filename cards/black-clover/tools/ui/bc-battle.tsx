@@ -100,8 +100,29 @@ var MAT_STYLE = {
   dark: { a: "#d3c4f5", b: "#5a3fa0", glow: "#9a7ae8", fx: "smoke" }, blood: { a: "#ffb0bb", b: "#a01c30", glow: "#e0485e", fx: "drop" }
 };
 var SHAPE_LABEL = { lance: "Piercing lance", wave: "Cutting wave", burst: "Blast where you aim", bind: "Binding shot", bolt: "Projectile", seal: "Sealing ward", sealFoe: "Seals a foe", wall: "Raises a wall", barrier: "Shield (blocks from the front)", dome: "Barrier all around you", heal: "Heals you", blink: "Quick shift" };
+export var BC_ARENA = ["lance", "wave", "bolt", "burst", "bind", "wall", "barrier", "dome", "seal", "seal-foe", "heal", "blink"];
+export var BC_LOOKS = ["stone", "sand", "steel", "ice", "fire", "water", "lightning", "wind", "plant", "light", "dark", "blood"];
+var SPELL_LABELS = {};
+export function setSpellLabels(m) { SPELL_LABELS = m && typeof m === "object" ? m : {}; }
+export function spellLabelKey(name) { return low(name).replace(/^[a-z' -]+magic\s*:\s*/, "").replace(/[^a-z0-9]+/g, " ").trim().slice(0, 80); }
+/* A label (the spell's own "arena"/"look", or one saved by the classifier)
+   decides first; the name and description are read only without one. */
+function labelledSpell(sp, attr) {
+  var saved = o(SPELL_LABELS[spellLabelKey(sp.name)]);
+  var arena = BC_ARENA.indexOf(low(sp.arena)) >= 0 ? low(sp.arena) : BC_ARENA.indexOf(low(saved.arena)) >= 0 ? low(saved.arena) : "";
+  if (!arena) return null;
+  var look = BC_LOOKS.indexOf(low(sp.look)) >= 0 ? low(sp.look) : BC_LOOKS.indexOf(low(saved.look)) >= 0 ? low(saved.look) : "";
+  if (!look) { for (var m = 0; m < MATS.length && !look; m++) if (MATS[m][1].test(low(sp.name)) || MATS[m][1].test(low(attr))) look = MATS[m][0]; }
+  var shape = arena === "dome" ? "barrier" : arena === "seal-foe" ? "seal" : arena;
+  var tier = bcSpellMechanics(sp).tier;
+  var cd = { utility: 0.6, small: 0.8, standard: 1.25, large: 2.3, massive: 4.2 }[tier] || 1.2;
+  if (shape === "seal") cd = Math.max(cd, arena === "seal-foe" ? 4.5 : 6); else if (shape === "wall") cd = Math.max(cd, 5); else if (shape === "barrier") cd = Math.max(cd, 4.5); else if (shape === "lance") cd = Math.max(cd, 1.05);
+  return { shape: shape, seal: arena === "seal-foe" ? "foe" : "self", dome: arena === "dome", mat: look, cd: cd, tier: tier, labelled: true,
+    label: SHAPE_LABEL[arena === "seal-foe" ? "sealFoe" : arena === "dome" ? "dome" : shape] };
+}
 export function readSpell(sp, attr) {
-  sp = o(sp); var mech = bcSpellMechanics(sp);
+  sp = o(sp); var lab = labelledSpell(sp, attr); if (lab) return lab;
+  var mech = bcSpellMechanics(sp);
   var name = low(sp.name).replace(/^[a-z' -]+magic\s*:\s*/, "");
   var cat = low([sp.category, sp.type, sp.intent, sp.role, sp.kind, mech.form].map(s).join(" "));
   var desc = low([sp.behavior, sp.description, sp.effect, sp.notes].map(s).join(" "));
@@ -118,6 +139,7 @@ export function readSpell(sp, attr) {
   var defensive = shape === "barrier" || shape === "wall" || shape === "seal";
   if (from === "desc" && defensive && catOff && !catDef) shape = "";
   if (from === "desc" && shape && !defensive && shape !== "heal" && shape !== "blink" && catDef && !catOff) shape = /seal|rune|glyph|sigil/.test(name + " " + desc) ? "seal" : "barrier";
+  var guessed = !shape;
   if (!shape) shape = catDef || (DEF_WORDS.test(desc2) && !OFF_WORDS.test(desc2)) ? "barrier" : catSup ? "heal" : "bolt";
   var both = name + " " + desc;
   var sealFoe = shape === "seal" && /seal\w*\s+(?:away\s+|off\s+)?(?:an?\s+|the\s+|their\s+|its\s+|your\s+|one\s+)?(?:enem\w*|foes?|targets?|opponents?|movements?|attackers?|limbs?|magic|mana|spells?)/.test(desc) && !/protect|shield|defen|guard|ward|barrier/.test(both);
@@ -128,7 +150,7 @@ export function readSpell(sp, attr) {
   for (m = 0; m < MATS.length && !mat; m++) if (MATS[m][1].test(desc)) mat = MATS[m][0];
   var cd = { utility: 0.6, small: 0.8, standard: 1.25, large: 2.3, massive: 4.2 }[mech.tier] || 1.2;
   if (shape === "seal") cd = Math.max(cd, sealFoe ? 4.5 : 6); else if (shape === "wall") cd = Math.max(cd, 5); else if (shape === "barrier") cd = Math.max(cd, 4.5); else if (shape === "lance") cd = Math.max(cd, 1.05);
-  return { shape: shape, seal: sealFoe ? "foe" : "self", dome: dome, mat: mat, cd: cd, tier: mech.tier,
+  return { shape: shape, seal: sealFoe ? "foe" : "self", dome: dome, mat: mat, cd: cd, tier: mech.tier, guessed: guessed || from === "desc",
     label: SHAPE_LABEL[shape === "seal" && sealFoe ? "sealFoe" : shape === "barrier" && dome ? "dome" : shape] };
 }
 

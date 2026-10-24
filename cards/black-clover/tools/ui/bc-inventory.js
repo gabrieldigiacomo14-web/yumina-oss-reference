@@ -49,6 +49,45 @@ export const BC_STORAGE = {
   ]}
 };
 export const BC_ARMS_BULK = 8;
+
+/* ---------- AI labels ----------
+   The narrator labels an item when it creates it ("kind", "wear", and for
+   bags "holds" + "size"); items it left unlabelled may get a label from one
+   batched classifier call, saved in ai_labels and passed in here. A label
+   only ever chooses among the fixed options below — the engine still owns
+   capacity, weight, placement and every rule. Word lists are the fallback. */
+export const BC_KINDS = ['weapon','garment','armor','container','tool','food','drink','medicine','material','valuable','document','magic-tool','other'];
+export const BC_WEAR = ['head','cloak','clothes','base-upper','base-lower','under-upper','under-lower','torso','shoulders','arms','hands','legs','feet','waist','hip','back','accessory','main-hand','off-hand','grimoire','none'];
+export const BC_HOLDS = ['general','small','blade','grimoire','bottle','arrows'];
+let LABELS = {};
+export function bcSetLabels(items) { LABELS = items && typeof items === 'object' ? items : {}; }
+export const bcLabelKey = name => txt(name).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,80);
+function labelFor(it) {
+  const own = {kind:txt(it&&it.kind).toLowerCase(), wear:txt(it&&it.wear).toLowerCase(), holds:Array.isArray(it&&it.holds)?it.holds.map(x=>txt(x).toLowerCase()):null, size:txt(it&&it.size).toLowerCase()};
+  const saved = LABELS[bcLabelKey(it&&it.name)] || {};
+  const kind = BC_KINDS.includes(own.kind) ? own.kind : BC_KINDS.includes(saved.kind) ? saved.kind : '';
+  const wear = BC_WEAR.includes(own.wear) ? own.wear : BC_WEAR.includes(saved.wear) ? saved.wear : '';
+  const holdsRaw = own.holds || (Array.isArray(saved.holds) ? saved.holds : null);
+  const holds = holdsRaw ? holdsRaw.filter(h=>BC_HOLDS.includes(h)) : [];
+  const size = ['small','medium','large'].includes(own.size) ? own.size : ['small','medium','large'].includes(saved.size) ? saved.size : '';
+  return kind||wear||holds.length ? {kind,wear,holds,size} : null;
+}
+const HOLD_SLOT = {
+  general: s => ({id:'main', label:'Main compartment', bulkCap:s==='large'?24:s==='small'?5:14, weightCap:s==='large'?26:s==='small'?6:15, access:'buried', allowed:['general']}),
+  small: () => ({id:'pocket', label:'Pocket', bulkCap:2.5, weightCap:2.5, access:'quick', allowed:['small','coin']}),
+  blade: () => ({id:'blade', label:'Blade loop', bulkCap:7, weightCap:5, access:'quick', allowed:['weapon']}),
+  grimoire: () => ({id:'grimoire', label:'Grimoire holder', bulkCap:2.5, weightCap:2, access:'quick', allowed:['grimoire']}),
+  bottle: () => ({id:'bottles', label:'Bottle loops', bulkCap:3, weightCap:3, access:'ready', allowed:['bottle','small']}),
+  arrows: () => ({id:'arrows', label:'Arrow sleeve', bulkCap:8, weightCap:6, access:'quick', allowed:['arrow','ammo']})
+};
+const DYN = {};
+function storageProfile(key) {
+  if (BC_STORAGE[key]) return BC_STORAGE[key];
+  if (!/^x:/.test(key||'')) return null;
+  if (DYN[key]) return DYN[key];
+  const parts = key.slice(2).split(':'), holds = (parts[0]||'general').split(',').filter(h=>HOLD_SLOT[h]), size = parts[1]||'medium';
+  return (DYN[key] = {label:'Container', slots:(holds.length?holds:['general']).map(h=>HOLD_SLOT[h](size))});
+}
 const ACCESS = {quick:0,ready:1,slow:2,buried:3};
 const round = n => Math.round(n*100)/100;
 const nval = (x,f=0) => Number.isFinite(Number(x)) ? Number(x) : f;
@@ -61,7 +100,8 @@ const units = it => Math.max(1,Math.floor(nval(it&&it.qty,1)));
 export function bcSpec(it) {
   const name=txt(it&&it.name).toLowerCase(), type=txt(it&&it.type).toLowerCase();
   let storage=txt(it&&it.storage_profile||it&&it.storage||'');
-  if (!BC_STORAGE[storage]) storage='';
+  if (!storageProfile(storage)) storage='';
+  const lab=labelFor(it);
   if (!storage) {
     if (has(name,/\b(belt pouch|coin pouch)\b/)) storage='belt_pouch';
     else if (has(name,/\b(backpack|field pack|rucksack|knight pack)\b/)) storage='field_pack';
@@ -94,7 +134,7 @@ export function bcSpec(it) {
   else if (has(name+' '+type, /\b(hats?|caps?|helmets?|helms?|hoods?|circlets?)\b/)) {weight=.5;bulk=3;slot='head';}
   else if (has(name+' '+type, /\b(rings?|earrings?|amulets?|necklaces?|charms?|bracelets?|pendants?|brooch(es)?|lockets?)\b/)) {weight=.08;bulk=.3;slot='accessory';tag('small');}
   else if (has(name+' '+type, /potion|vial|flask|bottle|waterskin|salve|medicine/)) {weight=.45;bulk=1;tag('small');tag('bottle');}
-  else if (has(name+' '+type, /bread|apple|ration|food|herb|berry/)) {weight=.3;bulk=.6;tag('small');}
+  else if (has(name+' '+type, /bread|apple|ration|food|herb|berry|\b(loaf|loaves|buns?|cheese|meat|jerky|fruit|stew|pies?|cakes?|biscuits?|rolls?|sausages?|eggs?|fish|rice|soup|candy|sweets?|onigiri|dumplings?)\b/)) {weight=.3;bulk=.6;tag('small');}
   else if (has(name+' '+type, /arrow|bolt|dart|ammo/)) {weight=.04;bulk=.15;tag('arrow');tag('ammo');tag('small');}
   else if (has(name+' '+type, /\b(ores?|metal|wood|lumber|crystals?|stones?|materials?|gems?|ingots?)\b/)) {weight=.6;bulk=1;tag('material');}
   else if (has(name+' '+type, /magic tool|enchanted|magic-tool|relic|artifact/)) {weight=.65;bulk=1.5;tag('magic-tool');}
@@ -114,13 +154,38 @@ export function bcSpec(it) {
     else if (SLOT_REMAP[slot]&&SLOT_REMAP[slot].includes(givenSlot)) {}
     else if (!(['clothes','torso','legs'].includes(givenSlot)&&['base-upper','base-lower','under-upper','under-lower'].includes(slot))) slot=givenSlot;
   }
+  if (lab) {
+    // a label outranks the word lists, but never an explicit weight/bulk/slot the item already carries
+    if (lab.kind==='container' || lab.holds.length) {
+      if (!storage) { storage='x:'+(lab.holds.length?lab.holds.join(','):'general')+':'+(lab.size||'medium'); const sz=lab.size||'medium';
+        if (!(it&&it.weight!=null)) w=sz==='large'?2:sz==='small'?.3:.8; if (!(it&&it.bulk!=null)) b=sz==='large'?9:sz==='small'?1.5:5; }
+    } else {
+      const drop=t=>{const i=tags.indexOf(t);if(i>=0)tags.splice(i,1);};
+      if (lab.kind && lab.kind!=='weapon') drop('weapon');
+      if (lab.kind && lab.kind!=='garment') drop('clothing');
+      if (lab.kind==='weapon') tag('weapon');
+      if (lab.kind==='tool') {tag('tool');tag('small');}
+      if (lab.kind==='food'||lab.kind==='valuable'||lab.kind==='document') tag('small');
+      if (lab.kind==='drink'||lab.kind==='medicine') {tag('small');tag('bottle');}
+      if (lab.kind==='material') tag('material');
+      if (lab.kind==='magic-tool') tag('magic-tool');
+      if (lab.kind==='garment') tag('clothing');
+    }
+    if (lab.wear==='none') slot=''; else if (lab.wear) slot=lab.wear; else if (lab.kind==='weapon') slot=slot||'main-hand';
+    if (storage && !slot) slot='back';
+  }
   if (['clothes','base-upper','base-lower','under-upper','under-lower'].includes(slot))tag('clothing');
   if (tags.length===0) tag('general');
-  return {storage,weight:w,bulk:b,slot,tags};
+  return {storage,weight:w,bulk:b,slot,tags,labelled:!!lab};
 }
 export const bcWeight = it => round(bcSpec(it).weight*units(it));
 export const bcBulk = it => round(bcSpec(it).bulk*units(it));
-export const bcStorageOf = it => BC_STORAGE[bcSpec(it).storage] || null;
+export const bcStorageOf = it => storageProfile(bcSpec(it).storage) || null;
+// True when nothing reliable says what an item is: no label and no word list matched.
+export function bcIsUncertain(it) {
+  const sp=bcSpec(it); if (sp.labelled || sp.storage || sp.slot) return false;
+  return sp.tags.length===1 && sp.tags[0]==='general';
+}
 export function bcCarried(it,inv) {
   const p=it&&it.placement;
   if(!p) return !has(it&&it.place,/home|storage|chest|ground|companion/i);
