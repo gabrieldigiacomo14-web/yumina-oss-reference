@@ -258,6 +258,7 @@ w['variables'].append({"id": "ai_labels", "name": "AI labels", "type": "json", "
     "description": "What unlabelled items and spells are, from the interface's one-off classifier calls (not sent to the AI)."})
 V['player_x']['behaviorRules'] = "Km east of the Royal Capital. Set with player_y whenever the character relocates in the narration (the interface also sets them on a completed UI:TRAVEL). Use the gazetteer or the place's known_locations coordinates."
 V['player_y']['behaviorRules'] = "Km north of the Royal Capital; see player_x."
+E['kingdom-spade']['content'] += (" GEOGRAPHY: Spade is a land of ice and mountains. The Strong Magic Region, a wide band of Grand Magic Zones full of violent, dense mana, lies in the neutral land between Spade and the other kingdoms; crossing it takes very strong mana, and Spade's armies cross in a mobile fortress fed by the mana of captured citizens [C].")
 V['last_train_report']['behaviorRules'] = "When a training block resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual training time this reply). The interface then applies stamina, mana, fatigue and the clock — don't write those. Otherwise leave \"\"."
 V['last_travel_report']['behaviorRules'] = "When a travel leg resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual travel time this reply). The interface then applies stamina, mana, fatigue and the clock; you still write current_location, known_locations, food and money. Otherwise leave \"\"."
 
@@ -309,7 +310,7 @@ w['settings'].update({
 for v in w['variables']:
     if v.get('aiAccess') != 'none' and (v.get('behaviorRules') or v.get('updateHints')):
         v['name'] = v['id']
-w["version"] = "21.11.2"
+w["version"] = "21.11.3"
 w['description'] = d['description'] + \
     " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
 

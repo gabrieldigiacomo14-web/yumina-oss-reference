@@ -278,6 +278,7 @@ export function bcPlaceLabel(inv,it) {
     const slot=s&&s.slots.find(x=>x.id===p.slotId);
     return (bag?txt(bag.name):'Unidentified container')+' · '+(slot?slot.label:p.slotId);
   }
+  if(p.kind==='world'&&/^(on|in|at|under|beside|by|near|inside|behind|against)\b/i.test(txt(p.location)))return 'Left '+txt(p.location)+(p.area==='home'?' (at home)':p.area==='storage'?' (stored)':'');
   if(p.kind==='world')return (p.area==='ground'?'On the ground':p.area==='home'?'At home':p.area==='companion'?'With companion':'In storage')+' · '+(p.location||'Unknown location');
   return txt(it.place||'Unassigned');
 }

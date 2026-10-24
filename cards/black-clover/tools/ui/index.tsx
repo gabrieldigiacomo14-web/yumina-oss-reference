@@ -4076,7 +4076,7 @@ function PackView(p) {
               if (pair[0] === 'grimoire' && !eq) {
                 var gi = inv.find(function (x) { return bcSpec(x).tags.indexOf('grimoire') >= 0; }), gp = gi && gi.placement ? gi.placement : null;
                 if (gp && gp.kind === 'container') { var bag = inv.find(function (x) { return x.id === gp.containerId; }); val = str(gi.name) + ' \u00b7 in ' + str(bag ? bag.name : 'its holder'); }
-                else if (gp && gp.kind === 'world') val = 'Left ' + (gp.area === 'ground' ? 'on the ground' : gp.area === 'home' ? 'at home' : gp.area === 'storage' ? 'in storage' : 'behind') + (gp.location ? ' \u00b7 ' + str(gp.location) : '') + ' \u2014 not with you';
+                else if (gp && gp.kind === 'world') val = bcPlaceLabel(inv, gi) + ' \u2014 not with you';
                 else if (gp && gp.kind === 'loose') val = 'In your hands';
                 else val = isTrue(v.has_grimoire) ? 'Floats at your side' : 'Not yet received';
               }

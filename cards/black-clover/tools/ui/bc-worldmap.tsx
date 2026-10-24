@@ -6,7 +6,7 @@
  * terrain re-rendered for the current zoom, with fog over what the character
  * has not seen, and an SVG layer of pins, rivers, roads and labels on top.
  * Purely interface: no AI calls. */
-import { CANON_PLACES, CANON_AREAS, FRAME, KINGDOMS, KINGDOM_TINT, GAZ, REALM_BOUNDS, BIOMES, baseWorld, politics, renderTerrain, pointInKingdom, revealCells, symbolsInView, kingdomLabels, roadNetwork, realmOfPoint, ownerAtKm, cellAtKm, rng as mapRng } from "./bc-cartography.js";
+import { barrierY, BARRIER, CANON_PLACES, CANON_AREAS, FRAME, KINGDOMS, KINGDOM_TINT, GAZ, REALM_BOUNDS, BIOMES, baseWorld, politics, renderTerrain, pointInKingdom, revealCells, symbolsInView, kingdomLabels, roadNetwork, realmOfPoint, ownerAtKm, cellAtKm, rng as mapRng } from "./bc-cartography.js";
 
 function n(v, d) { var z = Number(v); return isFinite(z) ? z : (d === undefined ? 0 : d); }
 function s(v) { return v === undefined || v === null ? "" : String(v); }
@@ -312,7 +312,8 @@ export function WorldMap(p) {
   function describe(x, y) {
     if (!P) return { where: "", biome: "" };
     var c = cellAtKm(x, y); if (c.water) return { where: "Open water", biome: "Sea" };
-    var ki = P.owner[c.i], K = KINGDOMS[ki] || KINGDOMS[0];
+    var ki = P.owner[c.i]; if (ki < 0) return { where: "Strong Magic Region \u2014 neutral land of violent mana", biome: BIOMES[c.biome].name, k: "", realm: "" };
+    var K = KINGDOMS[ki] || KINGDOMS[0];
     return { where: K.label + (K.k === "Clover" ? " — " + { noble: "Noble Realm", common: "Common Realm", forsaken: "Forsaken Realm" }[realmOfPoint(x, y)] : ""), biome: BIOMES[c.biome].name, k: K.k, realm: K.k === "Clover" ? realmOfPoint(x, y) : "" };
   }
   var cur = s(v.current_location), curName = placeNameOfCurrent(cur);
@@ -364,6 +365,7 @@ export function WorldMap(p) {
               <text x={sx(10)} y={sy(-104)} className="bcwm-sea">Southern Sea</text>
             </g>
           ) : null}
+          {lay.canon && view.z > 0.5 ? [-170, -40, 90].map(function (bx) { var bxp = sx(bx), byp = sy(barrierY(bx)); if (bxp < -80 || bxp > size.w + 80 || byp < -30 || byp > size.h + 30) return null; return <text key={"bar" + bx} x={bxp} y={byp} className="bcwm-barrier" style={{ fontSize: Math.max(9, Math.min(15, 8 + view.z * 2)) + "px" }}>Strong Magic Region</text>; }) : null}
           {lay.canon ? CANON_AREAS.map(function (ar) {
             var x = sx(ar.x), y = sy(ar.y), r = ar.r * kmPx; if (x + r < 0 || y + r < 0 || x - r > size.w || y - r > size.h) return null;
             var zone = !ar.terrain;
@@ -471,6 +473,7 @@ export var WORLDMAP_CSS = [
   ".bcwm-fen{fill:none;stroke:#2e4a35;stroke-width:1.2}",
   ".bcwm-zonering{fill:rgba(180,138,232,.07);stroke:#c4a2f5;stroke-opacity:.7;stroke-width:1.4;stroke-dasharray:3 4}.bcwm-zonering.in{fill:none;stroke-opacity:.45}",
   ".bcwm-arealabel{fill:#e9dcb8;fill-opacity:.85;font:italic 600 11px 'Cormorant Garamond',Georgia,serif;text-anchor:middle;letter-spacing:.08em;paint-order:stroke;stroke:#0a1220;stroke-width:3.5px}.bcwm-arealabel.zone{fill:#e0cffa}",
+  ".bcwm-barrier{fill:#e6d4ff;fill-opacity:.9;font:italic 700 12px 'Cormorant Garamond',Georgia,serif;text-anchor:middle;letter-spacing:.16em;paint-order:stroke;stroke:#1d0f33;stroke-width:3.6px;pointer-events:none}",
   ".bcwm-canon{cursor:pointer}.bcwm-canonhit{fill:transparent}.bcwm-canonmark{fill:#f3dda0;fill-opacity:.85;stroke:#2a1d0c;stroke-width:1}.bcwm-canon.on .bcwm-canonmark{fill:#fff3c9}",
   ".bcwm-canonlabel{fill:#f3e6c4;fill-opacity:.92;font:italic 600 11px 'Cormorant Garamond',Georgia,serif;text-anchor:middle;paint-order:stroke;stroke:#0a1220;stroke-width:3.2px}",
   ".bcwm-me-halo{fill:rgba(95,209,169,.14);stroke:#5fd1a9;stroke-opacity:.8;stroke-dasharray:4 4}",

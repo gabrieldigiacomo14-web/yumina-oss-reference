@@ -1,6 +1,16 @@
-# Black Clover: A Mage's Tale — v21.11.2
+# Black Clover: A Mage's Tale — v21.11.3
 
-Import `Black_Clover_A_Mages_Tale_v21.11.2.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.11.3.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.11.3 — Spade is ice and mountains, behind the Strong Magic Region
+
+**Spade:** all land north of the barrier is now snowfield and mountains, with no grass or forest. Elevation in Spade is raised so it reads as a wall of peaks.
+
+**The Strong Magic Region:** a wide band of Grand Magic Zones in the neutral land between Clover and Spade, drawn as dark violet mana mist and labelled in three places. Nobody owns it: no kingdom tint, and borders at both edges. Tapping inside it says "Strong Magic Region — neutral land of violent mana." The canon is that crossing it takes very strong mana, and Spade's armies cross it in a mobile fortress fed by the mana of captured citizens (source: the Black Clover wiki, Grand Magic Zone page, and episode summaries). The kingdom-Spade lore entry now says so too. I couldn't confirm ice and mountains from a source, so that follows the lore's own "winter and fog" and the player's description.
+
+**Elevation fix:** the extra land I added south of the capital made all of central Clover rise into hills. The curve is flatter now, so the capital is grassland again.
+
+**Items set down somewhere:** an item saved as "In storage · on the desk" now reads "Left on the desk (stored)", and the grimoire row says "Left on the desk (stored) — not with you". The possessions rule now says a desk, table or floor is area `ground` with its exact spot, and `storage` is a locker or chest.
 
 ## v21.11.2 — the capital is in the middle of Clover; the grimoire row tells the truth
 

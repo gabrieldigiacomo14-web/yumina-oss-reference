@@ -52,9 +52,13 @@ export var CANON_AREAS = [
   { id: "witches", name: "Witches' Forest", x: 48, y: 58, r: 20, terrain: "forest", line: "Neutral land between Clover and Diamond." },
   { id: "gmz-raquey", name: "Grand Magic Zone", x: 28, y: -20, r: 20, line: "A zone of violent mana in the neutral lands near Raquey." },
   { id: "gmz-border", name: "Grand Magic Zone", x: 104, y: 78, r: 20, line: "Neutral land between the nations (position derived from the lore)." },
-  { id: "diamond-mines", name: "Diamond mines and wasteland", x: 168, y: 46, r: 46, terrain: "badlands", line: "A harsh land of mines and wasteland." },
-  { id: "spade-winter", name: "Spade's winter wall", x: 0, y: 292, r: 60, terrain: "snow", line: "Winter and fog across the far north." }
+  { id: "diamond-mines", name: "Diamond mines and wasteland", x: 168, y: 46, r: 46, terrain: "badlands", line: "A harsh land of mines and wasteland." }
 ];
+/* The Strong Magic Region: a wide band of Grand Magic Zones (violent, dense mana) in the neutral land between Clover and Spade.
+   Crossing it takes very strong mana; Spade's forces cross in a mobile fortress fed by captured mana. Nobody owns it. */
+export var BARRIER = { y: 150, half: 24 };
+export function barrierY(x) { return BARRIER.y + 8 * Math.sin(x / 40) + 5 * Math.sin(x / 17 + 0.8); }
+export function barrierStrength(x, y) { var d = Math.abs(y - barrierY(x)); return d >= BARRIER.half ? 0 : 1 - d / BARRIER.half; }
 export var REALM_BOUNDS = { noble: 11, common: 40 }; // km from the Royal Capital; beyond is the Forsaken Realm
 
 export var BIOMES = [
@@ -142,6 +146,7 @@ function landField(x, y) {
 }
 function ridge(x, y) { // mountain belts: Spade's northern wall, the Clover-Spade border, Diamond's mines, a spur between Clover and Diamond
   var m = Math.exp(-Math.pow((y - 292) / 24, 2)) * 0.55 * (0.6 + 0.8 * NOISE.shape.sample(x / 22, 3));
+  if (y > barrierY(x) + 10) m += 0.3 + 0.35 * NOISE.shape.fbm(x / 26 + 9, y / 26, 3);
   m += Math.exp(-Math.pow((y - 132) / 8, 2)) * Math.max(0, 1 - Math.abs(x) / 120) * 0.34 * (0.4 + NOISE.shape.sample(x / 15, 9));
   m += Math.exp(-(Math.pow((x - 188) / 38, 2) + Math.pow((y - 62) / 52, 2))) * 0.5;
   m += Math.exp(-(Math.pow((x - 98) / 14, 2) + Math.pow((y - 30) / 40, 2))) * 0.22;
@@ -153,7 +158,7 @@ var LAND_T = 0.34;
 function elevAt(x, y) {
   var f = landField(x, y);
   if (f < LAND_T) return Math.max(0, 0.32 - (LAND_T - f) * 0.55);
-  var e = GEN.seaLevel + 0.03 + Math.min(1, (f - LAND_T) / 1.1) * 0.36 + (NOISE.elev.fbm(x / 34, y / 34, 5) - 0.5) * 0.32 + ridge(x, y);
+  var e = GEN.seaLevel + 0.03 + Math.min(1, (f - LAND_T) / 2.6) * 0.3 + (NOISE.elev.fbm(x / 34, y / 34, 5) - 0.5) * 0.32 + ridge(x, y);
   e -= lakes(x, y) * 0.34;
   return Math.max(0, Math.min(1, e));
 }
@@ -205,6 +210,8 @@ export function baseWorld() {
     var lat = (c.y - FRAME.Y0) / H;
     c.temp = Math.max(0, Math.min(1, 0.9 - lat * 0.78 - Math.max(0, c.elev - GEN.seaLevel) * 0.45 + (NOISE.temp.sample(c.x / 40, c.y / 40) - 0.5) * 0.15));
     c.biome = BIOME_IDX[pickBiome(c)];
+    // Spade (north of the barrier): ice and mountains only
+    if (!c.water && c.y > barrierY(c.x) + 8) { var ice = NOISE.shape.fbm(c.x / 24 + 5, c.y / 24, 3); c.biome = BIOME_IDX[c.elev > 0.93 || ice > 0.56 ? "peaks" : "snow"]; }
   });
   // canon areas reshape the ground (only land cells, and never the sea around Raquey)
   CANON_AREAS.forEach(function (ar) {
@@ -293,20 +300,21 @@ export function politics(pins) {
   KINGDOMS.forEach(function (K, ki) { seeds.push({ c: nearestCell(cells, toU(K.capital[0], K.capital[1])), k: ki }); });
   Object.keys(GAZ).forEach(function (name) { if (GAZ_KINGDOM[name]) return; seeds.push({ c: nearestCell(cells, toU(GAZ[name][0], GAZ[name][1])), k: 0 }); });
   (pins || []).forEach(function (pn) { var ki = kingdomIndexByName(pn.k); if (ki < 0 || !isFinite(pn.x) || !isFinite(pn.y)) return; var c = nearestCell(cells, toU(pn.x, pn.y)); if (c.water) return; seeds.push({ c: c, k: ki }); });
+  var inBand = function (c) { return barrierStrength(c.x, c.y) > 0.05; };
   var cost = new Float32Array(cells.length).fill(1e18), heap = new MinHeap();
   seeds.forEach(function (sd) { if (cost[sd.c.i] > 0 || owner[sd.c.i] < 0) { cost[sd.c.i] = 0; owner[sd.c.i] = sd.k; heap.push(sd.c.i, 0); } });
   var reach = 1e9;
   while (heap.size) {
     var t = heap.pop(), cur = t.v; if (t.k > cost[cur]) continue;
     cells[cur].n.forEach(function (nb) {
-      if (cells[nb].water) return;
+      if (cells[nb].water || inBand(cells[nb])) return;
       var tc = BIOMES[cells[nb].biome].travel, riverPen = cells[nb].river && !cells[cur].river ? 2.5 : 1;
       var dx = cells[cur].x - cells[nb].x, dy = cells[cur].y - cells[nb].y, nd = t.k + Math.sqrt(dx * dx + dy * dy) * tc * riverPen;
       if (nd < cost[nb] && nd < reach) { cost[nb] = nd; owner[nb] = owner[cur]; heap.push(nb, nd); }
     });
   }
   // islands and strips the flood could not reach go to the nearest kingdom by distance
-  cells.forEach(function (c) { if (c.water || owner[c.i] >= 0) return; var best = 0, bd = 1e18; KINGDOMS.forEach(function (K, ki) { var d = Math.hypot(c.x - K.at[0], c.y - K.at[1]) / K.r; if (d < bd) { bd = d; best = ki; } }); owner[c.i] = best; });
+  cells.forEach(function (c) { if (c.water || owner[c.i] >= 0 || inBand(c)) return; var best = 0, bd = 1e18; KINGDOMS.forEach(function (K, ki) { var d = Math.hypot(c.x - K.at[0], c.y - K.at[1]) / K.r; if (d < bd) { bd = d; best = ki; } }); owner[c.i] = best; });
   return { owner: owner, base: B };
 }
 export function realmOfPoint(x, y) { var d = Math.hypot(x, y); return d <= REALM_BOUNDS.noble ? "noble" : d <= REALM_BOUNDS.common ? "common" : "forsaken"; }
@@ -442,6 +450,8 @@ export function renderTerrain(P, view, opts) {
       var rt2 = px + 1 < w ? wat[i + 1] : 0, dn2 = py + 1 < h ? wat[i + w] : 0, lf2 = px > 0 ? wat[i - 1] : 0, up2 = py > 0 ? wat[i - w] : 0;
       if (rt2 || dn2 || lf2 || up2) { r *= 0.45; gch *= 0.45; b *= 0.4; }
     }
+    var bs = barrierStrength(x_, y_);
+    if (bs > 0) { var sw = NOISE.detail.fbm(x_ * 0.09 + y_ * 0.03, y_ * 0.09 - x_ * 0.04, 3), a2 = Math.min(0.92, Math.sqrt(bs) * (0.55 + 0.5 * sw)); r = r * (1 - a2) + 78 * a2; gch = gch * (1 - a2) + 30 * a2; b = b * (1 - a2) + 118 * a2; }
     if (fogA) { var fa = fogA[i] * 0.42; r = r * (1 - fa) + 6 * fa; gch = gch * (1 - fa) + 9 * fa; b = b * (1 - fa) + 16 * fa; }
     img[p] = r < 0 ? 0 : r > 255 ? 255 : r; img[p + 1] = gch < 0 ? 0 : gch > 255 ? 255 : gch; img[p + 2] = b < 0 ? 0 : b > 255 ? 255 : b; img[p + 3] = 255;
   }
