@@ -126,6 +126,7 @@
             <button type="button" disabled={!lastAi} onClick={copyLast} aria-label="Copy the latest passage" title="Copy"><Icon n="doc" s={15} /></button>
             <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }} aria-label="Edit the latest passage" title="Edit"><Icon n="quill" s={15} /></button>
             <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen} aria-label="Regenerate the latest passage" title="Regenerate"><Icon n="hourglass" s={15} /></button>
+            <button type="button" disabled={!lastAi || busy} onClick={function () { drawSceneNow(api, lastAi, function (m) { toast(m, "error"); }); }} aria-label="Draw a picture of the latest scene" title="Draw this scene"><Icon n="camera" s={15} /></button>
             <button type="button" disabled={!lastAi} onClick={saveLast} aria-label="Save the latest passage to your Life Log" title="Save to Life Log"><Icon n="bookmark" s={15} /></button>
           </div>
         </div>

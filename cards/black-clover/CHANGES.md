@@ -1,6 +1,29 @@
-# Black Clover: A Mage's Tale — v21.15
+# Black Clover: A Mage's Tale — v21.16
 
-Import `Black_Clover_A_Mages_Tale_v21.15.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.16.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.16 — scene pictures (optional)
+
+Each narration can open with a picture of the scene, framed with the place, time and weather.
+
+- **Setting:** Settings → *Scene pictures*: **Off** (default, since pictures cost credits), **Key moments**, or **Every reply**. A note under it says what will happen and the price, taken from Yumina.
+- **Key moments:** a picture on the first reply, on arriving somewhere new, when a fight starts or ends, and every 10 replies. A new time of day counts too, after 5 replies. At least 3 replies apart, except for fights.
+- **Steering note:** the card builds it from the story's own state: place, hour, weather, who is present, what the character wears, and "mid-fight" or "hurt" when true. It is capped at the 198 characters Yumina accepts.
+- **Frame:** the picture sits above the narration with a caption bar (place · time · date · weather) drawn by the card, from the state at that reply. Tap it to see it large. The latest one has a *Redraw* button.
+- **Camera button** in the story card's toolbar: draw the latest scene now, whatever the setting says.
+- **Uses Yumina's own switch if it's on:** if Settings → Display → Story illustrations is set to "illustrate every reply", the card doesn't ask again (that would charge twice). It only frames what Yumina draws. Pictures Yumina drew were previously hidden in this card; they now show.
+- **If the account can't draw pictures** (Yumina decides this), the setting says so and nothing is requested.
+- **Not possible:** putting the card's interface text inside the image (image models can't be given it), so the interface text lives in the frame. No video: dropped.
+- **New variable:** `scene_pics` (hidden from the narrator), so no extra prompt tokens (still 18,763 early, 22,761 late).
+
+Tested on the local test page (`tools/scenepics.mjs`, `tools/scenepics-key.mjs`) with Yumina's image calls simulated:
+- Off: nothing is requested.
+- Every reply: a request per reply, with the steering note.
+- Key moments: drawn on replies 1, 5 (new place), 6 and 8 (fight start and end), not on 2–4 or 7.
+- Yumina's own switch on: the card sends no requests.
+- The framed picture, the "Drawing the scene…" placeholder, and the settings screen.
+
+Not tested: real picture generation and its real prices (the test page can't reach Yumina's image service), and whether the `/cdn/key/…` addresses load inside the sandbox the same way as in these tests. The card's portrait pictures already use that form.
 
 ## v21.15 — the world moves on its own
 

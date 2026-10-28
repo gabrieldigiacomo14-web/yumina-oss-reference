@@ -802,7 +802,20 @@ var CSS = [
   ".bc-sq-cond.c0{color:#9fe7c0;border-color:#3f8f6a}.bc-sq-cond.c1{color:#e8dc9a;border-color:#8f7f3f}.bc-sq-cond.c2{color:#f2b98a;border-color:#9a5f35}.bc-sq-cond.c3,.bc-sq-cond.c4{color:#f39a8f;border-color:#9a3f35}",
   ".bc-sq-hp{display:block;width:70px;height:5px;border-radius:3px;background:#05080e;border:1px solid #2a3344;overflow:hidden}.bc-sq-hp i{display:block;height:100%;background:linear-gradient(90deg,#8a2622,#e05a4b)}",
   ".bc-sq-more{padding:0 10px 10px 58px}",
-  ".bc-sq-hist{margin-top:4px;font-size:12.5px;color:#d8ccb3}.bc-sq-hist div{padding:2px 0;border-top:1px solid #1f2a3a}.bc-sq-hist span{color:#d9b463;margin-right:6px}"
+  ".bc-sq-hist{margin-top:4px;font-size:12.5px;color:#d8ccb3}.bc-sq-hist div{padding:2px 0;border-top:1px solid #1f2a3a}.bc-sq-hist span{color:#d9b463;margin-right:6px}",
+  ".bc-scenepic{margin:0 0 12px;padding:0}",
+  ".bc-scenepic-frame{position:relative;border:1px solid rgba(201,162,78,.55);border-radius:8px 8px 0 0;overflow:hidden;background:#070809;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(0,0,0,.4)}",
+  ".bc-scenepic-frame img{display:block;width:100%;height:auto;max-width:none;max-height:52vh;object-fit:cover}",
+  ".bc-scenepic-wait{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;font-size:13px;color:#f3dda0;background:linear-gradient(0deg,rgba(5,8,14,.92),rgba(5,8,14,.0));text-align:center}",
+  ".bc-scenepic-frame:not(:has(img)){display:flex;align-items:center;justify-content:center;min-height:150px;background:linear-gradient(110deg,#0b1220 30%,#16223a 50%,#0b1220 70%);background-size:200% 100%;animation:bcscenewait 1.8s linear infinite}",
+  ".bc-scenepic-frame:not(:has(img)) .bc-scenepic-wait{position:static;background:none}",
+  ".bc-scenepic-fail{color:#ff9a8a}",
+  ".bc-scenepic-cap{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid rgba(201,162,78,.55);border-top:0;border-radius:0 0 8px 8px;background:rgba(10,14,22,.9);font-size:12.5px;letter-spacing:.3px;color:#d9cfb7}",
+  ".bc-scenepic-cap span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+  ".bc-scenepic-cap button{flex:0 0 auto;border:1px solid rgba(201,162,78,.5);background:transparent;color:#f3dda0;border-radius:12px;padding:2px 10px;font-size:12px;cursor:pointer}",
+  ".bc-scenepic-big{position:fixed;inset:0;z-index:9600;background:rgba(2,4,8,.92);display:flex;align-items:center;justify-content:center;padding:12px;cursor:zoom-out}",
+  ".bc-scenepic-big img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:6px}",
+  "@keyframes bcscenewait{from{background-position:200% 0}to{background-position:-200% 0}}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -2483,9 +2496,12 @@ function BeatBody(p) {
 }
 function SceneAssistantMessage(p) {
   var api = p.api; var v = api.variables || {}; var blocks = splitSceneBlocks(p.text);
-  if (!blocks.length) return null;
+  var spMsg = p.msg || (function () { var ms = arr(api.messages); for (var i = ms.length - 1; i >= 0; i--) if (ms[i] && ms[i].role === "assistant" && stripTurnImageEmbeds(str(ms[i].content)) === stripTurnImageEmbeds(str(p.text))) return ms[i]; return null; })();
+  var spLast = !!spMsg && (function () { var ms = arr(api.messages); for (var i = ms.length - 1; i >= 0; i--) if (ms[i] && ms[i].role === "assistant") return ms[i].id === spMsg.id; return false; })();
+  if (!blocks.length && !(spMsg && lastTurnImageUrl(spMsg.content))) return null;
   return (
     <div className="bc-msg">
+      {spMsg ? <ScenePicture api={api} msg={spMsg} isLast={spLast} /> : null}
       {blocks.map(function (b, i) {
         var talk = !!b.speaker && hasDialogue(b.body);
         if (talk) {
@@ -2524,7 +2540,8 @@ function StoryBubble(p) {
   var art = React.useContext(StoryArtContext);
   if (p.role === "system") return null;
   if (p.role === "user") return <SceneUserMessage api={api} text={p.content} />;
-  return <SceneAssistantMessage api={api} art={art} text={p.content} streaming={!!p.isStreaming} />;
+  var spById = arr(api.messages).filter(function (x) { return x && x.id && x.id === p.id; })[0];
+  return <SceneAssistantMessage api={api} art={art} msg={spById} text={p.content} streaming={!!p.isStreaming} />;
 }
 function SceneTranscript(p) {
   var api = p.api;
@@ -2545,7 +2562,7 @@ function SceneTranscript(p) {
         var text = str(m.content);
         if (m.role === "user") return <SceneUserMessage key={m.id || i} api={api} text={text} />;
         if (streaming && isLast && streamText && streamText.length >= text.length) text = streamText;
-        return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} text={text} streaming={streaming} />;
+        return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} msg={m} text={text} streaming={streaming} />;
       })}
       {api.isStreaming && (!shown.length || shown[shown.length - 1].role !== "assistant") && streamText ?
         <SceneAssistantMessage api={api} art={p.art} text={streamText} streaming={true} /> : null}
@@ -2757,6 +2774,7 @@ function StoryView(p) {
             <button type="button" disabled={!lastAi} onClick={copyLast} aria-label="Copy the latest passage" title="Copy"><Icon n="doc" s={15} /></button>
             <button type="button" disabled={!lastAi || busy || typeof api.editMessage !== "function"} onClick={function () { setEditing({ id: lastAi.id, text: proseOf(lastAi.content), dirs: dirsOf(lastAi.content) }); }} aria-label="Edit the latest passage" title="Edit"><Icon n="quill" s={15} /></button>
             <button type="button" disabled={!lastAi || busy || typeof api.regenerateMessage !== "function"} onClick={regen} aria-label="Regenerate the latest passage" title="Regenerate"><Icon n="hourglass" s={15} /></button>
+            <button type="button" disabled={!lastAi || busy} onClick={function () { drawSceneNow(api, lastAi, function (m) { toast(m, "error"); }); }} aria-label="Draw a picture of the latest scene" title="Draw this scene"><Icon n="camera" s={15} /></button>
             <button type="button" disabled={!lastAi} onClick={saveLast} aria-label="Save the latest passage to your Life Log" title="Save to Life Log"><Icon n="bookmark" s={15} /></button>
           </div>
         </div>
@@ -3433,6 +3451,7 @@ function SettingsView(p) {
   function setS(k, x) { var n = Object.assign({}, cs); n[k] = x; setSset(n); }
   return (
     <div>
+      <ScenePicSettings api={api} />
       <Frame pad="14px" style={{ marginBottom: 14 }}>
         <Field label="Canon guidance"><Seg label="Canon guidance" value={cs.canon_guidance} options={["Strong", "Balanced", "Light", "Off"]} onChange={function (x) { setS("canon_guidance", x); }} /></Field>
         <Field label="Canon participation"><Seg label="Canon participation" value={cs.canon_participation} options={["Organic", "Opportunity-Favored"]} onChange={function (x) { setS("canon_participation", x); }} /></Field>
@@ -4428,6 +4447,7 @@ function Game(p) {
   useSquadRoster(api);
   useInventoryStorySync(api);
   useWorldThreads(api);
+  useScenePictures(api);
   var vs = React.useState("home"); var view = vs[0], setView = vs[1];
   var hs = React.useState([]); var hist = hs[0], setHist = hs[1];
   var prs = React.useState(null); var preset = prs[0], setPreset = prs[1];
@@ -5556,6 +5576,140 @@ function useWorldThreads(api) {
     attempted.current = sig;
     bcPatch(api, patch, function (ok) { if (!ok) attempted.current = ""; });
   }, [sig, !!(api && api.isStreaming)]);
+}
+
+/* ---------- scene pictures ----------
+   Yumina can draw a picture for any reply (api.illustrateMessage). This card
+   adds three things around that: a setting (Off / Key moments / Every reply),
+   a steering note built from the story's own state so the picture matches the
+   place, hour, weather, company and what the character wears, and a framed
+   picture above the narration with a caption bar (place, time, weather) that the
+   card draws itself - image models cannot be given the interface, so the
+   "interface text" lives in the frame, never inside the picture.
+   Pictures cost the player credits, so Off is the default. If Yumina's own
+   "illustrate every reply" switch is on, the card does not ask again (that would
+   charge twice); it only shows what was drawn. */
+PATHS.camera = "M5 15 H14 L17.5 10 H30.5 L34 15 H43 V39 H5 Z M24 19 A7.5 7.5 0 1 1 23.99 19 Z";
+var SP_MODES = [{ v: "off", l: "Off" }, { v: "key", l: "Key moments" }, { v: "every", l: "Every reply" }];
+var SP_MIN_GAP = 3, SP_FORCE_GAP = 10;
+/* tiny shared store: which replies are being drawn right now, and which failed */
+var spState = { drawing: {}, failed: {}, listeners: [] };
+function spSet(kind, id, val) { if (val === null) delete spState[kind][id]; else spState[kind][id] = val; spState.listeners.slice().forEach(function (f) { f(); }); }
+function useSpTick() {
+  var t = React.useState(0), set = t[1];
+  React.useEffect(function () { var f = function () { set(function (x) { return x + 1; }); }; spState.listeners.push(f); return function () { spState.listeners = spState.listeners.filter(function (g) { return g !== f; }); }; }, []);
+}
+function spBand(time) { var m = str(time).match(/^(\d{1,2})/); var h = m ? parseInt(m[1], 10) : 12; return h < 5 ? "night" : h < 8 ? "dawn" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 20 ? "evening" : "night"; }
+function spPlace(v) { var l = parseLoc(v.current_location); return [l.place, l.settlement].filter(Boolean).join(", ") || str(v.current_location); }
+function spKey(m) { return str(m && m.id) + ":" + stripTurnImageEmbeds(str(m && m.content)).length; }
+function spLastReply(api) {
+  var ms = arr(api && api.messages), last = null, n = 0;
+  ms.forEach(function (m) { if (m && m.role === "assistant" && m.id && m.status !== "failed" && str(m.content)) { n++; last = m; } });
+  return { m: last, n: n };
+}
+/* is this reply a moment worth a picture? */
+function spIsMoment(v, sp, n, band, place) {
+  var last = obj(sp.last);
+  if (!last.n && last.n !== 0) return true; // the first reply of the story
+  var since = n - num(last.n, 0);
+  if (isTrue(v.in_combat) !== !!last.combat) return since >= 1;
+  if (since < SP_MIN_GAP) return false;
+  return place !== last.place || since >= SP_FORCE_GAP || (band !== last.band && since >= 5);
+}
+/* the steering note: only what the story state knows, short enough for the note field */
+function spNote(api, v, reply) {
+  var parts = [], band = spBand(v.world_time);
+  var inv = arr(v.inventory).map(obj), apps = obj(v.appearance_state);
+  parts.push("Scene at " + spPlace(v) + ", " + band + (str(v.weather) ? ", " + str(v.weather).toLowerCase() : "") + ".");
+  var names = [];
+  splitSceneBlocks(str(reply && reply.content)).forEach(function (b) { if (b.speaker && names.indexOf(b.speaker) < 0) names.push(b.speaker); });
+  arr(v.party).forEach(function (p) { var n = str(obj(p).name || p); if (n && names.indexOf(n) < 0) names.push(n); });
+  if (names.length) parts.push("With " + names.slice(0, 3).join(", ") + ".");
+  var worn = inv.filter(function (it) { var p = obj(it.placement); return p.kind === "body" && /^(cloak|clothes|base-upper|base-lower|torso)$/.test(str(p.slot)); }).map(function (it) { return str(it.name).replace(/^(loose|plain|simple)\s+/i, "").toLowerCase(); }).slice(0, 2);
+  if (worn.length) parts.push("Wearing " + worn.join(" and ") + ".");
+  if (isTrue(v.in_combat)) parts.push("Mid-fight, dynamic action.");
+  else if (num(v.vitality, 100) < 40) parts.push("Hurt and battered.");
+  return clipArtNote(parts.join(" "), 198);
+}
+function useScenePictures(api) {
+  var v = (api && api.variables) || {}, sp = obj(v.scene_pics), mode = str(sp.mode) || "off";
+  var r = spLastReply(api), key = r.m ? spKey(r.m) : "";
+  var hasPic = r.m ? !!lastTurnImageUrl(r.m.content) : false;
+  var busy = React.useRef("");
+  React.useEffect(function () {
+    if (mode === "off" || !key || api.isStreaming || !r.m || busy.current === key || obj(sp.done)[key] || !isTrue(v.character_created)) return;
+    if (hasPic) return; // already drawn (by Yumina's own switch or an earlier request)
+    if (!canWrite(api) || typeof api.illustrateMessage !== "function" || typeof api.getTurnImageSettings !== "function") return;
+    var band = spBand(v.world_time), place = spPlace(v);
+    var moment = mode === "every" || spIsMoment(v, sp, r.n, band, place);
+    busy.current = key;
+    var id = str(r.m.id), reply = r.m;
+    Promise.resolve(api.getTurnImageSettings()).then(function (s) {
+      var done = Object.assign({}, obj(sp.done)); done[key] = 1;
+      var ks = Object.keys(done); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(function (k) { delete done[k]; });
+      // Yumina's own "illustrate every reply" is on: it draws, we only frame
+      if (!s || !s.available || s.auto || !moment) { bcPatch(api, { scene_pics: Object.assign({}, sp, { done: done }) }, function () {}); return; }
+      bcPatch(api, { scene_pics: Object.assign({}, sp, { done: done, last: { n: r.n, place: place, band: band, combat: isTrue(v.in_combat) } }) }, function () {});
+      spSet("drawing", id, true); spSet("failed", id, null);
+      return Promise.resolve(api.illustrateMessage(id, spNote(api, v, reply), false)).then(function (ok) { if (ok === false) spSet("failed", id, "Yumina couldn't draw this scene."); }, function () { spSet("failed", id, "Yumina couldn't draw this scene."); }).then(function () { spSet("drawing", id, null); });
+    }, function () { }).then(function () { busy.current = ""; }, function () { busy.current = ""; });
+  }, [key, mode, !!api.isStreaming, hasPic]);
+}
+/* a framed picture above the narration; caption comes from the state at that reply */
+function ScenePicture(p) {
+  useSpTick();
+  var big = React.useState(false), isBig = big[0], setBig = big[1];
+  var api = p.api, m = p.msg; if (!m) return null;
+  var id = str(m.id), url = lastTurnImageUrl(m.content), drawing = !!spState.drawing[id], failed = spState.failed[id];
+  var live = (api && api.variables) || {}, snap = obj(m.stateSnapshot);
+  var sv = snap.current_location !== undefined ? snap : (p.isLast ? live : {});
+  var place = spPlace(sv), when = [str(sv.world_time) ? clock12(sv.world_time) : "", str(sv.world_date)].filter(Boolean).join(" · ");
+  if (!url && !drawing && !failed) return null;
+  function redraw() {
+    if (!canWrite(api) || typeof api.illustrateMessage !== "function") return;
+    spSet("drawing", id, true); spSet("failed", id, null);
+    Promise.resolve(api.illustrateMessage(id, spNote(api, live, m), false)).then(function (ok) { if (ok === false) spSet("failed", id, "Yumina couldn't redraw this scene."); }, function () { spSet("failed", id, "Yumina couldn't redraw this scene."); }).then(function () { spSet("drawing", id, null); });
+  }
+  return (
+    <figure className="bc-scenepic">
+      <div className="bc-scenepic-frame" onClick={function () { if (url) setBig(true); }} role={url ? "button" : undefined} aria-label={url ? "View the scene picture large" : undefined}>
+        {url ? <img src={url} alt={"Scene: " + place} loading="lazy" /> : null}
+        {drawing ? <div className="bc-scenepic-wait" role="status">{url ? "Redrawing the scene…" : "Drawing the scene…"}</div> : null}
+        {failed && !drawing && !url ? <div className="bc-scenepic-wait bc-scenepic-fail" role="status">{str(failed)}</div> : null}
+      </div>
+      <figcaption className="bc-scenepic-cap">
+        <span>{[place, when, str(sv.weather)].filter(Boolean).join("  ·  ")}</span>
+        {p.isLast && canWrite(api) && !drawing ? <button type="button" onClick={redraw} aria-label="Redraw this scene picture">Redraw</button> : null}
+      </figcaption>
+      {isBig && url ? <div className="bc-scenepic-big" onClick={function () { setBig(false); }} role="dialog" aria-label="Scene picture"><img src={url} alt={"Scene: " + place} /></div> : null}
+    </figure>
+  );
+}
+/* the manual route: draw this scene, whatever the setting says */
+function drawSceneNow(api, msg, done) {
+  if (!msg || typeof api.illustrateMessage !== "function") { done && done("This Yumina build can't draw scenes."); return; }
+  var id = str(msg.id), v = (api && api.variables) || {};
+  spSet("drawing", id, true); spSet("failed", id, null);
+  Promise.resolve(api.illustrateMessage(id, spNote(api, v, msg), false)).then(function (ok) { if (ok === false) { spSet("failed", id, "Yumina couldn't draw this scene."); done && done("Yumina couldn't draw that scene. Check Story illustrations in Settings, Display."); } }, function () { spSet("failed", id, "Yumina couldn't draw this scene."); done && done("Yumina couldn't draw that scene. Try again in a moment."); }).then(function () { spSet("drawing", id, null); });
+}
+/* settings block: the mode, and an honest note on what will happen */
+function ScenePicSettings(p) {
+  var api = p.api, v = (api && api.variables) || {}, sp = obj(v.scene_pics), mode = str(sp.mode) || "off";
+  var ss = React.useState(null), st = ss[0], setSt = ss[1];
+  React.useEffect(function () {
+    if (!api || typeof api.getTurnImageSettings !== "function") { setSt({ available: false }); return; }
+    try { Promise.resolve(api.getTurnImageSettings()).then(function (x) { setSt(x || { available: false }); }, function () { setSt({ available: false }); }); } catch (e) { setSt({ available: false }); }
+  }, []);
+  var cost = st && st.unlimited ? "Included with your plan." : st && num(st.freeLeft, 0) > 0 ? st.freeLeft + " free picture" + (st.freeLeft === 1 ? "" : "s") + " left, then credits." : st && typeof st.price === "number" ? "About " + st.price + " credits per picture." : "Pictures cost credits.";
+  var line = !st ? "Checking whether this world can draw pictures…" : !st.available ? "Story illustrations aren't available on this account (Yumina decides this), so no pictures will be drawn." : st.auto ? "Yumina's own switch is already drawing a picture for every reply, so this card won't ask again. It frames them with the place, time and weather." : mode === "off" ? cost + " Nothing is drawn until you pick a mode, or tap the camera on a reply." : mode === "key" ? "Draws on arrival somewhere new, when a fight starts or ends, and every so often. " + cost : "Draws a picture for each reply. " + cost;
+  return (
+    <Frame pad="14px" style={{ marginBottom: 14 }}>
+      <Field label="Scene pictures" hint="Each narration can open with a picture, framed with the place, time and weather. It follows the story: where you are, who is with you, what you wear, how hurt you are.">
+        <Seg label="Scene pictures" value={mode} options={SP_MODES} onChange={function (x) { if (canWrite(api)) api.setVariable("scene_pics", Object.assign({}, sp, { mode: x })); }} />
+      </Field>
+      <div role="status" style={{ fontSize: 14, color: C.muted, lineHeight: 1.45 }}>{line}</div>
+    </Frame>
+  );
 }
 
 export default function App() {

@@ -12,6 +12,7 @@ function Game(p) {
   useSquadRoster(api);
   useInventoryStorySync(api);
   useWorldThreads(api);
+  useScenePictures(api);
   var vs = React.useState("home"); var view = vs[0], setView = vs[1];
   var hs = React.useState([]); var hist = hs[0], setHist = hs[1];
   var prs = React.useState(null); var preset = prs[0], setPreset = prs[1];

@@ -83,7 +83,7 @@ a = s.index('  return <div>\n    <Eyebrow k="CLOVER KINGDOM', bv); b = s.index('
 s = s[:a] + P('p6_bank_return.tsx') + s[b:]
 # remaining parts before App
 app = s.index('\nexport default function App(')
-s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + s[app:]
+s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + P('p15_scenepics.tsx') + s[app:]
 # css
 # the original 430px media rule never closed its block, swallowing every later rule on wider screens
 s = s.replace('scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}",', 'scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}}",', 1)
@@ -144,5 +144,31 @@ label('''  var events = arr(v.known_events).filter(function (e) { return e && !/
 label('''      {past.length ? <div><H m="20px 0 10px">Recently resolved</H>''', '''      <H m="20px 0 10px">Word going around</H>
       {word.length ? <Frame pad="4px 14px 8px">{word.map(function (e, i) { return <div key={e.id || i} style={{ padding: "9px 0", borderBottom: i < word.length - 1 ? "1px solid " + C.goldLine : "none" }}><div style={{ fontSize: 15, color: C.ivory, lineHeight: 1.35 }}>{str(e.title)}</div><div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>{[e.kind === "rumor" ? "Rumor" : "News", str(e.source), str(e.when)].filter(Boolean).join(" · ")}</div></div>; })}</Frame> : <Empty>You haven't heard anything worth repeating yet. Taverns, markets and your squad's hall are where talk travels.</Empty>}
       {past.length ? <div><H m="20px 0 10px">Recently resolved</H>''')
+# scene pictures: framed picture above each narration, setting, hook is in p8_game
+label('''function SceneAssistantMessage(p) {
+  var api = p.api; var v = api.variables || {}; var blocks = splitSceneBlocks(p.text);
+  if (!blocks.length) return null;
+  return (
+    <div className="bc-msg">
+''', '''function SceneAssistantMessage(p) {
+  var api = p.api; var v = api.variables || {}; var blocks = splitSceneBlocks(p.text);
+  var spMsg = p.msg || (function () { var ms = arr(api.messages); for (var i = ms.length - 1; i >= 0; i--) if (ms[i] && ms[i].role === "assistant" && stripTurnImageEmbeds(str(ms[i].content)) === stripTurnImageEmbeds(str(p.text))) return ms[i]; return null; })();
+  var spLast = !!spMsg && (function () { var ms = arr(api.messages); for (var i = ms.length - 1; i >= 0; i--) if (ms[i] && ms[i].role === "assistant") return ms[i].id === spMsg.id; return false; })();
+  if (!blocks.length && !(spMsg && lastTurnImageUrl(spMsg.content))) return null;
+  return (
+    <div className="bc-msg">
+      {spMsg ? <ScenePicture api={api} msg={spMsg} isLast={spLast} /> : null}
+''')
+label('''  return (
+    <div>
+      <Frame pad="14px" style={{ marginBottom: 14 }}>
+        <Field label="Canon guidance">''', '''  return (
+    <div>
+      <ScenePicSettings api={api} />
+      <Frame pad="14px" style={{ marginBottom: 14 }}>
+        <Field label="Canon guidance">''')
+label('''  return <SceneAssistantMessage api={api} art={art} text={p.content} streaming={!!p.isStreaming} />;''', '''  var spById = arr(api.messages).filter(function (x) { return x && x.id && x.id === p.id; })[0];
+  return <SceneAssistantMessage api={api} art={art} msg={spById} text={p.content} streaming={!!p.isStreaming} />;''')
+label('''return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} text={text} streaming={streaming} />;''', '''return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} msg={m} text={text} streaming={streaming} />;''')
 open(sys.argv[2], 'w').write(s)
 print('ok', len(s))
