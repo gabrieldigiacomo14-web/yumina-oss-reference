@@ -1486,7 +1486,7 @@ function GrimoireForgeSheet(p) {
         <div>
           <H size={17} m="0 0 5px">Customize the book</H>
           <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.45 }}>Cosmetic only. Your real insignia, leaf count, spells and grimoire history stay controlled by game state and cannot be changed here.</div>
-          {coverUrl ? <div style={{ marginTop: 9, fontSize: 12.5, color: C.gold }}>An AI cover is currently active.</div> : null}
+          {coverUrl ? <div style={{ marginTop: 9, fontSize: 12.5, color: C.gold }}>Your own cover is active (uploaded or AI). Use the button below to switch back to the crafted one.</div> : null}
         </div>
       </div>
       <Field label="Cover color"><select className="bc-in" value={d.color} onChange={function (e) { set("color", e.target.value); }}>{["Obsidian black","Forest green","Crimson red","Sapphire blue","Royal violet","Ivory","Umber brown","Amber gold"].map(function (x) { return <option key={x}>{x}</option>; })}</select></Field>
@@ -1497,6 +1497,7 @@ function GrimoireForgeSheet(p) {
       <Field label="Magic aura"><Seg label="Magic aura" value={d.aura === false ? "Off" : str(d.aura)} options={["Off","Subtle","Normal","Strong"]} onChange={function (x) { set("aura", x === "Off" ? false : x); }} /></Field>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
         <Btn kind="gold" onClick={save}>Save crafted design</Btn>
+        <GrimoireCoverUpload api={p.api} art={p.art} />
         <Btn onClick={function () { save(); setAiOpen(true); }}>Generate AI cover</Btn>
         {coverUrl ? <Btn onClick={function () { p.art.setArt("grimoire_cover", "", function () {}); }}>Use crafted cover instead</Btn> : null}
       </div>
@@ -3869,7 +3870,7 @@ function GrimoireView(p) {
         </div>
         <div className="bc-grim-cover-row">
           <div className="bc-grimoire-cover"><Cover g={g} attr={mp.attribute} small={true} design={obj(p.art).grimoireDesign} imgUrl={artFor(p.api, obj(p.art).art, "grimoire_cover")} /></div>
-          <div><strong>{(str(obj(g.appearance).cover) || "A soul-bound grimoire")}</strong><small>{(num(g.leaf_count, 3) + "-leaf") + (attr ? " · " + attr + " magic" : "")}</small><Btn small onClick={function () { setGrimoireForge(true); }}><Icon n="quill" s={14} />Customize / AI Cover</Btn></div>
+          <div><strong>{(str(obj(g.appearance).cover) || "A soul-bound grimoire")}</strong><small>{(num(g.leaf_count, 3) + "-leaf") + (attr ? " · " + attr + " magic" : "")}</small><Btn small onClick={function () { setGrimoireForge(true); }}><Icon n="quill" s={14} />Customize / Upload cover</Btn></div>
         </div>
       </div>
     );
@@ -3925,6 +3926,30 @@ function GrimoireView(p) {
       {sub !== "spells" || open >= 0 ? <div className="bc-chiprow" style={{ marginBottom: 10 }}>{[["spells", "Overview", "book"], ["developing", "Developing", "quill"], ["techniques", "Techniques", "star"], ["record", "Record", "scroll"]].map(function (t) { return <Chip key={t[0]} icon={t[2]} on={sub === t[0] && open < 0} onClick={function () { setSub(t[0]); setOpen(-1); }}>{t[1]}</Chip>; })}</div> : null}
       {content}
     </div>
+  );
+}
+
+/* Upload your own grimoire cover, right where the cover is customized (the same upload the More → Art page has) */
+function GrimoireCoverUpload(p) {
+  var bs = React.useState(false), busy = bs[0], setBusy = bs[1];
+  var ms = React.useState(""), msg = ms[0], setMsg = ms[1];
+  var art = p.art;
+  function onFile(e) {
+    var fl = e.target.files && e.target.files[0]; e.target.value = ""; if (!fl) return;
+    readImage(fl, 900, 1200, function (err, data) {
+      if (err) { setMsg(err); return; }
+      setMsg(""); setBusy(true);
+      art.setArt("grimoire_cover", data, function (ok) { setBusy(false); if (ok === false) setMsg(art.mediaError || "Upload failed — try again."); else if (p.api && p.api.showToast) p.api.showToast("Grimoire cover uploaded", "success"); });
+    });
+  }
+  if (!art || typeof art.setArt !== "function") return null;
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
+      <label className="bc-upload-btn" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "7px 12px", borderRadius: 6, border: "1px solid " + C.gold, color: C.goldHi, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy ? .6 : 1 }}>
+        {busy ? "Uploading…" : "Upload your own cover"}<input type="file" accept="image/*" disabled={busy} style={{ display: "none" }} onChange={onFile} />
+      </label>
+      {msg ? <span role="alert" style={{ color: "#f1c7b8", fontSize: 13.5 }}>{msg}</span> : null}
+    </span>
   );
 }
 function itemKind(it) {

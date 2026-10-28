@@ -170,5 +170,9 @@ label('''  return (
 label('''  return <SceneAssistantMessage api={api} art={art} text={p.content} streaming={!!p.isStreaming} />;''', '''  var spById = arr(api.messages).filter(function (x) { return x && x.id && x.id === p.id; })[0];
   return <SceneAssistantMessage api={api} art={art} msg={spById} text={p.content} streaming={!!p.isStreaming} />;''')
 label('''return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} text={text} streaming={streaming} />;''', '''return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} msg={m} text={text} streaming={streaming} />;''')
+# upload a grimoire cover straight from the Grimoire Forge sheet
+label('''        <Btn onClick={function () { save(); setAiOpen(true); }}>Generate AI cover</Btn>''', '''        <GrimoireCoverUpload api={p.api} art={p.art} />
+        <Btn onClick={function () { save(); setAiOpen(true); }}>Generate AI cover</Btn>''')
+label('''{coverUrl ? <div style={{ marginTop: 9, fontSize: 12.5, color: C.gold }}>An AI cover is currently active.</div> : null}''', '''{coverUrl ? <div style={{ marginTop: 9, fontSize: 12.5, color: C.gold }}>Your own cover is active (uploaded or AI). Use the button below to switch back to the crafted one.</div> : null}''')
 open(sys.argv[2], 'w').write(s)
 print('ok', len(s))

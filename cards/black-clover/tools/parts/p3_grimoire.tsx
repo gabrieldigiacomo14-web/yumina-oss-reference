@@ -182,7 +182,7 @@ function GrimoireView(p) {
         </div>
         <div className="bc-grim-cover-row">
           <div className="bc-grimoire-cover"><Cover g={g} attr={mp.attribute} small={true} design={obj(p.art).grimoireDesign} imgUrl={artFor(p.api, obj(p.art).art, "grimoire_cover")} /></div>
-          <div><strong>{(str(obj(g.appearance).cover) || "A soul-bound grimoire")}</strong><small>{(num(g.leaf_count, 3) + "-leaf") + (attr ? " · " + attr + " magic" : "")}</small><Btn small onClick={function () { setGrimoireForge(true); }}><Icon n="quill" s={14} />Customize / AI Cover</Btn></div>
+          <div><strong>{(str(obj(g.appearance).cover) || "A soul-bound grimoire")}</strong><small>{(num(g.leaf_count, 3) + "-leaf") + (attr ? " · " + attr + " magic" : "")}</small><Btn small onClick={function () { setGrimoireForge(true); }}><Icon n="quill" s={14} />Customize / Upload cover</Btn></div>
         </div>
       </div>
     );
@@ -238,5 +238,29 @@ function GrimoireView(p) {
       {sub !== "spells" || open >= 0 ? <div className="bc-chiprow" style={{ marginBottom: 10 }}>{[["spells", "Overview", "book"], ["developing", "Developing", "quill"], ["techniques", "Techniques", "star"], ["record", "Record", "scroll"]].map(function (t) { return <Chip key={t[0]} icon={t[2]} on={sub === t[0] && open < 0} onClick={function () { setSub(t[0]); setOpen(-1); }}>{t[1]}</Chip>; })}</div> : null}
       {content}
     </div>
+  );
+}
+
+/* Upload your own grimoire cover, right where the cover is customized (the same upload the More → Art page has) */
+function GrimoireCoverUpload(p) {
+  var bs = React.useState(false), busy = bs[0], setBusy = bs[1];
+  var ms = React.useState(""), msg = ms[0], setMsg = ms[1];
+  var art = p.art;
+  function onFile(e) {
+    var fl = e.target.files && e.target.files[0]; e.target.value = ""; if (!fl) return;
+    readImage(fl, 900, 1200, function (err, data) {
+      if (err) { setMsg(err); return; }
+      setMsg(""); setBusy(true);
+      art.setArt("grimoire_cover", data, function (ok) { setBusy(false); if (ok === false) setMsg(art.mediaError || "Upload failed — try again."); else if (p.api && p.api.showToast) p.api.showToast("Grimoire cover uploaded", "success"); });
+    });
+  }
+  if (!art || typeof art.setArt !== "function") return null;
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
+      <label className="bc-upload-btn" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "7px 12px", borderRadius: 6, border: "1px solid " + C.gold, color: C.goldHi, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy ? .6 : 1 }}>
+        {busy ? "Uploading…" : "Upload your own cover"}<input type="file" accept="image/*" disabled={busy} style={{ display: "none" }} onChange={onFile} />
+      </label>
+      {msg ? <span role="alert" style={{ color: "#f1c7b8", fontSize: 13.5 }}>{msg}</span> : null}
+    </span>
   );
 }

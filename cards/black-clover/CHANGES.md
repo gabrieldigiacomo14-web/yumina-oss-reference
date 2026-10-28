@@ -1,6 +1,12 @@
-# Black Clover: A Mage's Tale — v21.16
+# Black Clover: A Mage's Tale — v21.16.1
 
-Import `Black_Clover_A_Mages_Tale_v21.16.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.16.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.16.1 — upload your own grimoire cover
+
+- **Grimoire page → Customize / Upload cover → Grimoire Forge** now has **Upload your own cover**, next to *Generate AI cover* and *Use crafted cover instead*. The upload already existed, but only under More → Art; it wasn't where you customize the grimoire.
+- It is the same upload as the other portraits (resized to fit 900×1200, then saved the same way). The new cover shows on the Grimoire page and the Realm summary. "Use crafted cover instead" switches back to the generated design.
+- Tested on the local test page: upload, success toast, "Use crafted cover instead" appears, and the cover image shows on the Grimoire page. The test page keeps the image inline; real Yumina stores it through the same media route the Art page uses, which I couldn't try from here.
 
 ## v21.16 — scene pictures (optional)
 
