@@ -273,6 +273,15 @@ w['variables'].append({"id": "squad_summary", "name": "squad_summary", "type": "
 w['variables'].append({"id": "squad_events", "name": "squad_events", "type": "json", "category": "custom", "defaultValue": [],
     "description": "Queue the interface applies to the squad roster, then clears.",
     "behaviorRules": "Push one {type,name,...} per real change to someone in the character's squad: join (a member the character meets or who joins; role,rank,magic; joined:\"before\" if already a member), update (location, condition, mission, notes), seen, leave, death. with:true/false when they join or part from the character in the scene. Never rewrite squad_summary."})
+# world threads (interface-owned clocks; the narrator files thread_events, as with the squad roster)
+w['variables'].append({"id": "world_threads", "name": "World threads", "type": "json", "category": "custom", "aiAccess": "none", "defaultValue": {},
+    "description": "The few ongoing offscreen situations, their 0-6 clocks, beats and who has heard of them (interface-owned, not sent to the AI)."})
+w['variables'].append({"id": "world_pulse", "name": "world_pulse", "type": "string", "category": "custom", "aiAccess": "read", "defaultValue": "",
+    "description": "Interface-kept lines: active world threads, what just moved offscreen, what can be overheard here.",
+    "behaviorRules": "Offscreen situations; they move without the character, who learns of them only in-world. Act on its OFFSCREEN, HEARD HERE, FEW THREADS lines."})
+w['variables'].append({"id": "thread_events", "name": "thread_events", "type": "json", "category": "custom", "defaultValue": [],
+    "description": "Queue the interface applies to world_threads, then clears.",
+    "behaviorRules": "{op:new,title,who,where,next,talk(what locals say)} · {op:beat,id,text,next,talk} · {op:push|hinder,id,by} when the character affects it · {op:end,id,outcome}."})
 V['last_train_report']['behaviorRules'] = "When a training block resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual training time this reply). The interface then applies stamina, mana, fatigue and the clock — don't write those. Otherwise leave \"\"."
 V['last_travel_report']['behaviorRules'] = "When a travel leg resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual travel time this reply). The interface then applies stamina, mana, fatigue and the clock; you still write current_location, known_locations, food and money. Otherwise leave \"\"."
 
@@ -300,8 +309,8 @@ w['reactions'] += [
   "when": {"eventType": "turn:complete"}, "conditions": [CREATED, NOFIGHT], "conditionLogic": "all",
   "then": [{"type": "emit", "event": {"type": "ai:context", "role": "system", "message":
     "WORLD CHURN (engine roll): in the next reply, where the character could plausibly notice it, let ONE small piece of independent world life surface — "
-    "an overheard rumor, a minor local event, a known NPC acting on their own goals, news or a letter from elsewhere, a shift in prices or supply, or a stranger with a problem. "
-    "Pick what fits this place and hour, vary it from last time, keep it brief and organic. Not a quest; the player may ignore it. Record anything lasting in state."}}]},
+    "preferably a sign of a world_pulse thread (its people, its effects, talk of it), otherwise a minor local event, a known NPC acting on their own goals, a letter, a shift in prices or supply. "
+    "Pick what fits this place and hour, keep it brief and organic. Not a quest; the player may ignore it. Record anything lasting in state."}}]},
  {"id": "new-day-weather", "name": "New Day — Weather & Schedules", "enabled": True, "priority": 5,
   "description": "When the date changes, remind the narrator once to roll the weather forward and let schedules move.",
   "when": {"eventType": "state:changed", "match": {"variableId": {"value": "world_date", "operator": "eq"}}}, "conditions": [CREATED], "conditionLogic": "all",
@@ -324,9 +333,9 @@ w['settings'].update({
 for v in w['variables']:
     if v.get('aiAccess') != 'none' and (v.get('behaviorRules') or v.get('updateHints')):
         v['name'] = v['id']
-w["version"] = "21.14.0"
+w["version"] = "21.15.0"
 w['description'] = d['description'] + \
-    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.14: strong foes are strong (canon power table, power gap, endure-or-run fights against far stronger foes, tougher attacks). v21.13: the inventory follows the story (taking clothes off, setting things down, picking them up), short-lived gear notes, regenerate rewinds travel and training. v21.12: squad roster (names, whereabouts, condition, recent joins). v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
+    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.15: the world moves on its own (4-6 world threads with clocks, overheard news filed in the Journal) and scenes keep living around the character. v21.14: strong foes are strong (canon power table, power gap, endure-or-run fights against far stronger foes, tougher attacks). v21.13: the inventory follows the story (taking clothes off, setting things down, picking them up), short-lived gear notes, regenerate rewinds travel and training. v21.12: squad roster (names, whereabouts, condition, recent joins). v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
 
 # ---------------------------------------------------------------- 7. interface files
 files = w['rootComponent']['files']

@@ -1,6 +1,44 @@
-# Black Clover: A Mage's Tale — v21.14
+# Black Clover: A Mage's Tale — v21.15
 
-Import `Black_Clover_A_Mages_Tale_v21.14.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.15.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.15 — the world moves on its own
+
+A tester asked for characters who have their own business instead of focusing on the player. Alone in a scene (showering, training, sleeping), the narrator either skipped time or repeated what the player had just written.
+
+**1. "Life continues" rule** (`core/core-living-world.txt`):
+- Never retell the player's message; write what it causes and what the world adds.
+- Others keep their own business: they work, talk among themselves, come and go.
+- When the character is alone with nothing to decide, the narrator writes one fresh short beat, lets others' sounds or news reach them, and moves time on.
+
+**2. World threads** (`parts/p14_threads.tsx`), built on tabletop "fronts" and faction clocks rather than an event list:
+- **A few situations, not an event list:** the background is 4–6 ongoing situations with a 0–6 clock each. Example: "Wolves taking sheep on the Hage hillside, 2/6, next: a shepherd is attacked".
+- **The narrator manages them through a queue:** it opens, records, pushes or ends threads with `thread_events` (same pattern as the squad roster). When fewer than 4 are active, it is asked to open one that fits the setting. Canon developments can be threads.
+- **Clocks tick with in-world days:** about a 1 in 3 chance per thread per day, a little faster near the end. The dice are seeded by thread and day, so a regenerated reply sees the same world. No AI call is spent on it.
+- **The narrator is told once when a thread moves offscreen.** It writes what happened (a "beat") and reveals it only through what the character could perceive. At 6/6 the thread comes to a head and the narrator resolves it.
+- **News spreads with the clock:** from the people involved to the town (2+), the kingdom (4+) and everywhere (6). Taverns hear things one step sooner.
+- **Overheard chatter:**
+  - **Where and how often:** in public scenes (street, shop, tavern, church, workplace, squad HQ, ceremony), at most once every 3 replies.
+  - **What gets picked:** the most relevant thread that has reached that place, favouring your squad, your home town and threads with news you haven't heard yet.
+  - **How the narrator gets it:** one line of background talk, told the way locals would tell it.
+  - **What the player sees:** once a reply has carried it, it is filed in the Journal.
+- **Journal → Assignments** has a new **Word going around** section: rumors and news, with where you heard them ("Rumor · Overheard at Rusty Tankard"). The true state of each thread stays hidden.
+- **The random "world churn" roll** (1 turn in 8) now prefers showing a sign of an existing thread instead of inventing something new.
+- **Regenerate rewinds everything:** it is all in variables written after replies.
+
+New variables: `world_threads` (hidden), `world_pulse` (read), `thread_events` (write).
+
+**Cost:** +262 tokens per turn for the rules (18,763 early, 22,761 late), plus the pulse once threads exist. The pulse is about 40–60 tokens of thread list, plus a line when something moved or can be overheard.
+
+**Fixed during testing:** the tick dice used a hash without a final mixing step. In a 200-day test, one thread never ticked at all and another ticked twice as often as normal. Fixed with a standard finalizer; all threads now tick about a third of days.
+
+Tested on the local test page (`tools/threads.mjs`), with the narrator's part (filing threads and beats) simulated:
+- Threads opened from the queue.
+- The overheard line was offered in a tavern, then delivered and filed in the Journal.
+- Ten days ticked the clocks and the narrator was asked for beats.
+- A beat and a "hinder" applied correctly.
+
+Not tested: how naturally a real model weaves it in.
 
 ## v21.14 — strong foes are strong
 
