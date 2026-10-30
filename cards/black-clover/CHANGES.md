@@ -1,6 +1,67 @@
-# Black Clover: A Mage's Tale — v21.16.1
+# Black Clover: A Mage's Tale — v21.17
 
-Import `Black_Clover_A_Mages_Tale_v21.16.1.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.17.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.17 — the official world layout, and real grimoire cover crafting
+
+### World map (`tools/ui/bc-cartography.js`)
+Reshaped to the official guidebook layout (see `docs/world-map-v21.17.png`):
+- **Spade** is the largest kingdom, across the north (all ice and mountains, as before).
+- **The neutral territory** (the Strong Magic Region, Grand Magic Zones) is now an **arch wrapped around Spade's south, west and east sides**. It was a straight strip between Clover and Spade only. It separates Spade from all three other kingdoms. A check confirms no Spade land touches another kingdom directly.
+- **Heart** (west) and **Diamond** (east) **border Clover directly**; Clover sits south-centre with its southern coast, Raquey's bay and the concentric realms.
+- **The Witches' Forest** moved into the neutral territory north-east of Clover, toward Diamond (74, 116). It now belongs to no kingdom (the territory fill used to claim it for Clover). Its trees show through the band's mana haze.
+- **Rayaka** moved from (14, 46) to (20, 50), so it is in the Forsaken Realm as on the official Clover map.
+- **Small fixes:**
+  - One Grand Magic Zone moved into the western band; it had been on Spade's edge.
+  - The haze no longer spills over the sea.
+  - Heart has a few small western isles.
+- **Ownership check** (`tools/check/map-owners.mjs`):
+  - Every canon Clover place is in Clover and in the right realm.
+  - The kingdom capitals are on land in their own kingdoms.
+  - The neutral points are unowned.
+  - Land share: Spade 333, Heart 174, neutral 163, Clover 153, Diamond 134 cells.
+- **The narrator's geography** (gazetteer and world-map entries) now describes the same layout:
+  - The new coordinates for Rayaka, the Witches' Forest and the three kingdoms.
+  - A line on the neutral arch.
+  - The Common/Forsaken boundary fixed to 48 km; the text said 38 while the map drew 48.
+  - These entries load only when geography comes up, so the per-turn cost is unchanged (18,763 / 22,761).
+- **Older saves:** a save that already stored the Witches' Forest or Rayaka at the old spot in `known_locations` keeps that stored point for those entries.
+
+### Grimoire cover crafting (`tools/parts/p16_cover.tsx`)
+**Why options seemed to do nothing:** every cover on a screen shared the same internal SVG ids. The Forge's live preview was drawn with the colours and textures of the page's saved cover behind it, so most choices didn't show until saved. Each cover now gets its own ids. The options are also all new or redone, and each one visibly changes the drawing (see `docs/grimoire-covers-v21.17.png`):
+- **Cover color:** 14 swatches.
+- **Trim:** 7 swatches (gold, silver, bronze, copper, rose gold, dark iron, bone).
+- **Material**, each with its own texture:
+  - **Leather:** grain, stitched border, spine bands.
+  - **Velvet:** soft sheen and nap.
+  - **Metal:** brushed, bevel, rivets.
+  - **Stone:** speckle, cracks, heavy edge.
+  - **Scaled hide:** scales.
+  - **Wood:** grain.
+- **Condition:**
+  - **Pristine:** gloss.
+  - **Worn:** rubbed corners, scuffs, faded colour.
+  - **Ancient:** cracks, stains, torn corner, strongly faded.
+  - **Battle-scarred:** slashes and a scorch mark.
+- **Decoration:**
+  - **Classic:** frame and corner caps.
+  - **Minimal:** thin frame only.
+  - **Ornate:** filigree and scrolls.
+  - **Royal:** double frame, crown, jewels.
+  - **Runic:** rune ring.
+  - **Arcane:** magic circle.
+  - "Royal" used to be identical to "Ornate".
+- **New: Insignia setting:** plain, medallion, gem-set.
+- **New: Clasp:** none, strap, lock, chains.
+- **New: Page edges:** cream, gilded, black, red.
+- **Magic aura:**
+  - **Subtle:** glow only.
+  - **Normal:** glow and drifting motes.
+  - **Strong:** brighter glow, more motes and rays.
+  - The colour still comes from your magic attribute.
+- **Preview:** the live preview stays at the top while you scroll the options.
+- **AI cover prompt:** includes all of these choices.
+- **Old saved designs** still load (old wear words map to Worn or Ancient).
 
 ## v21.16.1 — upload your own grimoire cover
 

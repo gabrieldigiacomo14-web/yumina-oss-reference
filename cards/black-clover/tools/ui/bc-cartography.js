@@ -18,17 +18,19 @@ export var UW = Math.round(W / GEN.kmPerUnit), UH = Math.round(H / GEN.kmPerUnit
 
 export var KINGDOMS = [
   { k: "Clover", at: [0, 34], r: 112, label: "Clover Kingdom", capital: [0, 0] },
-  { k: "Diamond", at: [145, 36], r: 104, label: "Diamond Kingdom", capital: [145, 36] },
-  { k: "Heart", at: [-170, 18], r: 104, label: "Heart Kingdom", capital: [-170, 18] },
-  { k: "Spade", at: [0, 212], r: 112, label: "Spade Kingdom", capital: [0, 212] }
+  { k: "Diamond", at: [160, 40], r: 104, label: "Diamond Kingdom", capital: [160, 40] },
+  { k: "Heart", at: [-185, 30], r: 108, label: "Heart Kingdom", capital: [-185, 30] },
+  { k: "Spade", at: [0, 252], r: 150, label: "Spade Kingdom", capital: [0, 252] }
 ];
 export var KINGDOM_TINT = { Clover: "#6fa05a", Diamond: "#c89a5a", Heart: "#3f9e72", Spade: "#9aa6c0" };
-var EXTRA_LAND = [[0, -18, 54], [-46, -14, 40], [66, 70, 44], [-88, 48, 52], [0, 112, 66], [-120, 140, 62], [104, 142, 52], [48, 58, 22], [150, -10, 34], [-190, -20, 30], [-70, 90, 40], [80, 110, 40]];
+var EXTRA_LAND = [[0, -18, 54], [-46, -14, 40], [66, 70, 44], [-88, 48, 52], [0, 112, 66], [-120, 140, 62], [104, 142, 52], [48, 58, 22], [150, -10, 34], [-190, -20, 30], [-70, 90, 40], [80, 110, 40],
+  [-185, 215, 78], [180, 205, 74], [-95, 270, 60], [95, 272, 60], [-235, 120, 46], [228, 118, 44]];
+var ISLES = [[-302, 42, 11], [-296, 4, 8], [-312, 82, 7], [-268, -38, 9], [262, -30, 8]]; // Heart's western isles, a few off Diamond
 // canon places and the kingdom they belong to (km from the Royal Capital)
 export var GAZ = {
   "royal capital": [0, 0], "clover castle": [0, 0], "castle town": [0, 2], "kikka": [2, 12], "nean": [-8, 26], "hecairo": [6, 28], "hage": [-2, 52],
-  "rayaka": [14, 46], "saussy": [-32, 44], "sosshi": [-32, 44], "raquey": [14, -8], "raque": [14, -8], "kiten": [58, 18], "first dungeon": [62, 8],
-  "witches' forest": [48, 58], "witches forest": [48, 58], "nairn": [-20, 20], "diamond kingdom": [145, 36], "heart kingdom": [-170, 18], "spade kingdom": [0, 212]
+  "rayaka": [20, 50], "saussy": [-32, 44], "sosshi": [-32, 44], "raquey": [14, -8], "raque": [14, -8], "kiten": [58, 18], "first dungeon": [62, 8],
+  "witches' forest": [74, 116], "witches forest": [74, 116], "nairn": [-20, 20], "diamond kingdom": [160, 40], "heart kingdom": [-185, 30], "spade kingdom": [0, 252]
 };
 var GAZ_KINGDOM = { "diamond kingdom": "Diamond", "heart kingdom": "Heart", "spade kingdom": "Spade" };
 /* Canon lore, generated into every map. Coordinates are the gazetteer's (km from the Royal Capital); places the
@@ -41,24 +43,38 @@ export var CANON_PLACES = [
   { name: "Nairn", x: -20, y: 20, kind: "town", line: "Common Realm town." },
   { name: "Raquey", x: 14, y: -8, kind: "water", line: "Seaside resort town. A Grand Magic Zone lies nearby and the Seabed Temple beneath the sea offshore." },
   { name: "Hage", x: -2, y: 52, kind: "village", line: "Forsaken Realm village: the church-orphanage of Father Orsi and Sister Lily, and a grimoire tower." },
-  { name: "Rayaka", x: 14, y: 46, kind: "village", line: "Forsaken Realm village." },
+  { name: "Rayaka", x: 20, y: 50, kind: "village", line: "Forsaken Realm village." },
   { name: "Saussy (Sosshi)", x: -32, y: 44, kind: "village", line: "Forsaken Realm village attacked by the Eye of the Midnight Sun early in canon." },
   { name: "Kiten", x: 58, y: 18, kind: "town", realm: "common", line: "Common Realm city near the Diamond border; site of a major Diamond attack." },
   { name: "First Dungeon", x: 62, y: 8, kind: "ruin", line: "A coastal dungeon east of Kiten." },
   { name: "Seabed Temple", x: 14, y: -31, kind: "ruin", line: "Beneath the sea off Raquey." },
-  { name: "Witches' Forest", x: 48, y: 58, kind: "forest", line: "Neutral land between Clover and Diamond, ruled by the Witch Queen." }
+  { name: "Witches' Forest", x: 74, y: 116, kind: "forest", line: "In the neutral territory north-east of Clover, toward Diamond; ruled by the Witch Queen." }
 ];
+var WITCHES = { x: 74, y: 116, r: 24 };
 export var CANON_AREAS = [
-  { id: "witches", name: "Witches' Forest", x: 48, y: 58, r: 20, terrain: "forest", line: "Neutral land between Clover and Diamond." },
+  { id: "witches", name: "Witches' Forest", x: 74, y: 116, r: 24, terrain: "forest", line: "Neutral territory north-east of Clover, toward Diamond." },
   { id: "gmz-raquey", name: "Grand Magic Zone", x: 28, y: -20, r: 20, line: "A zone of violent mana in the neutral lands near Raquey." },
-  { id: "gmz-border", name: "Grand Magic Zone", x: 104, y: 78, r: 20, line: "Neutral land between the nations (position derived from the lore)." },
+  { id: "gmz-border", name: "Grand Magic Zone", x: -118, y: 130, r: 20, line: "In the neutral territory between Heart, Clover and Spade (position derived from the lore)." },
   { id: "diamond-mines", name: "Diamond mines and wasteland", x: 168, y: 46, r: 46, terrain: "badlands", line: "A harsh land of mines and wasteland." }
 ];
-/* The Strong Magic Region: a wide band of Grand Magic Zones (violent, dense mana) in the neutral land between Clover and Spade.
-   Crossing it takes very strong mana; Spade's forces cross in a mobile fortress fed by captured mana. Nobody owns it. */
-export var BARRIER = { y: 150, half: 24 };
-export function barrierY(x) { return BARRIER.y + 8 * Math.sin(x / 40) + 5 * Math.sin(x / 17 + 0.8); }
-export function barrierStrength(x, y) { var d = Math.abs(y - barrierY(x)); return d >= BARRIER.half ? 0 : 1 - d / BARRIER.half; }
+/* The neutral territory (the Strong Magic Region): an arch of Grand Magic Zones (violent, dense mana) wrapped around
+   Spade's south, west and east sides, as on the official world map. It keeps Spade apart from Heart, Clover and Diamond,
+   which sit south-west, south and south-east of it; Heart and Diamond border Clover directly. Crossing it takes very
+   strong mana; Spade's forces cross in a mobile fortress fed by captured mana. Nobody owns it; the Witches' Forest is in it. */
+export var BARRIER = { cx: 0, cy: 236, ax: 252, ay: 118, half: 34 };
+function bandRadius(t) { // the arch's distance from its centre at angle t, with a hand-drawn wobble
+  var c = Math.cos(t), sn = Math.sin(t);
+  return 1 / Math.sqrt(c * c / (BARRIER.ax * BARRIER.ax) + sn * sn / (BARRIER.ay * BARRIER.ay)) + 7 * Math.sin(t * 7) + 4 * Math.sin(t * 13 + 0.8);
+}
+/* how far a point lies outside the arch's middle line (km; negative = Spade's side), or null north of the arch */
+function bandOffset(x, y) {
+  var dx = x - BARRIER.cx, dy = y - BARRIER.cy; if (dy > 12) return null;
+  var t = Math.atan2(dy, dx); return Math.hypot(dx, dy) - bandRadius(t);
+}
+export function bandPoint(deg) { var t = deg * Math.PI / 180, r = bandRadius(t); return [BARRIER.cx + Math.cos(t) * r, BARRIER.cy + Math.sin(t) * r]; }
+export function spadeSide(x, y, margin) { if (y > BARRIER.cy + 12) return true; var o = bandOffset(x, y); return o !== null && o < -(BARRIER.half * 0.5 + (margin || 0)); }
+export function barrierY(x) { var best = BARRIER.cy - BARRIER.ay, bd = 1e9; for (var deg = 182; deg <= 358; deg += 2) { var q = bandPoint(deg); var dd = Math.abs(q[0] - x); if (dd < bd) { bd = dd; best = q[1]; } } return best; }
+export function barrierStrength(x, y) { var o = bandOffset(x, y); if (o === null) return 0; var d = Math.abs(o); return d >= BARRIER.half ? 0 : 1 - d / BARRIER.half; }
 // km from the Royal Capital: the Noble Realm is the capital's heart, the Common Realm surrounds it, and the Forsaken Realm reaches out to the borders.
 export var REALM_BOUNDS = { noble: 10, common: 48, forsaken: 105 };
 
@@ -136,25 +152,26 @@ function landField(x, y) {
   var f = 0;
   KINGDOMS.forEach(function (K) { var dx = (x - K.at[0]) / K.r, dy = (y - K.at[1]) / (K.r * 0.92); f += Math.exp(-(dx * dx + dy * dy) * 1.25); });
   EXTRA_LAND.forEach(function (e) { var dx = (x - e[0]) / e[2], dy = (y - e[1]) / e[2]; f += 0.8 * Math.exp(-(dx * dx + dy * dy) * 1.3); });
+  ISLES.forEach(function (e) { var dx = (x - e[0]) / e[2], dy = (y - e[1]) / e[2]; f += 1.5 * Math.exp(-(dx * dx + dy * dy) * 1.1); });
   f += (NOISE.shape.fbm(x / 40, y / 40, 4) - 0.5) * 0.6;
   // The Royal Capital is the middle of Clover, so the open sea is far to the south. The coast is reached at two bays: Raquey's (with the
   // Seabed Temple offshore and a Grand Magic Zone) and the First Dungeon's east of Kiten.
   var coast = -74 + 6 * Math.sin(x / 33) + 4 * Math.sin(x / 13 + 1.7);
   if (y < coast) f -= (coast - y) / 9;
   [[28, -38, 19, 26, 4.2], [90, -12, 19, 18, 3.4]].forEach(function (b) { var dx = (x - b[0]) / b[2], dy = (y - b[1]) / b[3]; f -= b[4] * Math.exp(-(dx * dx + dy * dy) * 1.6); });
-  if (y > 300) f -= (y - 300) / 10;
+  if (y > 312) f -= (y - 312) / 8;
   return f;
 }
 function ridge(x, y) { // mountain belts: Spade's northern wall, the Clover-Spade border, Diamond's mines, a spur between Clover and Diamond
   var m = Math.exp(-Math.pow((y - 292) / 24, 2)) * 0.55 * (0.6 + 0.8 * NOISE.shape.sample(x / 22, 3));
-  if (y > barrierY(x) + 10) m += 0.3 + 0.35 * NOISE.shape.fbm(x / 26 + 9, y / 26, 3);
+  if (spadeSide(x, y, 10)) m += 0.3 + 0.35 * NOISE.shape.fbm(x / 26 + 9, y / 26, 3);
   m += Math.exp(-Math.pow((y - 132) / 8, 2)) * Math.max(0, 1 - Math.abs(x) / 120) * 0.34 * (0.4 + NOISE.shape.sample(x / 15, 9));
   m += Math.exp(-(Math.pow((x - 188) / 38, 2) + Math.pow((y - 62) / 52, 2))) * 0.5;
   m += Math.exp(-(Math.pow((x - 98) / 14, 2) + Math.pow((y - 30) / 40, 2))) * 0.22;
-  m += Math.exp(-(Math.pow((x + 235) / 16, 2) + Math.pow((y - 60) / 60, 2))) * 0.22;
+  m += Math.exp(-(Math.pow((x + 250) / 16, 2) + Math.pow((y - 70) / 60, 2))) * 0.22;
   return m;
 }
-function lakes(x, y) { return Math.exp(-(Math.pow((x + 172) / 12, 2) + Math.pow((y - 40) / 8, 2))) + Math.exp(-(Math.pow((x + 132) / 10, 2) + Math.pow((y + 6) / 9, 2))) * 0.9; }
+function lakes(x, y) { return Math.exp(-(Math.pow((x + 188) / 12, 2) + Math.pow((y - 52) / 8, 2))) + Math.exp(-(Math.pow((x + 140) / 10, 2) + Math.pow((y + 2) / 9, 2))) * 0.9; }
 var LAND_T = 0.34;
 function elevAt(x, y) {
   var f = landField(x, y);
@@ -203,7 +220,7 @@ export function baseWorld() {
     if (path.length >= 5 && cells[path[path.length - 1]].water) { rivers.push(path); path.forEach(function (i) { used[i] = 1; cells[i].river = true; }); }
   });
   // climate and biome
-  var HEARTLIKE = function (c) { return Math.hypot(c.x + 170, c.y - 18) < 110; }, DIAMONDLIKE = function (c) { return Math.hypot(c.x - 150, c.y - 40) < 95; };
+  var HEARTLIKE = function (c) { return Math.hypot(c.x + 185, c.y - 30) < 115; }, DIAMONDLIKE = function (c) { return Math.hypot(c.x - 160, c.y - 40) < 95; };
   cells.forEach(function (c) {
     var m = NOISE.moist.fbm(c.x / 36, c.y / 36, 4) * 0.75 + (c.river ? 0.25 : 0) + Math.max(0, 0.3 - hop[c.i] * 0.06);
     if (HEARTLIKE(c)) m += 0.22; if (DIAMONDLIKE(c)) m -= 0.30;
@@ -212,7 +229,7 @@ export function baseWorld() {
     c.temp = Math.max(0, Math.min(1, 0.9 - lat * 0.78 - Math.max(0, c.elev - GEN.seaLevel) * 0.45 + (NOISE.temp.sample(c.x / 40, c.y / 40) - 0.5) * 0.15));
     c.biome = BIOME_IDX[pickBiome(c)];
     // Spade (north of the barrier): ice and mountains only
-    if (!c.water && c.y > barrierY(c.x) + 8) { var ice = NOISE.shape.fbm(c.x / 24 + 5, c.y / 24, 3); c.biome = BIOME_IDX[c.elev > 0.93 || ice > 0.56 ? "peaks" : "snow"]; }
+    if (!c.water && spadeSide(c.x, c.y, 8)) { var ice = NOISE.shape.fbm(c.x / 24 + 5, c.y / 24, 3); c.biome = BIOME_IDX[c.elev > 0.93 || ice > 0.56 ? "peaks" : "snow"]; }
   });
   // canon areas reshape the ground (only land cells, and never the sea around Raquey)
   CANON_AREAS.forEach(function (ar) {
@@ -299,7 +316,7 @@ export function politics(pins) {
   var B = baseWorld(), cells = B.cells, owner = new Int8Array(cells.length).fill(-1);
   var seeds = [];
   KINGDOMS.forEach(function (K, ki) { seeds.push({ c: nearestCell(cells, toU(K.capital[0], K.capital[1])), k: ki }); });
-  Object.keys(GAZ).forEach(function (name) { if (GAZ_KINGDOM[name]) return; seeds.push({ c: nearestCell(cells, toU(GAZ[name][0], GAZ[name][1])), k: 0 }); });
+  Object.keys(GAZ).forEach(function (name) { if (GAZ_KINGDOM[name] || /witches/.test(name)) return; seeds.push({ c: nearestCell(cells, toU(GAZ[name][0], GAZ[name][1])), k: 0 }); });
   (pins || []).forEach(function (pn) { var ki = kingdomIndexByName(pn.k); if (ki < 0 || !isFinite(pn.x) || !isFinite(pn.y)) return; var c = nearestCell(cells, toU(pn.x, pn.y)); if (c.water) return; seeds.push({ c: c, k: ki }); });
   var inBand = function (c) { return barrierStrength(c.x, c.y) > 0.05; };
   var cost = new Float32Array(cells.length).fill(1e18), heap = new MinHeap();
@@ -451,7 +468,9 @@ export function renderTerrain(P, view, opts) {
       var rt2 = px + 1 < w ? wat[i + 1] : 0, dn2 = py + 1 < h ? wat[i + w] : 0, lf2 = px > 0 ? wat[i - 1] : 0, up2 = py > 0 ? wat[i - w] : 0;
       if (rt2 || dn2 || lf2 || up2) { r *= 0.45; gch *= 0.45; b *= 0.4; }
     }
-    var bs = barrierStrength(x_, y_);
+    var bs = wat[i] ? 0 : barrierStrength(x_, y_); // the mana haze lies over the land, not the sea
+    // the Witches' Forest stands inside the neutral land: its trees show through the mana haze
+    if (bs > 0) { var wfd = Math.hypot(x_ - WITCHES.x, y_ - WITCHES.y) / WITCHES.r; if (wfd < 1) bs *= 0.25 + 0.75 * wfd * wfd; }
     if (bs > 0) { var sw = NOISE.detail.fbm(x_ * 0.09 + y_ * 0.03, y_ * 0.09 - x_ * 0.04, 3), a2 = Math.min(0.92, Math.sqrt(bs) * (0.55 + 0.5 * sw)); r = r * (1 - a2) + 78 * a2; gch = gch * (1 - a2) + 30 * a2; b = b * (1 - a2) + 118 * a2; }
     if (fogA) { var fa = fogA[i] * 0.42; r = r * (1 - fa) + 6 * fa; gch = gch * (1 - fa) + 9 * fa; b = b * (1 - fa) + 16 * fa; }
     img[p] = r < 0 ? 0 : r > 255 ? 255 : r; img[p + 1] = gch < 0 ? 0 : gch > 255 ? 255 : gch; img[p + 2] = b < 0 ? 0 : b > 255 ? 255 : b; img[p + 3] = 255;

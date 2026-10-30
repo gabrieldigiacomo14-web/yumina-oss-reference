@@ -81,9 +81,12 @@ s = s[:a] + P('p5_market_return.tsx') + s[b:]
 bv = s.index('\nfunction BankView(')
 a = s.index('  return <div>\n    <Eyebrow k="CLOVER KINGDOM', bv); b = s.index('\n}\n', a) + 3
 s = s[:a] + P('p6_bank_return.tsx') + s[b:]
+# the crafted grimoire cover and its Forge sheet are rebuilt in parts/p16_cover.tsx
+s = remove_func(s, 'Cover')
+s = remove_func(s, 'GrimoireForgeSheet')
 # remaining parts before App
 app = s.index('\nexport default function App(')
-s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + P('p15_scenepics.tsx') + s[app:]
+s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + P('p15_scenepics.tsx') + P('p16_cover.tsx') + s[app:]
 # css
 # the original 430px media rule never closed its block, swallowing every later rule on wider screens
 s = s.replace('scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}",', 'scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}}",', 1)
@@ -170,9 +173,6 @@ label('''  return (
 label('''  return <SceneAssistantMessage api={api} art={art} text={p.content} streaming={!!p.isStreaming} />;''', '''  var spById = arr(api.messages).filter(function (x) { return x && x.id && x.id === p.id; })[0];
   return <SceneAssistantMessage api={api} art={art} msg={spById} text={p.content} streaming={!!p.isStreaming} />;''')
 label('''return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} text={text} streaming={streaming} />;''', '''return <SceneAssistantMessage key={m.id || i} api={api} art={p.art} msg={m} text={text} streaming={streaming} />;''')
-# upload a grimoire cover straight from the Grimoire Forge sheet
-label('''        <Btn onClick={function () { save(); setAiOpen(true); }}>Generate AI cover</Btn>''', '''        <GrimoireCoverUpload api={p.api} art={p.art} />
-        <Btn onClick={function () { save(); setAiOpen(true); }}>Generate AI cover</Btn>''')
-label('''{coverUrl ? <div style={{ marginTop: 9, fontSize: 12.5, color: C.gold }}>An AI cover is currently active.</div> : null}''', '''{coverUrl ? <div style={{ marginTop: 9, fontSize: 12.5, color: C.gold }}>Your own cover is active (uploaded or AI). Use the button below to switch back to the crafted one.</div> : null}''')
+# (grimoire cover upload now lives in parts/p16_cover.tsx GrimoireForgeSheet)
 open(sys.argv[2], 'w').write(s)
 print('ok', len(s))

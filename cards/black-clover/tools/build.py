@@ -287,6 +287,27 @@ w['variables'].append({"id": "thread_events", "name": "thread_events", "type": "
 V['last_train_report']['behaviorRules'] = "When a training block resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual training time this reply). The interface then applies stamina, mana, fatigue and the clock — don't write those. Otherwise leave \"\"."
 V['last_travel_report']['behaviorRules'] = "When a travel leg resolves, set exactly \"hours=<number>;interrupted=<true|false>\" (actual travel time this reply). The interface then applies stamina, mana, fatigue and the clock; you still write current_location, known_locations, food and money. Otherwise leave \"\"."
 
+
+# world layout from the official guidebook map: the neutral arch around Spade, Heart and Diamond beside Clover
+_gz = E['geography-gazetteer']['content']
+for _a, _b in [("Rayaka (14,46)", "Rayaka (20,50)"),
+               ("Neutral: Witches' Forest (48,58), between Clover and Diamond, ruled by the Witch Queen [C].",
+                "Neutral: Witches' Forest (74,116), in the neutral territory north-east of Clover toward Diamond, ruled by the Witch Queen [C]."),
+               ("Diamond Kingdom region (~140,35), east/southeast", "Diamond Kingdom region (~160,40), east, bordering Clover"),
+               ("Heart Kingdom region (~-170,15), west", "Heart Kingdom region (~-185,30), west, bordering Clover"),
+               ("Spade\nKingdom region (~0,210), far north", "Spade\nKingdom region (~0,250), north beyond the neutral territory")]:
+    assert _gz.count(_a) == 1, _a
+    _gz = _gz.replace(_a, _b)
+E['geography-gazetteer']['content'] = _gz + ("\nNEUTRAL TERRITORY: an arch of Grand Magic Zones wrapped around Spade's south, west and east sides "
+    "(about 85-150 km north of the capital at its middle); it separates Spade from Heart, Clover and Diamond. Nobody owns it [C].")
+_gm = E['geography-map']['content']
+for _a, _b in [("Clover borders Diamond, Heart and Spade, with neutral territory and Grand Magic Zones between nations [C].",
+                "Clover borders Heart (west) and Diamond (east); a neutral arch of Grand Magic Zones separates all three from Spade, the largest kingdom, in the north [C]."),
+               ("Noble Realm within about 10 km, Common Realm about\n10-38 km, Forsaken Realm beyond about 38 km out to the borders",
+                "Noble Realm within about 10 km, Common Realm about\n10-48 km, Forsaken Realm beyond about 48 km out to the borders")]:
+    assert _gm.count(_a) == 1, _a
+    _gm = _gm.replace(_a, _b)
+E['geography-map']['content'] = _gm
 # ---------------------------------------------------------------- 5. rules & reactions
 R = {r['id']: r for r in w['rules']}
 R['rule-combat-on']['actions'] = [a for a in R['rule-combat-on']['actions'] if a['type'] != 'toggle-entry']
@@ -335,9 +356,9 @@ w['settings'].update({
 for v in w['variables']:
     if v.get('aiAccess') != 'none' and (v.get('behaviorRules') or v.get('updateHints')):
         v['name'] = v['id']
-w["version"] = "21.16.1"
+w["version"] = "21.17.0"
 w['description'] = d['description'] + \
-    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.16.1: upload your own grimoire cover from the Grimoire Forge. v21.16: optional scene pictures framed with place, time and weather. v21.15: the world moves on its own (4-6 world threads with clocks, overheard news filed in the Journal) and scenes keep living around the character. v21.14: strong foes are strong (canon power table, power gap, endure-or-run fights against far stronger foes, tougher attacks). v21.13: the inventory follows the story (taking clothes off, setting things down, picking them up), short-lived gear notes, regenerate rewinds travel and training. v21.12: squad roster (names, whereabouts, condition, recent joins). v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
+    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.17: world map follows the official layout (neutral arch around Spade, Heart and Diamond beside Clover); far more detailed grimoire cover crafting. v21.16.1: upload your own grimoire cover from the Grimoire Forge. v21.16: optional scene pictures framed with place, time and weather. v21.15: the world moves on its own (4-6 world threads with clocks, overheard news filed in the Journal) and scenes keep living around the character. v21.14: strong foes are strong (canon power table, power gap, endure-or-run fights against far stronger foes, tougher attacks). v21.13: the inventory follows the story (taking clothes off, setting things down, picking them up), short-lived gear notes, regenerate rewinds travel and training. v21.12: squad roster (names, whereabouts, condition, recent joins). v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
 
 # ---------------------------------------------------------------- 7. interface files
 files = w['rootComponent']['files']
