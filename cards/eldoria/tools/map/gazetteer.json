@@ -1,0 +1,682 @@
+[
+{
+"name": "Aurelia City",
+"x": 0,
+"y": 0,
+"realm": "Aurelia",
+"kind": "capital",
+"line": "capital"
+},
+{
+"name": "Northgate",
+"x": 0,
+"y": 190,
+"realm": "Aurelia",
+"kind": "fort",
+"line": "fortress-town"
+},
+{
+"name": "Silverstream",
+"x": 90,
+"y": -80,
+"realm": "Aurelia",
+"kind": "town",
+"line": "town"
+},
+{
+"name": "Port Valor",
+"x": -180,
+"y": -120,
+"realm": "Aurelia",
+"kind": "port",
+"line": "port city"
+},
+{
+"name": "Elarion",
+"x": -160,
+"y": 40,
+"realm": "Aurelia",
+"kind": "town",
+"line": "town"
+},
+{
+"name": "Oakhaven",
+"x": -120,
+"y": 110,
+"realm": "Aurelia",
+"kind": "town",
+"line": "town"
+},
+{
+"name": "Millrun",
+"x": 60,
+"y": 70,
+"realm": "Aurelia",
+"kind": "town",
+"line": "town"
+},
+{
+"name": "Stonebridge",
+"x": 150,
+"y": 60,
+"realm": "Aurelia",
+"kind": "town",
+"line": "town"
+},
+{
+"name": "Copperhill",
+"x": 185,
+"y": 95,
+"realm": "Aurelia",
+"kind": "town",
+"line": "mining town"
+},
+{
+"name": "Luminor",
+"x": -30,
+"y": 95,
+"realm": "Aurelia",
+"kind": "city",
+"line": "free scholar-city, Silver Moon Society headquarters"
+},
+{
+"name": "Ashford Crossing",
+"x": 35,
+"y": 25,
+"realm": "Aurelia",
+"kind": "village",
+"line": "village"
+},
+{
+"name": "Thornwell",
+"x": -40,
+"y": 35,
+"realm": "Aurelia",
+"kind": "village",
+"line": "village"
+},
+{
+"name": "Whitsun Ford",
+"x": 80,
+"y": 10,
+"realm": "Aurelia",
+"kind": "village",
+"line": "village"
+},
+{
+"name": "Wheatholt",
+"x": 25,
+"y": -110,
+"realm": "Aurelia",
+"kind": "village",
+"line": "village"
+},
+{
+"name": "Redmarsh",
+"x": 140,
+"y": -40,
+"realm": "Aurelia",
+"kind": "village",
+"line": "village"
+},
+{
+"name": "Hollowbrook",
+"x": -95,
+"y": 150,
+"realm": "Aurelia",
+"kind": "village",
+"line": "village"
+},
+{
+"name": "Lanternmere",
+"x": -130,
+"y": 75,
+"realm": "Aurelia",
+"kind": "village",
+"line": "lake village"
+},
+{
+"name": "Greyditch",
+"x": -75,
+"y": -45,
+"realm": "Aurelia",
+"kind": "village",
+"line": "hamlet"
+},
+{
+"name": "Fallow's End",
+"x": -210,
+"y": 90,
+"realm": "Aurelia",
+"kind": "village",
+"line": "hamlet"
+},
+{
+"name": "Fort Ironwatch",
+"x": 0,
+"y": 140,
+"realm": "Aurelia",
+"kind": "fort",
+"line": ""
+},
+{
+"name": "Watchtower Pellin",
+"x": 110,
+"y": 130,
+"realm": "Aurelia",
+"kind": "fort",
+"line": ""
+},
+{
+"name": "Kingsrest Monastery",
+"x": -55,
+"y": 120,
+"realm": "Aurelia",
+"kind": "shrine",
+"line": ""
+},
+{
+"name": "Sablewood Abbey",
+"x": -145,
+"y": -15,
+"realm": "Aurelia",
+"kind": "shrine",
+"line": ""
+},
+{
+"name": "Hollow Barrow",
+"x": -42,
+"y": 88,
+"realm": "Aurelia",
+"kind": "ruin",
+"line": "ruin"
+},
+{
+"name": "Direwood Warren",
+"x": -88,
+"y": 62,
+"realm": "Aurelia",
+"kind": "ruin",
+"line": "dungeon"
+},
+{
+"name": "Greyditch Mine",
+"x": -82,
+"y": -52,
+"realm": "Aurelia",
+"kind": "ruin",
+"line": "abandoned"
+},
+{
+"name": "Sunken Chapel of Vess",
+"x": 118,
+"y": -95,
+"realm": "Aurelia",
+"kind": "ruin",
+"line": "ruin"
+},
+{
+"name": "Rookspire",
+"x": 65,
+"y": 160,
+"realm": "Aurelia",
+"kind": "ruin",
+"line": "ruined tower"
+},
+{
+"name": "Khaz'Modan / Anvil-Heart",
+"x": 480,
+"y": 320,
+"realm": "Stonehold",
+"kind": "capital",
+"line": "capital"
+},
+{
+"name": "Karak Borgor",
+"x": 360,
+"y": 360,
+"realm": "Stonehold",
+"kind": "fort",
+"line": "Iron Vanguard headquarters"
+},
+{
+"name": "Ironpeak",
+"x": 280,
+"y": 240,
+"realm": "Stonehold",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Gromril Hall",
+"x": 580,
+"y": 280,
+"realm": "Stonehold",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Irondeep",
+"x": 290,
+"y": 180,
+"realm": "Stonehold",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Hammerstead",
+"x": 210,
+"y": 190,
+"realm": "Stonehold",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Stonegate",
+"x": 390,
+"y": 30,
+"realm": "Stonehold",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Deepgate Junction",
+"x": 330,
+"y": 120,
+"realm": "Stonehold",
+"kind": "fort",
+"line": ""
+},
+{
+"name": "Cinderfall Forge",
+"x": 520,
+"y": 390,
+"realm": "Stonehold",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Coalgate",
+"x": 540,
+"y": 350,
+"realm": "Stonehold",
+"kind": "town",
+"line": ""
+},
+{
+"name": "The Undervein",
+"x": 440,
+"y": 280,
+"realm": "Stonehold",
+"kind": "ruin",
+"line": "megadungeon"
+},
+{
+"name": "Stonefall",
+"x": 180,
+"y": 110,
+"realm": "Stonehold",
+"kind": "fort",
+"line": "Stonehold frontier holding in the Aurelian foothills"
+},
+{
+"name": "Greenwhisper",
+"x": -620,
+"y": 220,
+"realm": "Sylvanor",
+"kind": "capital",
+"line": "capital"
+},
+{
+"name": "Whisperleaf Glade",
+"x": -510,
+"y": 340,
+"realm": "Sylvanor",
+"kind": "shrine",
+"line": ""
+},
+{
+"name": "De Angelus",
+"x": -740,
+"y": 160,
+"realm": "Sylvanor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Greenhaven",
+"x": -380,
+"y": 140,
+"realm": "Sylvanor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Mossfall",
+"x": -560,
+"y": 270,
+"realm": "Sylvanor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Fernwatch",
+"x": -550,
+"y": 180,
+"realm": "Sylvanor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Thornhollow",
+"x": -700,
+"y": 420,
+"realm": "Sylvanor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "The Weeping Grove",
+"x": -480,
+"y": 200,
+"realm": "Sylvanor",
+"kind": "shrine",
+"line": ""
+},
+{
+"name": "Frostfang Keep",
+"x": 0,
+"y": 720,
+"realm": "Drakmor",
+"kind": "capital",
+"line": "capital"
+},
+{
+"name": "Grimfrost Pass",
+"x": -80,
+"y": 510,
+"realm": "Drakmor",
+"kind": "pass",
+"line": ""
+},
+{
+"name": "Eroshold",
+"x": -220,
+"y": 680,
+"realm": "Drakmor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Wyrmstooth",
+"x": 180,
+"y": 640,
+"realm": "Drakmor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Hearthmoot",
+"x": 90,
+"y": 560,
+"realm": "Drakmor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Icetooth Camp",
+"x": -300,
+"y": 780,
+"realm": "Drakmor",
+"kind": "village",
+"line": ""
+},
+{
+"name": "Bearclaw Hold",
+"x": 80,
+"y": 480,
+"realm": "Drakmor",
+"kind": "town",
+"line": ""
+},
+{
+"name": "The Frozen Gullet",
+"x": 240,
+"y": 760,
+"realm": "Drakmor",
+"kind": "ruin",
+"line": "dungeon"
+},
+{
+"name": "Last Hope",
+"x": -20,
+"y": 380,
+"realm": "Drakmor",
+"kind": "fort",
+"line": "Drakmor's southernmost outpost, in the Grimfrost Marches"
+},
+{
+"name": "Saffaron / City of Brass",
+"x": -820,
+"y": -320,
+"realm": "Sunscar",
+"kind": "capital",
+"line": "capital"
+},
+{
+"name": "Oasis of Zahir",
+"x": -480,
+"y": -280,
+"realm": "Sunscar",
+"kind": "oasis",
+"line": "Grand Water Court"
+},
+{
+"name": "Oasis of Azure Palm",
+"x": -640,
+"y": -410,
+"realm": "Sunscar",
+"kind": "oasis",
+"line": ""
+},
+{
+"name": "Sandfall",
+"x": -340,
+"y": -190,
+"realm": "Sunscar",
+"kind": "town",
+"line": ""
+},
+{
+"name": "Karrath Wells",
+"x": -950,
+"y": -500,
+"realm": "Sunscar",
+"kind": "oasis",
+"line": ""
+},
+{
+"name": "Palm Rest",
+"x": -550,
+"y": -350,
+"realm": "Sunscar",
+"kind": "oasis",
+"line": ""
+},
+{
+"name": "The Glass Waste",
+"x": -1100,
+"y": -650,
+"realm": "Sunscar",
+"kind": "waste",
+"line": ""
+},
+{
+"name": "Tomb of Nine Kings",
+"x": -880,
+"y": -600,
+"realm": "Sunscar",
+"kind": "ruin",
+"line": ""
+},
+{
+"name": "Port Meridian",
+"x": -80,
+"y": -480,
+"realm": "Velkar",
+"kind": "port",
+"line": "Consulate seat, Sea Drake Company headquarters"
+},
+{
+"name": "Gildwater / Scabridge",
+"x": 20,
+"y": -340,
+"realm": "Velkar",
+"kind": "port",
+"line": ""
+},
+{
+"name": "Grayhaven North",
+"x": -140,
+"y": -310,
+"realm": "Velkar",
+"kind": "port",
+"line": ""
+},
+{
+"name": "Grayhaven South",
+"x": 160,
+"y": -580,
+"realm": "Velkar",
+"kind": "port",
+"line": ""
+},
+{
+"name": "Grayhaven Central",
+"x": 30,
+"y": -420,
+"realm": "Velkar",
+"kind": "port",
+"line": "Shadow Ravens headquarters"
+},
+{
+"name": "Port Valen",
+"x": -310,
+"y": -480,
+"realm": "Velkar",
+"kind": "port",
+"line": ""
+},
+{
+"name": "Saltmere",
+"x": -200,
+"y": -600,
+"realm": "Velkar",
+"kind": "port",
+"line": ""
+},
+{
+"name": "Copper Cay",
+"x": 90,
+"y": -700,
+"realm": "Velkar",
+"kind": "village",
+"line": ""
+},
+{
+"name": "Tern Rock",
+"x": 120,
+"y": -450,
+"realm": "Velkar",
+"kind": "village",
+"line": ""
+},
+{
+"name": "The Drowned Fleet",
+"x": -250,
+"y": -650,
+"realm": "Velkar",
+"kind": "wreck",
+"line": "wreck site"
+},
+{
+"name": "Black Spire",
+"x": 720,
+"y": 450,
+"realm": "Umbral",
+"kind": "fort",
+"line": "Holdout city-fortress, ruled by whoever holds it"
+},
+{
+"name": "Necrospire",
+"x": 630,
+"y": -120,
+"realm": "Umbral",
+"kind": "ruin",
+"line": ""
+},
+{
+"name": "Ashenport",
+"x": 880,
+"y": -280,
+"realm": "Umbral",
+"kind": "port",
+"line": ""
+},
+{
+"name": "Shadowfen",
+"x": 560,
+"y": -310,
+"realm": "Umbral",
+"kind": "fen",
+"line": ""
+},
+{
+"name": "Greyhollow",
+"x": 780,
+"y": 80,
+"realm": "Umbral",
+"kind": "ruin",
+"line": ""
+},
+{
+"name": "The Silent March",
+"x": 950,
+"y": 220,
+"realm": "Umbral",
+"kind": "waste",
+"line": ""
+},
+{
+"name": "Vault of Ashes",
+"x": 1050,
+"y": -150,
+"realm": "Umbral",
+"kind": "ruin",
+"line": ""
+},
+{
+"name": "Last Stand",
+"x": 480,
+"y": -90,
+"realm": "Marches",
+"kind": "fort",
+"line": "Cairnwatch (+540,+10)"
+},
+{
+"name": "Bleakstead",
+"x": -120,
+"y": 300,
+"realm": "Marches",
+"kind": "village",
+"line": "Grimfrost Marches hamlet on the Cold March"
+},
+{
+"name": "Cairnwatch",
+"x": 540,
+"y": 10,
+"realm": "Marches",
+"kind": "fort",
+"line": "Iron Vanguard cairn-fort in the Ashen Marches"
+}
+]

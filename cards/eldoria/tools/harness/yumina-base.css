@@ -1,0 +1,13 @@
+/* the parts of Yumina's sandbox CSS that size the composer (globals.css) */
+*,::before,::after{box-sizing:border-box} img,video{max-width:100%;height:auto} img,svg,video,canvas{display:block;vertical-align:middle}
+body{margin:0;background:#000}
+.play-composer-shell{padding:6px 10px 12px}
+.play-composer-inner{width:100%;margin-inline:auto}
+.play-composer-card{width:100%;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(30,30,36,.8);color:#ddd;font:14px sans-serif}
+.play-composer-textarea{display:block;width:100%;resize:none;background:transparent;border:0;color:#eee;padding:.85em 1rem;font:18px Georgia,serif;min-height:72px}
+.play-composer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:0 .75rem .6rem}
+.play-composer-actions{display:flex;align-items:center;gap:.25rem;min-width:0;flex-wrap:nowrap}
+.play-composer-icon-button,.play-composer-send{min-height:2.25rem;min-width:2.25rem;border-radius:10px;border:0;background:#333;color:#ddd}
+.play-composer-send{background:#c9a25e;border-radius:50%;min-width:2.8rem;min-height:2.8rem}
+.play-composer-model,.play-effort{white-space:nowrap;border:1px solid #555;border-radius:999px;background:transparent;color:#ddd;padding:.45em .9em;font:16px Georgia,serif}
+.mock-list{font:17px Georgia,serif;color:#e8e0cc;padding:6px 12px}.mock-msg.user{text-align:right;color:#cfc4b0}.mock-tools{opacity:.6;margin:4px 0 12px}
