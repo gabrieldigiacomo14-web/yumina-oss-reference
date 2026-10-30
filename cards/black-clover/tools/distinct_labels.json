@@ -1,0 +1,62 @@
+[
+ [
+  "  \".bc-nav-badge{position:absolute;top:4px;left:calc(50% + 3px);min-width:15px;height:15px;border-radius:8px;background:#a3272a;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1px solid #0b0d11}\",",
+  "  \".bc-nav-badge{position:absolute;top:4px;left:calc(50% + 3px);min-width:15px;height:15px;border-radius:8px;background:#a3272a;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1px solid #0b0d11}\",\n  \".bc-nav-item[aria-current=\\\"page\\\"]:after{content:\\\"\\\";position:absolute;top:0;left:28%;right:28%;height:2px;background:linear-gradient(90deg,transparent,#e5be71,transparent);pointer-events:none}\",\n  \".bc-nav-story-wrap{isolation:isolate}\","
+ ],
+ [
+  "      <Eyebrow k={\"BONDS · FRIENDS AND RIVALS\"}>{ids.length ? \"No journey is solitary.\" : \"No journey is solitary, yet.\"}</Eyebrow>",
+  "      <Eyebrow k={\"CONNECTIONS · ALLIES AND RIVALS\"}>{ids.length ? \"Every meeting can change your path.\" : \"Your story has room for others.\"}</Eyebrow>"
+ ],
+ [
+  "      <Eyebrow k={\"BOUND · SPIRITS AND DEVILS\"}>What answers when you call.</Eyebrow>\n      <H>Your bonds</H>",
+  "      <Eyebrow k={\"MYSTIC PACTS · SPIRITS AND DEVILS\"}>Power shared is never power without consequence.</Eyebrow>\n      <H>Spiritual connections</H>"
+ ],
+ [
+  "        <div><strong>Bonds</strong><small>Spirits and Devils walk different paths. Both leave their mark on your story.</small></div>",
+  "        <div><strong>Spirit & Devil Links</strong><small>Different powers. Different promises. Each bond carries its own consequence.</small></div>"
+ ],
+ [
+  "      <div className=\"bc-hubtabs\" role=\"tablist\" aria-label=\"Pack sections\">\n        {[[\"inventory\", \"Inventory\", \"Items & Materials\", \"pack\"], [\"market\", \"Market\", \"Buy · Sell · Trade\", \"coins\"], [\"bank\", \"Bank & Treasury\", \"Save · Deposit · Withdraw\", \"bank\"]].map(function (t) {",
+  "      <div className=\"bc-hubtabs\" role=\"tablist\" aria-label=\"Satchel and treasury sections\">\n        {[[\"inventory\", \"Equipment\", \"Items · Materials\", \"pack\"], [\"bank\", \"Accounts\", \"Deposit · Withdraw\", \"bank\"], [\"market\", \"Trade\", \"Buy · Sell\", \"coins\"]].map(function (t) {"
+ ],
+ [
+  "      <SectionHead icon=\"doc\" iconSize={24} title=\"Chronicle\" sub=\"Your own history, page by page.\" />",
+  "      <SectionHead icon=\"doc\" iconSize={24} title=\"Life Log\" sub=\"The events that shaped your mage’s journey.\" />"
+ ],
+ [
+  "        <Chip icon=\"doc\" on={tab === \"chronicle\"} onClick={function () { setTab(\"chronicle\"); }}>Chronicle</Chip>\n        <Chip icon=\"scroll\" on={tab === \"missions\"} onClick={function () { setTab(\"missions\"); }}>{\"Missions\" + (ms ? \" (\" + ms + \")\" : \"\")}</Chip>\n        <Chip icon=\"bell\" on={tab === \"notices\"} onClick={function () { setTab(\"notices\"); }}>{\"Notices\" + (notices ? \" (\" + notices + \")\" : \"\")}</Chip>",
+  "        <Chip icon=\"doc\" on={tab === \"chronicle\"} onClick={function () { setTab(\"chronicle\"); }}>Life Log</Chip>\n        <Chip icon=\"scroll\" on={tab === \"missions\"} onClick={function () { setTab(\"missions\"); }}>{\"Assignments\" + (ms ? \" (\" + ms + \")\" : \"\")}</Chip>\n        <Chip icon=\"bell\" on={tab === \"notices\"} onClick={function () { setTab(\"notices\"); }}>{\"Reports\" + (notices ? \" (\" + notices + \")\" : \"\")}</Chip>"
+ ],
+ [
+  "  pack: { tagline: \"Your purse, your pack, your savings.\" },\n  people: { title: \"Bonds\", sub: \"Friends. Rivals. Romance.\", big: true },\n  journal: { title: \"Chronicle\", sub: \"Goals · Missions · History\", big: true },\n  bound: { title: \"Bound\", sub: \"Spirits and Devils\", big: true },\n  crown: { title: \"Crown\", sub: \"Rank · Merit · Service\", big: true },",
+  "  pack: { title: \"Satchel & Treasury\", sub: \"Equipment · Trading · Banking\", tagline: \"All you carry, earn and keep.\" },\n  people: { title: \"Connections\", sub: \"Allies · Rivals · Relationships\", big: true },\n  journal: { title: \"Kingdom Records\", sub: \"Life Log · Assignments · Reports\", big: true },\n  bound: { title: \"Mystic Pacts\", sub: \"Spirit Companions · Devil Contracts\", big: true },\n  crown: { title: \"Renown & Rank\", sub: \"Magic Knights · Merit · Reputation\", big: true },"
+ ],
+ [
+  "var TITLES = { grimoire: \"Grimoire\", character: \"Character\", squad: \"Crown\", crown: \"Crown\", pack: \"Pack\", bank: \"Pack\", market: \"Pack\", missions: \"Chronicle\", map: \"World Map\", people: \"Bonds\", notices: \"Chronicle\",\n  journal: \"Chronicle\", bound: \"Bound\", menu: \"More\", train: \"Training\", time: \"Let Time Pass\", routine: \"Routine\", codex: \"Codex\", household: \"Home and Family\", art: \"Artwork\", settings: \"Settings\", help: \"Help\" };",
+  "var TITLES = { grimoire: \"Grimoire\", character: \"Mage Profile\", squad: \"Renown & Rank\", crown: \"Renown & Rank\", pack: \"Satchel & Treasury\", bank: \"Satchel & Treasury\", market: \"Satchel & Treasury\", missions: \"Kingdom Records\", map: \"Kingdom Atlas\", people: \"Connections\", notices: \"Kingdom Records\",\n  journal: \"Kingdom Records\", bound: \"Mystic Pacts\", menu: \"More\", train: \"Training\", time: \"Let Time Pass\", routine: \"Routine\", codex: \"Codex\", household: \"Home and Family\", art: \"Artwork\", settings: \"Settings\", help: \"Help\" };"
+ ],
+ [
+  "      <button type=\"button\" aria-label={p.label} disabled={p.disabled} onClick={p.onClick}><span><Icon n=\"clover\" s={24} fill=\"url(#bcg-gold)\" />{p.children}<Icon n=\"clover\" s={24} fill=\"url(#bcg-gold)\" /></span></button>\n    </div>\n  );\n}",
+  "      <button type=\"button\" aria-label={p.label} disabled={p.disabled} onClick={p.onClick}><span><Icon n=\"clover\" s={24} fill=\"url(#bcg-gold)\" />{p.children}<Icon n=\"clover\" s={24} fill=\"url(#bcg-gold)\" /></span></button>\n    </div>\n  );\n}\n// UI-only titles: the stable OPENINGS values remain unchanged for lore / era routing and old saves.\nvar OPENING_DISPLAY = {\n  \"The Grimoire Acceptance Ceremony\": \"Ceremony Day · At the Grimoire Tower\",\n  \"The months before the Entrance Exam\": \"Training Season · Before the Magic Knights Exam\",\n  \"Right after the Entrance Exam\": \"Knight Selection · After the Entrance Exam\",\n  \"Asta and Yuno's first year as Magic Knights\": \"Rising Knights · Asta and Yuno's First Year\"\n};\nfunction openingDisplay(value) { return OPENING_DISPLAY[value] || value; }"
+ ],
+ [
+  "        return <Opt key={o} on={p.value === o} title={o} tag={p.era === \"during\" && i === 0 ? \"Recommended\" : null} onClick={function () { p.onPick(o); p.close(); }} />;",
+  "        return <Opt key={o} on={p.value === o} title={openingDisplay(o)} tag={p.era === \"during\" && i === 0 ? \"Suggested Start\" : null} onClick={function () { p.onPick(o); p.close(); }} />;"
+ ],
+ [
+  "              <span><strong>{f.opening || \"Choose an opening\"}</strong>{f.era === \"during\" && f.opening === OPENINGS.during[0] ? <small>Recommended</small> : null}</span>",
+  "              <span><strong>{openingDisplay(f.opening) || \"Choose an opening\"}</strong>{f.era === \"during\" && f.opening === OPENINGS.during[0] ? <small>Suggested Start</small> : null}</span>"
+ ],
+ [
+  "            <ListOpt on={f.talent_mode === \"Natural\"} icon=\"leaf\" title=\"Natural simulation\" tag=\"Recommended\" desc=\"Your abilities come from lineage, circumstance, variance and fate. You discover them by living.\" onClick={function () { set(\"talent_mode\", \"Natural\"); }} />",
+  "            <ListOpt on={f.talent_mode === \"Natural\"} icon=\"leaf\" title=\"World-Generated Talent\" tag=\"Lore-Grounded\" desc=\"Your abilities come from lineage, circumstance, variance and fate. You discover them by living.\" onClick={function () { set(\"talent_mode\", \"Natural\"); }} />"
+ ],
+ [
+  "      { k: \"Opening Preference\", v: f.era === \"custom\" ? f.era_detail : f.opening, pg: 0, i: \"book\" },",
+  "      { k: \"Opening Preference\", v: f.era === \"custom\" ? f.era_detail : openingDisplay(f.opening), pg: 0, i: \"book\" },"
+ ],
+ [
+  "            {[[\"leaf\", \"Natural Simulation\", \"A living world that moves on its own.\", f.talent_mode === \"Natural\", function (on) { set(\"talent_mode\", on ? \"Natural\" : \"Guided\"); }],",
+  "            {[[\"leaf\", \"World-Generated Talent\", \"Your aptitude comes from the simulated world.\", f.talent_mode === \"Natural\", function (on) { set(\"talent_mode\", on ? \"Natural\" : \"Guided\"); }],"
+ ]
+]
