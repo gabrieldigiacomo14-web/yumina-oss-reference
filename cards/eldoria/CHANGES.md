@@ -1,8 +1,16 @@
-# Eldoria: From F-Rank to Legend — v21.5.0
+# Eldoria: From F-Rank to Legend — v21.5.1
 
-Import `Eldoria_From_F-Rank_to_Legend_v21.5.0.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Lore, rules and variables are as before. The only prompt change is one line in the Response Format entry (about 35 tokens a turn, see below).
+Import `Eldoria_From_F-Rank_to_Legend_v21.5.1.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Lore, rules and variables are as before. The only prompt change is one line in the Response Format entry (about 35 tokens a turn, see below).
 
-**Players only see this after the update is published and passes Yumina's review.** Until then an import plays as the creator's working copy. Settings → Display shows "Interface v21.5.0" when the new interface is the one running.
+**Players only see this after the update is published and passes Yumina's review.** Until then an import plays as the creator's working copy. Settings → Display shows "Interface v21.5.1" when the new interface is the one running.
+
+## v21.5.1 — a chosen layout no longer traps a phone
+
+Choosing **Desktop** in Settings → Display on an iPhone left no way back. The desktop layout puts a 232 px sidebar and a 290 px status panel around the page. On a 390 px screen that leaves the page itself almost no width, so Settings opened where it couldn't be seen.
+
+- A chosen layout is now used only where it fits: Desktop needs a screen at least 900 px wide, and Phone (landscape) at least 560 px. Otherwise Eldoria uses its automatic choice. Anyone already stuck on a phone gets the phone layout back as soon as this version loads; nothing needs resetting.
+- The Display card says when this happens ("Desktop needs a screen at least 900 px wide; this one is 390 px…"), and it greys out choices that don't fit the current screen.
+- Tested by saving Desktop as the choice and opening the card at 390×844 (portrait used), 844×390 (landscape) and 1440×900 (desktop) (`tools/harness/stuck.mjs`).
 
 ## v21.5.0 — the Ledger: Black Clover's card-and-tile layout, built in Eldoria's own look
 

@@ -435,3 +435,4 @@ main{grid-template-rows:minmax(0,1fr)!important}
 .journalAdd input{flex:1 1 auto;min-width:0;padding:9px 11px;border:1px solid var(--metal);background:#0b0d11;color:#eee4d0;font-family:inherit}
 .journalAdd .btnMain{flex:0 0 auto}
 .layoutPick{margin-top:6px}
+.layoutOpt.cant{opacity:.55}

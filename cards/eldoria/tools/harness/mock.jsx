@@ -1,7 +1,7 @@
 import React from 'react';
 let listeners = [];
 let state = { variables: window.__MOCK_VARS || {}, messages: window.__MOCK_MSGS || [] };
-const store = {};
+const store = window.__PRESET_STORE || {};
 function emit() { listeners.forEach(f => f()); }
 window.__setVars = p => { state = { ...state, variables: { ...state.variables, ...p } }; emit(); };
 window.__getVars = () => state.variables;

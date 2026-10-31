@@ -16,17 +16,22 @@ function useLayoutMode(api:any){
    return ()=>{window.removeEventListener('resize',on);window.removeEventListener('orientationchange',on);};
  },[]);
  var auto=dims.w>=1024&&dims.h>=560?'desktop':(dims.w>dims.h&&dims.h<=600)?'landscape':'portrait';
- var mode=pref==='auto'?auto:pref;
+ // a chosen layout is only used where it fits: desktop puts a 232px sidebar and a 290px status panel around the
+ // page, so on a phone it would leave the page itself no width (and no way back to Settings)
+ var MIN_W:any={portrait:0,landscape:560,desktop:900};
+ function fits(m:string){ return dims.w>=(MIN_W[m]||0); }
+ var mode=pref==='auto'||!fits(pref)?auto:pref;
  function choose(m:string){setPref(m);try{api.storage&&api.storage.set&&api.storage.set('eldoria-layout-v1',m);}catch(_e){}}
- return {mode,pref,auto,choose};
+ return {mode,pref,auto,choose,fits,width:dims.w,MIN_W};
 }
-var ELDORIA_UI_VERSION='21.5.0';
+var ELDORIA_UI_VERSION='21.5.1';
 var LAYOUT_NAMES:any={portrait:'Phone (portrait)',landscape:'Phone (landscape)',desktop:'Desktop'};
 function LayoutCard({layout}:{layout:any}){
  return <Panel title="Display" sub="Which layout Eldoria uses" icon="cog">
-   <p className="muted">Eldoria picks a layout from your screen. Choose one here to keep it whatever the screen does.</p>
+   <p className="muted">Eldoria picks a layout from your screen. Choose one here to keep it while the screen is big enough for it; on a smaller screen Eldoria falls back to the automatic choice.</p>
+   {layout.pref!=='auto'&&!layout.fits(layout.pref)?<p className="warnLine">{LAYOUT_NAMES[layout.pref]+' needs a screen at least '+layout.MIN_W[layout.pref]+' px wide; this one is '+layout.width+' px, so '+LAYOUT_NAMES[layout.mode]+' is used here.'}</p>:null}
    <p className="uiVersion">{'Interface v'+ELDORIA_UI_VERSION+' · layout now: '+LAYOUT_NAMES[layout.mode]}</p>
-   <div className="layoutPick">{[['auto','Automatic'],['portrait','Phone (portrait)'],['landscape','Phone (landscape)'],['desktop','Desktop']].map(o=><button key={o[0]} type="button" className={'layoutOpt'+(layout.pref===o[0]?' on':'')} aria-pressed={layout.pref===o[0]} onClick={()=>layout.choose(o[0])}><b>{o[1]}</b>{o[0]==='auto'?<small>{'Right now: '+LAYOUT_NAMES[layout.auto]}</small>:null}</button>)}</div>
+   <div className="layoutPick">{[['auto','Automatic'],['portrait','Phone (portrait)'],['landscape','Phone (landscape)'],['desktop','Desktop']].map(o=><button key={o[0]} type="button" className={'layoutOpt'+(layout.pref===o[0]?' on':'')+(o[0]!=='auto'&&!layout.fits(o[0])?' cant':'')} aria-pressed={layout.pref===o[0]} onClick={()=>layout.choose(o[0])}><b>{o[1]}</b>{o[0]==='auto'?<small>{'Right now: '+LAYOUT_NAMES[layout.auto]}</small>:!layout.fits(o[0])?<small>{'Needs '+layout.MIN_W[o[0]]+' px or wider'}</small>:null}</button>)}</div>
  </Panel>
 }
 /* desktop only: the scene at a glance, beside the story */
