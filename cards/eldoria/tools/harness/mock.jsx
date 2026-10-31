@@ -24,14 +24,16 @@ export function MessageList() {
     {m.role === 'assistant' ? <div className="mock-tools">{'◁ 1/1 ▷  🔊 ⧉ ⑂ ✎ 🖼 ↻ 🗑'}</div> : null}</div>)}</div>;
 }
 export function MessageInput() {
+  // same structure as Yumina's real composer (sandbox/chat/message-input.tsx)
   return (
     <div className="play-composer-shell shrink-0"><div className="play-composer-inner">
       <div className="play-composer-card">
-        <div className="play-composer-grow"><textarea className="play-composer-textarea" rows={2} placeholder="Type whatever you want to do in this world!" /></div>
+        <div className="play-composer-grow"><textarea className="play-composer-textarea" rows={1} placeholder="Type whatever you want to do in this world!" /></div>
         <div className="play-composer-toolbar">
-          <div className="play-composer-actions"><button className="play-composer-icon-button">+</button>
-            <button className="play-composer-model">● Gemini 3.8 Flash | 48,090 🍄 ›</button><button className="play-effort">💡 High</button></div>
-          <div className="play-composer-actions"><button className="play-composer-icon-button">🔊</button><button className="play-composer-send">🎙</button></div>
+          <div className="play-composer-actions"><div className="relative"><button className="play-composer-icon-button">+</button></div>
+            <button className="play-composer-model"><span className="dot">●</span><span className="truncate">Gemini 3.8 Flash</span><span className="bal">48,102 🍄</span>›</button>
+            <span className="slot"><button className="play-effort">💡 High</button></span></div>
+          <div className="play-composer-send-row"><button className="play-composer-icon-button">🔊</button><button className="play-composer-send">🎙</button></div>
         </div>
       </div></div></div>
   );

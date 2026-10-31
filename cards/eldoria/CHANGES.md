@@ -1,6 +1,18 @@
-# Eldoria: From F-Rank to Legend — v21.4.1
+# Eldoria: From F-Rank to Legend — v21.4.2
 
-Import `Eldoria_From_F-Rank_to_Legend_v21.4.1.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Only the interface files and the version number changed. Lore, rules, variables and the narrator's prompt are exactly as before, so the per-turn cost is unchanged.
+Import `Eldoria_From_F-Rank_to_Legend_v21.4.2.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Only the interface files and the version number changed. Lore, rules, variables and the narrator's prompt are exactly as before, so the per-turn cost is unchanged.
+
+## v21.4.2 — a compact message box
+
+v21.4 fixed the page being cut off, but on a real phone the message box then took a third of the screen. Its control row (+, model picker, "High", voice, mic) wrapped into three spread-out rows under a two-line text area.
+
+- **Why it wrapped:** v21.4 told the toolbar to wrap. Yumina's own toolbar already handles narrow screens: below 400 px it shortens the model pill and keeps one row (`sandbox/chat/message-input.tsx`). The wrap rule is gone. The left group may now shrink, so the model pill shortens instead of pushing "High", voice and the mic onto new lines.
+- **Smaller text area:** 16 px type (iPhones zoom in on anything smaller when you tap it), less padding, starting at one line. It still grows as you type, using Yumina's own padding variables.
+- **Result on the test page:** at 390 × 844 the message box went from about 200 px to about 90 px tall, and the story area from 393 px to 442 px. Landscape and desktop also stay on one row.
+- **Settings → Display** now reads "Interface v21.4.2".
+- **Test stand-in:** now copies the real composer's structure (`play-composer-send-row`, the model pill's shrinking name, the extension slot), so this kind of wrapping shows up in tests.
+
+`docs/message-box-before-after.png` shows it. On a real phone the model pill shortens itself, as Yumina does below 400 px, so it won't look exactly like the stand-in.
 
 ## v21.4.1 — a visible version, to check which interface is running
 

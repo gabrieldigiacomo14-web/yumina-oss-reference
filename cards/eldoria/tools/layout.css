@@ -6,9 +6,16 @@
 .app>*{min-width:0}
 main{grid-template-columns:minmax(0,1fr)}
 .screenBody,.screen,.composer,nav{min-width:0}
-.composer .play-composer-toolbar{flex-wrap:wrap;row-gap:6px}
-.composer .play-composer-actions{flex-wrap:wrap;min-width:0;max-width:100%}
-.composer .play-composer-model{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+/* Yumina's toolbar stays on ONE row: below 400px it shortens the model pill itself, and the left group may shrink so the pill truncates
+   (wrapping it, as v21.4 did, split it into three spread-out rows) */
+.composer .play-composer-toolbar{flex-wrap:nowrap;gap:.4rem;padding-left:.5rem;padding-right:.5rem;padding-bottom:.4rem}
+.composer .play-composer-actions{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:.2rem}
+.composer .play-composer-model{min-width:0;flex:0 1 auto;overflow:hidden}
+.composer .play-composer-send-row{gap:.3rem}
+/* a compact message box: 16px type (smaller, but iPhones won't zoom in on tap), less padding, starting at one line */
+.composer{--play-composer-textarea-pad-y:.5em;--play-composer-pad-top:4px;--play-composer-pad-bottom:6px}
+.composer .play-composer-textarea,.composer .play-composer-grow::after{font-size:16px;line-height:1.35}
+.composer .play-composer-textarea{min-height:0}
 nav{grid-template-columns:repeat(6,minmax(0,1fr))}
 nav button{min-width:0;overflow:hidden}nav button>span:not(.navIcon):not(.navBadge){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sidePanel{display:none}

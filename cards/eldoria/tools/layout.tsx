@@ -20,7 +20,7 @@ function useLayoutMode(api:any){
  function choose(m:string){setPref(m);try{api.storage&&api.storage.set&&api.storage.set('eldoria-layout-v1',m);}catch(_e){}}
  return {mode,pref,auto,choose};
 }
-var ELDORIA_UI_VERSION='21.4.1';
+var ELDORIA_UI_VERSION='21.4.2';
 var LAYOUT_NAMES:any={portrait:'Phone (portrait)',landscape:'Phone (landscape)',desktop:'Desktop'};
 function LayoutCard({layout}:{layout:any}){
  return <Card title="Display">
