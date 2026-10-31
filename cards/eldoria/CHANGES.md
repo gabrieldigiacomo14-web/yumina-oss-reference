@@ -51,7 +51,25 @@ Same kind of layout and mechanics as Black Clover (a hub of tiles, framed cards,
   - Tap a spell for its details and **Cast it**.
 - **Quests:** open, completed and failed counts; Open / Finished / All tabs; a tile per quest with a rank badge and reward; a link to the quest boards where you stand. Tap a quest for its giver, deadline, reward, description and objectives.
 - **More:** every other record as grouped tiles (Adventuring, Wealth & craft, The world, You).
-- **The other screens** (Boards, Party, Guild, Training, Banking, Markets, Crafting, Events, News, Politics, Faiths, Factions, History, Codex, Journal, Settings) keep their content. Their cards now use the same frame, so the whole interface matches.
+- **Every other screen was rebuilt the same way.** Their content and their messages to the narrator are unchanged; only the presentation is new. (`docs/v21.5-record-screens.png`)
+  - **Quest Boards:** a tile for each board where you stand, posting tiles with rank badges and rewards, and the F–S rank ladder.
+  - **Guild:** a large rank seal, the F–S ladder with your rank lit, your reputation and completed requests, and tiles to your quests, boards, party and factions.
+  - **Party:** a member tile for each companion. Their sheet shows meters, role, trust, attribute chips, skill and spell tags, an equipment slot grid and wounds. Found a party, Recruit, Assign role, Part ways and the Guild team registry are kept.
+  - **Training, Callings:** tiles with progress bars, tutors and playstyle tags.
+  - **Wounds & Conditions:** health and stamina meters, with injury and condition tiles marked in red.
+  - **Banking:** carried and banked totals, the purse as coins, and account and instrument tiles.
+  - **Markets, Merchants:** price and merchant tiles.
+  - **Crafting:** tabs as chips with counts. Material, alloy, recipe, project, facility, artisan and research tiles show traits as tags.
+  - **World Events, News & Rumors, Politics, Faiths, History:**
+    - Event, report, rumor, war, treaty, faith and history tiles, with counts on News.
+    - Each realm's relations show as tags, coloured red when hostile and green when friendly.
+    - Faith records no longer print raw data.
+  - **Factions:** a tile per faction with a standing bar that runs from hostile to trusted.
+  - **Codex:** counts, title tags, and bestiary and lore tiles.
+  - **Journal:** the note box at the top (Enter adds a note), newest notes first, and passages saved from the Chronicle shown in full.
+  - **Settings:** the Display choice, and the sound layers as switches.
+  - **Map:** your position as a coordinate seal beside the place name, and the places you know as tiles.
+- The history record under More is now called **History**, so it isn't confused with the Chronicle story screen.
 
 **Layouts**
 - **Phone landscape:**
@@ -66,7 +84,7 @@ Same kind of layout and mechanics as Black Clover (a hub of tiles, framed cards,
 **The one prompt change (about 35 tokens a turn).** The Response Format entry gains: "When a named character speaks, put @ and their name alone on the line before their words (e.g. @Marta Vell), then a blank line after." That is what lets the Chronicle draw speaker cards. If the narrator forgets, the speech is shown as ordinary prose; nothing breaks.
 
 **Tested** in the test page at 390×844, 844×390 and 1440×900 (`docs/v21.5-*.png`):
-- All 27 screens open in each layout, with no runtime errors and nothing wider than the screen (`tools/harness/allscreens.mjs`).
+- All 27 screens open in each layout, filled with test data, with no console errors or warnings and nothing wider than the screen (`tools/harness/allscreens.mjs`).
 - The sheets, reading mode and the item, spell and quest details were all exercised.
 - The rebuilt files compile with Yumina's Sucrase transforms.
 - The repository's tools rebuild the shipped JSON byte for byte.

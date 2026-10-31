@@ -18,13 +18,16 @@ def remove_fn(name):
     s = s[:i] + s[m.start():]
 
 # ---- screens rebuilt in the card-and-tile style (redesign-*.tsx replace them)
-for name in ('Adventure', 'Character', 'Skills', 'Inventory', 'Magic', 'Quests', 'More'):
+for name in ('Adventure', 'Character', 'Skills', 'Inventory', 'Magic', 'Quests', 'More',
+             'QuestBoards', 'Guild', 'Party', 'Training', 'Callings', 'Banking', 'Factions', 'Crafting', 'Markets', 'Shops',
+             'Conditions', 'Journal', 'Codex', 'LivingEvents', 'PoliticsScreen', 'FaithsScreen', 'NewsScreen', 'Chronicle',
+             'ToggleRow', 'AudioSettings', 'World'):
     remove_fn(name)
 sub(" more:['✥','Eldoria Ledger','Choose another record']",
     " more:['✥','All Records','Every other part of your ledger'],\n home:['✦','The Ledger','Who you are, and every record']")
 
 # ---- layout (phone portrait / phone landscape / desktop), the Ledger shell and the new screens
-sub("function App(){", P('layout.tsx') + P('redesign-shell.tsx') + P('redesign-story.tsx') + P('redesign-screens.tsx') + "\nfunction App(){")
+sub("function App(){", P('layout.tsx') + P('redesign-shell.tsx') + P('redesign-story.tsx') + P('redesign-screens.tsx') + P('redesign-records.tsx') + P('world.tsx') + "\nfunction App(){")
 sub("const [tsOpen,setTsOpen]=React.useState(false);",
     "const [tsOpen,setTsOpen]=React.useState(false);\n const [reading,setReadingState]=React.useState(false);\n"
     " React.useEffect(()=>{ try{ var r=api.storage&&api.storage.get?api.storage.get('eldoria-reading-v1'):null; Promise.resolve(r).then((x:any)=>{ if(x==='1')setReadingState(true); }).catch(()=>{}); }catch(_e){} },[]);\n"
@@ -37,8 +40,6 @@ sub("body=<Magic v={v}/>", "body=<Magic api={api} v={v}/>")
 sub("body=<Quests v={v}/>", "body=<Quests api={api} v={v}/>")
 sub("screen==='audio')body=<AudioSettings prefs={audioPrefs} onChange={changeAudioPref}/>",
     "screen==='audio')body=<AudioSettings prefs={audioPrefs} onChange={changeAudioPref} layout={lay}/>")
-sub("function AudioSettings({prefs,onChange}:{prefs:any,onChange:any}){\n return <div className=\"screen audioScreen\">",
-    "function AudioSettings({prefs,onChange,layout}:{prefs:any,onChange:any,layout?:any}){\n return <div className=\"screen audioScreen\">\n   {layout?<LayoutCard layout={layout}/>:null}")
 sub(" audio:['♫','Sound Chamber','Choose which parts of Eldoria you hear'],", " audio:['♫','Settings','Display and sound'],")
 sub("['audio','Audio']];", "['audio','Settings']];")
 # the old shell (banner, emoji nav) is replaced by Shell; the Ledger shell keeps the same grid rows
@@ -47,7 +48,6 @@ i1 = s.index("</nav></div></>;\n}", i0) + len("</nav></div></>;\n}")
 s = s[:i0] + (" return <NavCtx.Provider value={setScreen}><style>{CSS}</style><style>{WORLDMAP_CSS}</style>"
               "<Shell api={api} v={v} screen={screen} setScreen={setScreen} lay={lay} tsOpen={tsOpen} setTsOpen={setTsOpen} body={body} reading={reading} setReading={setReading}/></NavCtx.Provider>;\n}") + s[i1:]
 
-sub("return <button className={'partyMember '+(selectedId===id", "return <button key={id} className={'partyMember '+(selectedId===id")
 sub(" chronicle:['❦','Chronicle','History your character has learned'],", " chronicle:['❦','History','What your character has learned of the past'],")
 # the CSS block is one template literal; the new rules go at its end so they win
 assert '`' not in P('redesign.css') + P('layout.css')
@@ -57,9 +57,6 @@ s = s[:end] + P('layout.css') + P('redesign.css') + s[end:]
 # ---- the world map: Black Clover's generated map, rebuilt for Eldoria (el-cartography.js, el-worldmap.tsx)
 sub("// Built-ins (MessageList, MessageInput, useYumina) are provided by Yumina.\n",
     "// Built-ins (MessageList, MessageInput, useYumina) are provided by Yumina.\nimport { WorldMap, WORLDMAP_CSS } from \"./el-worldmap\";\n")
-i0 = s.index("function World({v}:{v:any}){")
-i1 = s.index("function Callings({v}:{v:any}){")
-s = s[:i0] + P('world.tsx') + s[i1:]
 sub("screen==='world')body=<World v={v}/>", "screen==='world')body=<World v={v} api={api}/>")
 
 os.makedirs(out_dir, exist_ok=True)

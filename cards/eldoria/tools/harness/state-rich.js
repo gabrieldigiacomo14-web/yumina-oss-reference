@@ -10,3 +10,22 @@ Object.assign(window.__MOCK_VARS,{"player-level":4,"player-xp":640,"guild-rank":
 "party":[{"name":"Brann Ironvein"}],"player-notes":[{"text":"Ask about the Direwood map.","created":"Dawnswell 2"}],
 "current-sublocation":"The Gilded Tankard"});
 window.__MOCK_MSGS=[{role:"assistant",content:"| Morning | 08:14 AM | Dawnday, Dawnswell 3, 1247 AR | Waxing Crescent | Aurelia City — The Gilded Tankard | Early Spring | Overcast |\n\nThe Gilded Tankard is half-awake: chairs still upturned on the far tables, a boy sweeping last night's rushes toward the hearth, and the smell of bread from somewhere behind the bar.\n\n@Marta Vell\n\"You're the one Hollis sent? You look like you've slept in a ditch.\" She slides a bowl of porridge across without being asked. \"Eat. Then tell me what you know about wolves.\"\n\nBrann snorts into his mug and says nothing.\n\n(Insight — 3d6(4,5,2)+2=13 vs DR 12 — Success)\n\nShe is worried, not unkind. Her eyes keep going to the door."},{role:"user",content:"I eat the porridge and ask her what the shepherds have seen."},{role:"assistant",content:"| Morning | 08:31 AM | Dawnday, Dawnswell 3, 1247 AR | Waxing Crescent | Aurelia City — The Gilded Tankard | Early Spring | Overcast |\n\n@Marta Vell\n\"Tracks down by the ford, bigger than any dog's. And old Cobb swears one of them stood up on its hind legs.\"\n\nShe lowers her voice, glancing at the guardsmen by the window."}];
+Object.assign(window.__MOCK_VARS,{
+"companions":{"Brann Ironvein":{"name":"Brann Ironvein","class":"Fighter","level":3,"hp":30,"maxHp":34,"mana":0,"maxMana":0,"stamina":28,"maxStamina":32,"trust":62,"role":"Shield","attributes":{"strength":15,"agility":10,"endurance":14,"intellect":9},"skills":{"axe-fighting":{"level":3},"shield-use":{"level":2}},"equipment":{"weapon":"Bearded axe","offhand":"Round shield","chest":"Mail shirt"},"injuries":[{"name":"Cracked rib"}]}},
+"party":["Brann Ironvein"],
+"training-state":{"archery-drill":{"name":"Archery drills","teacher":"Sergeant Odda","hours":14}},
+"development-projects":{"split-arrow":{"name":"Split Arrow technique","progress":40,"stability":"shaky"}},
+"bank-accounts":{"aurelia-crown":{"institution":"Crown Exchequer","branch":"Aurelia City","realm":"Aurelia","balanceCp":50000,"access":"Any Crown branch"}},
+"price-knowledge":{"wolf-pelt":{"name":"Wolf pelt","location":"Aurelia City market","observedDate":"Dawnswell 2","sellCp":350},"healing-draught":{"name":"Healing draught","location":"Temple of Dawn","buyCp":1200}},
+"merchant-state":{"ysolde":{"name":"Mother Ysolde's Herbs","specialization":"Herbs and remedies","cashCp":4000}},
+"injuries":[{"name":"Bitten forearm","severity":"Light","penalty":"-1 to grip checks"}],"conditions":[{"name":"Tired","duration":"until rest"}],
+"codex":{"titles":["Wolfbane"],"bestiary":[{"name":"Grey Wolf","notes":"Hunts in packs of 4–8; fears fire."}],"lore":[{"name":"The Direwood","summary":"Old forest north-west of Aurelia; patrols go missing."}],"recipes":[]},
+"world-events":[{"title":"Border tolls raised at Grimfrost Pass","region":"Drakmor","status":"Ongoing"}],
+"news-network":[{"headline":"Royal Highway repaired past Millrun","source":"Town crier","date":"Dawnswell 1"}],
+"rumor-network":[{"subject":"A wolf that walks upright","currentWording":"Old Cobb swears one stood on its hind legs.","credibility":30}],
+"private-conversations-heard":[{"place":"The Gilded Tankard","text":"Two guards: the Reeve is paying the bounty out of his own purse.","date":"Dawnswell 3"}],
+"diplomacy-state":{"Aurelia":{"Sylvanor":"cordial","Umbral Reach":"hostile","Sunscar":"trade"}},"treaties":[{"name":"Concord of the Five Roads","status":"in force"}],
+"religion-state":{"Church of the Dawn":{"status":"Spring festival preparations","summary":"The Lantern Vigil is in nine days."}},
+"historical-knowledge":{"The Founding of Aurelia":{"summary":"Aurelia City was raised on the ford where the Gold Road crosses the Aurel.","confidence":80}},
+"material-knowledge":{"yew":{"name":"Yew heartwood","form":"stave","knownTraits":["springy","resists rot"],"source":"Sergeant Odda"}},
+"guild-team-registry":{"registered":false}});
