@@ -1,0 +1,17 @@
+import { chromium } from 'playwright-core';
+const dir = new URL('.', import.meta.url).pathname;
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const p = await b.newPage({ viewport: { width: 412, height: 860 } });
+const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+await p.goto('file://' + dir + 'out/index.html'); await p.waitForTimeout(600);
+await p.evaluate(() => window.__setVars({ character_created: true, has_grimoire: true, grimoire: { leaf_count: 3, insignia: 'clover', appearance: { cover: 'Weathered three-leaf grimoire' } } }));
+await p.locator('[aria-label="Magic"], button:has-text("Magic")').first().click(); await p.waitForTimeout(300);
+await p.locator('button:has-text("Customize")').first().click(); await p.waitForTimeout(300);
+console.log('upload buttons:', await p.locator('text=Upload your own cover').count());
+await p.locator('text=Upload your own cover').scrollIntoViewIfNeeded();
+await p.locator('.bc-upload-btn input[type=file]').setInputFiles('/home/user/yumina-oss-reference/cards/black-clover/art/act_train.jpg');
+await p.waitForTimeout(1500);
+console.log(JSON.stringify(await p.evaluate(() => ({ storage: Object.keys(window.__getVars()).filter(k => /art|media|cover/i.test(k)), toasts: window.__toasts, alerts: [...document.querySelectorAll('[role=alert]')].map(e => e.textContent) }))));
+await p.locator('button:has-text("Close")').first().click(); await p.waitForTimeout(400); console.log('cover img on page:', await p.evaluate(() => [...document.querySelectorAll('.bc-grimoire-cover img')].map(i => (i.getAttribute('src')||'').slice(0, 30)))); await p.screenshot({ path: dir + 'out/gc/02-after.png' });
+console.log('errors', errs.join('\n').slice(0, 600));
+await b.close();

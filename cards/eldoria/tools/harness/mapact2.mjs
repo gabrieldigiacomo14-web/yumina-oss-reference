@@ -1,0 +1,12 @@
+import { createRequire } from 'module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const dir = new URL('.', import.meta.url).pathname;
+const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto('file://' + dir + 'out/index.html'); await p.waitForTimeout(400);
+await p.evaluate(() => window.__setVars({ 'current-location': 'Abandoned Charcoal Camp', 'current-region': 'Aurelia', 'player-x': 40, 'player-y': -40 }));
+await p.locator('button:has-text("World")').first().click(); await p.waitForSelector('.elwm-loading', { state: 'detached' });
+const box = await p.locator('.elwm-box').boundingBox();
+await p.mouse.click(box.x + box.width * 0.55, box.y + box.height * 0.6); await p.waitForTimeout(300);
+await p.locator('.elwm-card button.elwm-go').click(); await p.waitForTimeout(300);
+console.log(JSON.stringify(await p.evaluate(() => { const v = window.__getVars(); return { x: v['player-x'], y: v['player-y'], camp: v['known-locations']['abandoned-charcoal-camp'], city: v['known-locations']['aurelia-city'] }; })));
+await b.close();

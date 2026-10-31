@@ -1,0 +1,14 @@
+import * as C from './carto.mjs';
+import fs from 'fs';
+const P = C.politics([]);
+C.revealAll && C.revealAll();
+const w = 900, h = 660, F = C.FRAME, pxPerKm = Math.min(w / (F.X1 - F.X0), h / (F.Y1 - F.Y0));
+const view = { cx: (F.X0 + F.X1) / 2, cy: (F.Y0 + F.Y1) / 2, pxPerKm, w, h };
+const img = C.renderTerrain(P, view, { realms: true, borders: true, fog: false });
+fs.writeFileSync('full.raw', Buffer.from(img.buffer || img));
+const toPx = (x, y) => [w / 2 + (x - view.cx) * pxPerKm, h / 2 - (y - view.cy) * pxPerKm];
+const marks = C.CANON_PLACES.map(q => ({ n: q.name, p: toPx(q.x, q.y) }));
+const labels = (C.kingdomLabels(P) || []).map(l => ({ n: l.label || l.k || l.name, p: toPx(l.x, l.y) }));
+const band = [200, 230, 270, 310, 340].map(d => ({ n: 'Neutral territory', p: toPx(...C.bandPoint(d)) }));
+fs.writeFileSync('full.json', JSON.stringify({ w, h, marks, labels, band }));
+console.log('ok', w, h, labels.length);

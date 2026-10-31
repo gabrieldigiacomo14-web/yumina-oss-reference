@@ -1,0 +1,27 @@
+import { chromium } from 'playwright-core';
+import fs from 'fs';
+const dir = new URL('.', import.meta.url).pathname;
+const out = 'out/sp'; fs.mkdirSync(dir + out, { recursive: true });
+const art = '/home/user/yumina-oss-reference/cards/black-clover/art/' + fs.readdirSync('/home/user/yumina-oss-reference/cards/black-clover/art').filter(f => /town|hage|tavern|place|street/i.test(f))[0];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const p = await b.newPage({ viewport: { width: 412, height: 860 } });
+const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+await p.addInitScript(f => { new MutationObserver(() => document.querySelectorAll('img').forEach(i => { const s = i.getAttribute('src') || ''; if (s.includes('/cdn/key/')) i.setAttribute('src', 'file://' + f); })).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'] }); }, art);
+await p.goto('file://' + dir + 'out/index.html'); await p.waitForTimeout(600);
+const msg = (id, role, c, extra = {}) => ({ id, role, content: c, ...extra });
+const state = () => p.evaluate(() => ({ illus: (window.__illus || []).map(x => x.id + ' | ' + x.note), sp: window.__getVars().scene_pics, pics: window.__getVars() && 0 }));
+const show = async l => console.log('\n## ' + l + '\n' + JSON.stringify(await state(), null, 1));
+await p.evaluate(() => { window.__imgSettings = { available: true, auto: false, price: 8 }; window.__setVars({ character_created: true, current_location: "Mira's Bakery — Hage (Clover, Forsaken Realm)", scene_type: 'shop', world_time: '14:35', world_date: 'Tue, 28 March', weather: 'Clear', vitality: 100, inventory: [{ id: 'sh', name: 'Loose gray shirt', placement: { kind: 'body', slot: 'base-upper' } }, { id: 'rb', name: 'Black Bulls robe', placement: { kind: 'body', slot: 'cloak' } }], scene_pics: { mode: 'off' } }); window.__setMsgs([{ id: 'u1', role: 'user', content: 'I enter.' }, { id: 'a1', role: 'assistant', content: '@Mira Tolven\n"Morning."\n\nFlour dusts the air.', stateSnapshot: { current_location: "Mira's Bakery — Hage (Clover, Forsaken Realm)", world_time: '14:35', world_date: 'Tue, 28 March', weather: 'Clear' } }]); });
+await p.waitForTimeout(800); await show('mode off: nothing drawn');
+await p.evaluate(() => window.__setVars({ scene_pics: { mode: 'every' } })); await p.waitForTimeout(400);
+await p.locator('.bc-nav-story-btn').first().click().catch(() => {}); await p.waitForTimeout(300);
+await p.screenshot({ path: dir + out + '/1-drawing.png' }); await p.waitForTimeout(1200);
+await show('mode every: one request with a steering note'); await p.screenshot({ path: dir + out + '/2-picture.png' });
+await p.evaluate(() => window.__setMsgs(window.__getVars().__m || [])); // no-op guard
+await p.evaluate(() => { window.__setMsgs([{ id: 'u1', role: 'user', content: 'I enter.' }, { id: 'a1', role: 'assistant', content: '@Mira Tolven\n"Morning."\n\nFlour dusts the air.\n[image:/cdn/key/abc123|alt=scene]', stateSnapshot: { current_location: "Mira's Bakery — Hage", world_time: '14:35', weather: 'Clear' } }, { id: 'u2', role: 'user', content: 'I nod.' }, { id: 'a2', role: 'assistant', content: 'She slides a loaf across.' }]); });
+await p.waitForTimeout(1500); await show('second reply: also drawn in every mode');
+await p.evaluate(() => { window.__setVars({ scene_pics: { mode: 'key' } }); });
+await p.evaluate(() => { window.__imgSettings = { available: true, auto: true }; window.__illus = []; window.__setMsgs([...(window.__getVars().__x || []), { id: 'u3', role: 'user', content: 'x' }, { id: 'a3', role: 'assistant', content: 'Another reply with Yumina auto on.' }]); });
+await p.waitForTimeout(1200); await show('Yumina auto switch on: the card does not ask again');
+console.log('errors', errs.join('\n'));
+await b.close();

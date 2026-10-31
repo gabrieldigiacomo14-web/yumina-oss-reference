@@ -1,0 +1,53 @@
+
+/* LAYOUT — the app's column can always shrink to the screen. Before, the grid's only column was sized by its widest child,
+   and Yumina's message box (model picker, mushies, effort, voice, mic in one row) is wider than a phone, so the whole app was
+   pushed past the right edge. Three layouts follow, picked from the screen (or fixed in Settings → Display). */
+.app{grid-template-columns:minmax(0,1fr);width:100%;max-width:100vw}
+.app>*{min-width:0}
+main{grid-template-columns:minmax(0,1fr)}
+.screenBody,.screen,.composer,nav{min-width:0}
+/* Yumina's toolbar stays on ONE row: below 400px it shortens the model pill itself, and the left group may shrink so the pill truncates
+   (wrapping it, as v21.4 did, split it into three spread-out rows) */
+.composer .play-composer-toolbar{flex-wrap:nowrap;gap:.4rem;padding-left:.5rem;padding-right:.5rem;padding-bottom:.4rem}
+.composer .play-composer-actions{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:.2rem}
+.composer .play-composer-model{min-width:0;flex:0 1 auto;overflow:hidden}
+.composer .play-composer-send-row{gap:.3rem}
+/* a compact message box: 16px type (smaller, but iPhones won't zoom in on tap), less padding, starting at one line */
+.composer{--play-composer-textarea-pad-y:.5em;--play-composer-pad-top:4px;--play-composer-pad-bottom:6px}
+.composer .play-composer-textarea,.composer .play-composer-grow::after{font-size:16px;line-height:1.35}
+.composer .play-composer-textarea{min-height:0}
+.sidePanel{display:none}
+.layoutPick{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px;margin-top:8px}
+.layoutOpt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:11px 12px;border:1px solid var(--metal);background:linear-gradient(180deg,#17191f,#0b0c10);color:var(--paper);text-align:left}
+.layoutOpt b{font-family:"Cinzel",serif;font-size:12px;letter-spacing:.05em}.layoutOpt small{font-size:10px;color:var(--muted)}
+.layoutOpt.on{border-color:var(--rune);box-shadow:inset 0 0 0 1px var(--rune),0 0 12px color-mix(in srgb,var(--glow) 35%,transparent)}
+
+
+/* phone landscape: the nav becomes a rail on the left and the scene details sit beside the story */
+.app.lay-landscape{grid-template-columns:56px minmax(0,1fr);grid-template-rows:34px minmax(0,1fr) auto}
+.app.lay-landscape>.top{grid-column:2;grid-row:1;min-height:34px;padding:0 8px;flex-wrap:nowrap}
+.app.lay-landscape>main{grid-column:2;grid-row:2;grid-template-rows:minmax(0,1fr)}
+.app.lay-landscape>.composer{grid-column:2;grid-row:3;padding:4px 6px 0}
+
+/* desktop: nav down the left, the story in the middle, the scene at a glance on the right */
+.app.lay-desktop{grid-template-columns:210px minmax(0,1fr) 290px;grid-template-rows:56px minmax(0,1fr) auto}
+.app.lay-desktop>.top{grid-column:1/-1;grid-row:1;min-height:56px;padding:0 18px;flex-wrap:nowrap}
+.app.lay-desktop>main{grid-column:2;grid-row:2}
+.app.lay-desktop>.composer{grid-column:2;grid-row:3;padding:12px 18px 6px}
+.app.lay-desktop .composer .play-composer-inner{max-width:920px;margin-inline:auto}
+.app.lay-desktop>.sidePanel{display:flex;flex-direction:column;gap:10px;grid-column:3;grid-row:2/4;padding:14px 12px;overflow-y:auto;border-left:1px solid var(--metal);background:linear-gradient(180deg,#101218,#07080b);box-shadow:-3px 0 18px #0009}
+.sideCard{border:1px solid var(--metal);background:linear-gradient(180deg,#15171d,#0b0d11);padding:10px 12px;box-shadow:inset 0 0 14px #0007}
+.sideCard small{display:block;font-family:"Cinzel",serif;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.sideCard b{display:block;font-family:"Cinzel",serif;font-size:16px;color:#f0e3c9;margin-top:3px;overflow-wrap:anywhere}
+.sideCard span{display:block;font-size:14px;color:#cfc4b0;margin-top:4px;line-height:1.35}
+.sideCard .sideDim{font-size:12.5px;color:var(--muted)}
+.sideStats{display:flex;flex-direction:column;gap:8px}.sideStats .stat{padding:6px 8px 7px}.sideStats .stat>div:first-child{font-size:11px}.sideStats .bar{height:7px}
+.sideRank{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sideRank b{font-size:13.5px}
+.sideMapBtn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:1px solid var(--metal);background:linear-gradient(180deg,#17191f,#0b0c10);color:var(--rune);font-family:"Cinzel",serif;font-size:12px;letter-spacing:.1em}
+/* landscape: Yumina's message box sized for a short screen (its own padding variables, and a smaller toolbar) */
+.app.lay-landscape .composer{--play-composer-pad-top:2px;--play-composer-pad-bottom:4px;--play-composer-textarea-pad-y:.4em}
+.app.lay-landscape .composer .play-composer-toolbar{font-size:13px;padding-bottom:4px}
+.app.lay-landscape .composer .play-composer-textarea{min-height:0}
+/* character creation scrolls inside the screen whatever the page around it does */
+.creator{height:var(--eldoria-visible-height,100dvh);max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-sizing:border-box}
+.uiVersion{margin:4px 0 0;font-size:11px;letter-spacing:.06em;color:var(--rune)}

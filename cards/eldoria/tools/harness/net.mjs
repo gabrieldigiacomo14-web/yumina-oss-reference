@@ -1,0 +1,12 @@
+import { createRequire } from 'module';
+const { chromium } = createRequire('/home/user/eldoria-work/harness/')('playwright');
+const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 390, height: 844 } });
+await p.addInitScript(() => { window.__PRESET_STORE = { 'eldoria-layout-v1': 'desktop' };
+  Object.defineProperty(window,'innerWidth',{get:()=>1400}); Object.defineProperty(window,'innerHeight',{get:()=>900});
+  Object.defineProperty(window,'visualViewport',{get:()=>null});
+  Object.defineProperty(Element.prototype,'clientWidth',{get(){return 1400;}}); });
+await p.goto('file:///home/user/eldoria-work/harness/out/index.html'); await p.waitForTimeout(600);
+console.log(await p.evaluate(() => document.querySelector('.app').className.match(/lay-\w+/)[0]), 'main', await p.evaluate(()=>Math.round(document.querySelector('main').getBoundingClientRect().width)));
+await p.locator('.navSub',{hasText:'Settings'}).click(); await p.waitForTimeout(300);
+await p.locator('.layoutOpt',{hasText:'Automatic'}).click(); await p.waitForTimeout(300);
+await p.screenshot({path:'/tmp/eldoria-net.png'}); await b.close();
