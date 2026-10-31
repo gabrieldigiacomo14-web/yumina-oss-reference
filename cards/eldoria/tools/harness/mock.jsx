@@ -19,8 +19,12 @@ export function useYumina() {
   };
 }
 /* Stand-ins with the same structure and intrinsic widths as Yumina's real components */
-export function MessageList() {
-  return <div className="mock-list">{state.messages.map((m, i) => <div key={i} className={'mock-msg ' + m.role}>{m.content.split('\n\n').map((p, j) => <p key={j}>{p}</p>)}
+export function MessageList(props) {
+  const R = props && props.rendererComponent;
+  const md = t => String(t || '').split('\n\n').map(p => '<p>' + p.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>').replace(/\n/g, '<br>') + '</p>').join('');
+  return <div className="mock-list">{state.messages.map((m, i) => <div key={i} className={'mock-msg ' + m.role}>
+    {R ? <R content={m.content} rawContent={m.content} role={m.role} renderMarkdown={md} isStreaming={false} variables={state.variables} messageId={'m' + i} isLastMessage={i === state.messages.length - 1} isGreeting={i === 0} />
+       : m.content.split('\n\n').map((p, j) => <p key={j}>{p}</p>)}
     {m.role === 'assistant' ? <div className="mock-tools">{'◁ 1/1 ▷  🔊 ⧉ ⑂ ✎ 🖼 ↻ 🗑'}</div> : null}</div>)}</div>;
 }
 export function MessageInput() {

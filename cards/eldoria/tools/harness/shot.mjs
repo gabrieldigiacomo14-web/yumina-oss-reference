@@ -4,7 +4,7 @@ import fs from 'fs';
 const dir = new URL('.', import.meta.url).pathname;
 const [,, outDir, w = '390', h = '844', ...steps] = process.argv;
 fs.mkdirSync(outDir, { recursive: true });
-const html = `<!doctype html><html><head><meta name=viewport content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;height:100%}</style><style>${fs.readFileSync(dir + 'yumina-base.css', 'utf8')}</style></head><body><div id=root></div><script>${fs.readFileSync(dir + 'state.js', 'utf8')}</script><script>${fs.readFileSync(dir + 'out/app.js', 'utf8')}</script></body></html>`;
+const html = `<!doctype html><html><head><meta name=viewport content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;height:100%}</style><style>${fs.readFileSync(dir + 'yumina-base.css', 'utf8')}</style></head><body><div id=root></div><script>${fs.readFileSync(dir + 'state.js', 'utf8')}</script><script>${process.env.RICH ? fs.readFileSync(dir + 'state-rich.js', 'utf8') : ''}</script><script>${fs.readFileSync(dir + 'out/app.js', 'utf8')}</script></body></html>`;
 fs.writeFileSync(dir + 'out/index.html', html);
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: +w, height: +h } });

@@ -1,6 +1,77 @@
-# Eldoria: From F-Rank to Legend — v21.4.2
+# Eldoria: From F-Rank to Legend — v21.5.0
 
-Import `Eldoria_From_F-Rank_to_Legend_v21.4.2.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Only the interface files and the version number changed. Lore, rules, variables and the narrator's prompt are exactly as before, so the per-turn cost is unchanged.
+Import `Eldoria_From_F-Rank_to_Legend_v21.5.0.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Lore, rules and variables are as before. The only prompt change is one line in the Response Format entry (about 35 tokens a turn, see below).
+
+**Players only see this after the update is published and passes Yumina's review.** Until then an import plays as the creator's working copy. Settings → Display shows "Interface v21.5.0" when the new interface is the one running.
+
+## v21.5.0 — the Ledger: Black Clover's card-and-tile layout, built in Eldoria's own look
+
+Same kind of layout and mechanics as Black Clover (a hub of tiles, framed cards, a central emblem in the nav, bottom sheets, quick actions under the story). Nothing was copied across and relabelled: every screen was written for Eldoria's data, in its steel, rune-light and ember colours, Cinzel and Cormorant type, cut corners, and per-screen colour themes. The icons are new line drawings made for this card.
+
+**The frame (every screen)**
+- **Top bar:** the Eldoria emblem (opens the Ledger), the screen's name and a line about it, Sync, Advance time, and your level and rank (opens the Guild record). On the story screen the title is where you are, and a book button turns on reading mode.
+- **Nav:** Ledger, Hero, Skills, Quests | the Chronicle emblem in the middle | Map, Magic, Gear, More. A badge on Hero shows unspent advancement points.
+- The old screen banners and the "Speak / Act" label are gone; that room goes to the content.
+
+**The Chronicle (story screen)**
+- A status strip: Health, Mana and Stamina with a word for how you are (Bruised, Good, Low…), plus the time of day. Tap Health or Stamina for the Hero screen, Mana for Magic.
+- The open quest runs under it as a one-line ticker (tap for Quests). In combat a red bar lists the foes.
+- **How a reply is drawn:**
+  - The narrator's pinned header becomes a slim scene line (time · place · weather).
+  - A dice line in parentheses becomes a roll token, so rolls stand apart from the prose.
+  - A speaker's lines become a speaker card with their initials.
+  - Your own messages are set right, in italics.
+- **Tools on the story card:** copy the latest passage, regenerate it, or save it to your Journal.
+- **Quick actions under the story:**
+  - **+** opens a sheet of actions (look around, rest, camp, use an item, cast a spell, travel, train, check gear).
+  - **Suggest** and **Random** put an idea in the message box. Nothing is sent until you press send.
+  - Four actions for where you are: a tavern offers "Order a meal" and "Listen for rumors"; a dungeon offers "Search the room" and "Check for traps"; and so on. In combat these become Attack, Defend, Cast, Use item, Fall back.
+  - "Use item" and "Cast" open a list of your consumables or spells.
+- **Reading mode** hides the strip and the actions (and on a phone the nav) so the story gets the screen. It is remembered.
+
+**The Ledger (new hub)**
+- Your hero card: portrait, name, title, level, rank, XP bar and the three meters.
+- "Return to the Chronicle", with the start of the latest passage.
+- Twelve tiles, each with a live line: Hero, Skills, Gear, Magic, Quests, Map, Party, Callings, Guild, Wounds, Journal, All records.
+
+**Rebuilt screens**
+- **Hero:**
+  - Portrait (tap + to add your own picture; it is kept on this device), vitals with a word for each, and a grid of facts (species, origin, homeland, calling…).
+  - **Attributes** as tiles. The advancement-point rules and the message to the narrator are unchanged: stage with + and −, then Confirm.
+  - Callings as tiles, and your appearance and background.
+- **Skills:** totals at the top, family chips (Weapons, Covert, Wilds…) to filter, and a tile per skill with its level seal and progress. Techniques get their own panel.
+- **Gear:**
+  - The purse as gold, silver and copper coins, banked funds, and a load meter.
+  - An equipment slot grid (head, cloak, body, hands, legs, feet, both hands, trinkets, pack).
+  - The pack as item tiles with filter chips (Equipped, Weapons, Armour, Supplies, Materials).
+  - Tap an item for its details, with Equip / Take off (the same equip rules as before, including two-handed weapons), plus **Use** and **Examine**, which send that action to the story.
+- **Magic:**
+  - A mana orb, Instinct and Control meters, and the backlash-risk band.
+  - The spellbook as tiles with tabs by origin (trained, innate, universal).
+  - Tap a spell for its details and **Cast it**.
+- **Quests:** open, completed and failed counts; Open / Finished / All tabs; a tile per quest with a rank badge and reward; a link to the quest boards where you stand. Tap a quest for its giver, deadline, reward, description and objectives.
+- **More:** every other record as grouped tiles (Adventuring, Wealth & craft, The world, You).
+- **The other screens** (Boards, Party, Guild, Training, Banking, Markets, Crafting, Events, News, Politics, Faiths, Factions, History, Codex, Journal, Settings) keep their content. Their cards now use the same frame, so the whole interface matches.
+
+**Layouts**
+- **Phone landscape:**
+  - The nav is a rail on the left.
+  - The story sits beside a column with the status strip, quest ticker and quick actions.
+  - Tiles flow into more columns.
+- **Desktop:**
+  - The sidebar has the Chronicle at the top, the main screens, and every other record grouped below, one click away.
+  - The story and screens are in the middle.
+  - The status panel on the right now uses the same meters.
+
+**The one prompt change (about 35 tokens a turn).** The Response Format entry gains: "When a named character speaks, put @ and their name alone on the line before their words (e.g. @Marta Vell), then a blank line after." That is what lets the Chronicle draw speaker cards. If the narrator forgets, the speech is shown as ordinary prose; nothing breaks.
+
+**Tested** in the test page at 390×844, 844×390 and 1440×900 (`docs/v21.5-*.png`):
+- All 27 screens open in each layout, with no runtime errors and nothing wider than the screen (`tools/harness/allscreens.mjs`).
+- The sheets, reading mode and the item, spell and quest details were all exercised.
+- The rebuilt files compile with Yumina's Sucrase transforms.
+- The repository's tools rebuild the shipped JSON byte for byte.
+
+**Not tested:** Yumina's real message list draws its own controls around each reply (the test page only imitates them), and real phones.
 
 ## v21.4.2 — a compact message box
 

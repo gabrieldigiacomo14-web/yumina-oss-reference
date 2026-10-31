@@ -20,7 +20,7 @@ function useLayoutMode(api:any){
  function choose(m:string){setPref(m);try{api.storage&&api.storage.set&&api.storage.set('eldoria-layout-v1',m);}catch(_e){}}
  return {mode,pref,auto,choose};
 }
-var ELDORIA_UI_VERSION='21.4.2';
+var ELDORIA_UI_VERSION='21.5.0';
 var LAYOUT_NAMES:any={portrait:'Phone (portrait)',landscape:'Phone (landscape)',desktop:'Desktop'};
 function LayoutCard({layout}:{layout:any}){
  return <Card title="Display">
@@ -37,10 +37,10 @@ function SidePanel({v,setScreen}:{v:any,setScreen:any}){
  return <aside className="sidePanel" aria-label="Status">
    <div className="sideCard"><small>Where</small><b>{v['current-location']||'Unknown'}</b><span>{[sub,v['current-region']].filter(Boolean).join(' · ')}</span></div>
    <div className="sideCard"><small>When</small><b>{displayWorldTime(v['world-time'])}</b><span>{v['world-date']}</span><span className="sideDim">{[v.season,v.weather,v['moon-phase']].filter(Boolean).join(' • ')}</span></div>
-   <div className="sideCard sideStats"><StatPill name="HP" cur={v['player-hp']} max={v['player-max-hp']} kind="hp"/><StatPill name="MP" cur={v['player-mana']} max={v['player-max-mana']} kind="mp"/><StatPill name="SP" cur={v['player-stamina']} max={v['player-max-stamina']} kind="sp"/></div>
+   <div className="sideCard sideStats"><Meter label="Health" cur={v['player-hp']} max={v['player-max-hp']} kind="hp" icon="heart" word={vitalWord(v['player-hp'],v['player-max-hp'])}/><Meter label="Mana" cur={v['player-mana']} max={v['player-max-mana']} kind="mp" icon="drop"/><Meter label="Stamina" cur={v['player-stamina']} max={v['player-max-stamina']} kind="sp" icon="bolt"/></div>
    <div className="sideCard sideRank"><div><small>Level</small><b>{v['player-level']}</b></div><div><small>Rank</small><b>{v['guild-rank']||'—'}</b></div><div><small>Purse</small><b>{money(Number(v['player-money-cp'])||0)}</b></div><div><small>Load</small><b>{v.encumbrance||'—'}</b></div></div>
    {conds.length?<div className="sideCard"><small>Conditions</small>{conds.slice(0,5).map((c:any,i:number)=><span key={i}>{typeof c==='string'?c:(c.name||c.title||c.type||'Condition')}</span>)}</div>:null}
    {party.length?<div className="sideCard"><small>Company</small>{party.slice(0,6).map((m:any,i:number)=><span key={i}>{typeof m==='string'?m:(m.name||'Companion')}</span>)}</div>:null}
-   <button type="button" className="sideMapBtn" onClick={()=>setScreen('world')}>⌖ Open the map</button>
+   <button type="button" className="sideMapBtn" onClick={()=>setScreen('world')}><ElIcon n="map" s={15}/>Open the map</button>
  </aside>
 }
