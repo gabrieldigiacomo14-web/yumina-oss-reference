@@ -11,7 +11,7 @@ assert 'index.tsx' in files and rc['entryFile'] == 'index.tsx'
 rc['files'] = files
 # the stored compiled copy belongs to the old files; Yumina would ignore it (its source hash no longer matches) and recompile
 rc.pop('compiled', None)
-w['version'] = '21.5.1'
+w['version'] = '21.5.2'
 # one line in the response format: a speaker's name on its own line, so the Chronicle can draw a speaker card
 fmt = [e for e in w['entries'] if e.get('id') == 'response-format']
 assert len(fmt) == 1

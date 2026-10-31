@@ -2,18 +2,26 @@
 /* ---------- layout: phone portrait, phone landscape, desktop ----------
    Picked from the screen size (the iframe Yumina gives the card), or fixed by the
    player in Settings → Display. The mode is a class on .app; the CSS does the rest. */
+/* the narrowest of the widths the browser reports, so a phone is never mistaken for a wide screen */
+function measureScreen(){
+ var ws=[window.innerWidth,document.documentElement&&document.documentElement.clientWidth,(window as any).visualViewport&&(window as any).visualViewport.width].map(Number).filter((n:number)=>n>0);
+ var hs=[window.innerHeight,(window as any).visualViewport&&(window as any).visualViewport.height].map(Number).filter((n:number)=>n>0);
+ return {w:Math.round(ws.length?Math.min(...ws):390),h:Math.round(hs.length?Math.min(...hs):844)};
+}
 function useLayoutMode(api:any){
  const [pref,setPref]=React.useState('auto');
- const [dims,setDims]=React.useState(()=>({w:window.innerWidth||390,h:window.innerHeight||844}));
+ const [dims,setDims]=React.useState(()=>measureScreen());
  React.useEffect(()=>{
    var alive=true;
    try{var r=api.storage&&api.storage.get?api.storage.get('eldoria-layout-v1'):null;Promise.resolve(r).then((raw:any)=>{if(alive&&raw&&/^(auto|portrait|landscape|desktop)$/.test(raw))setPref(raw);}).catch(()=>{});}catch(_e){}
    return ()=>{alive=false;};
  },[]);
  React.useEffect(()=>{
-   function on(){setDims({w:window.innerWidth||390,h:window.innerHeight||844});}
+   function on(){setDims(measureScreen());}
+   var vv=(window as any).visualViewport; if(vv)vv.addEventListener('resize',on);
    window.addEventListener('resize',on);window.addEventListener('orientationchange',on);
-   return ()=>{window.removeEventListener('resize',on);window.removeEventListener('orientationchange',on);};
+   var t=setTimeout(on,400);
+   return ()=>{clearTimeout(t);if(vv)vv.removeEventListener('resize',on);window.removeEventListener('resize',on);window.removeEventListener('orientationchange',on);};
  },[]);
  var auto=dims.w>=1024&&dims.h>=560?'desktop':(dims.w>dims.h&&dims.h<=600)?'landscape':'portrait';
  // a chosen layout is only used where it fits: desktop puts a 232px sidebar and a 290px status panel around the
@@ -24,7 +32,7 @@ function useLayoutMode(api:any){
  function choose(m:string){setPref(m);try{api.storage&&api.storage.set&&api.storage.set('eldoria-layout-v1',m);}catch(_e){}}
  return {mode,pref,auto,choose,fits,width:dims.w,MIN_W};
 }
-var ELDORIA_UI_VERSION='21.5.1';
+var ELDORIA_UI_VERSION='21.5.2';
 var LAYOUT_NAMES:any={portrait:'Phone (portrait)',landscape:'Phone (landscape)',desktop:'Desktop'};
 function LayoutCard({layout}:{layout:any}){
  return <Panel title="Display" sub="Which layout Eldoria uses" icon="cog">

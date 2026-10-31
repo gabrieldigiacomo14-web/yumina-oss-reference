@@ -436,3 +436,15 @@ main{grid-template-rows:minmax(0,1fr)!important}
 .journalAdd .btnMain{flex:0 0 auto}
 .layoutPick{margin-top:6px}
 .layoutOpt.cant{opacity:.55}
+/* safety net: should the desktop layout ever be drawn on a narrow screen, drop the status panel and narrow the sidebar so the page keeps room */
+@media(max-width:899px){
+ .app.lay-desktop{grid-template-columns:150px minmax(0,1fr)!important}
+ .app.lay-desktop>.sidePanel{display:none!important}
+ .app.lay-desktop>.elTop{grid-column:1/-1}
+ .app.lay-desktop>main,.app.lay-desktop>.composer{grid-column:2}
+ .app.lay-desktop>.elNav{padding:8px 4px}
+ .app.lay-desktop>.elNav .navBtn{padding:8px 6px;gap:8px;font-size:11px}
+ .app.lay-desktop .navEmblem{padding:6px;font-size:11px}
+ .app.lay-desktop .navSub{padding:5px 6px;font-size:13px}
+ .app.lay-desktop .screen{padding:10px 8px 20px}
+}

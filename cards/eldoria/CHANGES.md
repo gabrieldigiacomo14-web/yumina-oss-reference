@@ -1,8 +1,16 @@
-# Eldoria: From F-Rank to Legend — v21.5.1
+# Eldoria: From F-Rank to Legend — v21.5.2
 
-Import `Eldoria_From_F-Rank_to_Legend_v21.5.1.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Lore, rules and variables are as before. The only prompt change is one line in the Response Format entry (about 35 tokens a turn, see below).
+Import `Eldoria_From_F-Rank_to_Legend_v21.5.2.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Lore, rules and variables are as before. The only prompt change is one line in the Response Format entry (about 35 tokens a turn, see below).
 
-**Players only see this after the update is published and passes Yumina's review.** Until then an import plays as the creator's working copy. Settings → Display shows "Interface v21.5.1" when the new interface is the one running.
+**Players only see this after the update is published and passes Yumina's review.** Until then an import plays as the creator's working copy. Settings → Display shows "Interface v21.5.2" when the new interface is the one running.
+
+## v21.5.2 — two more guards against the desktop trap
+
+- **Screen width:** the width check now uses the narrowest width the browser reports (window, page and visual viewport), and re-checks shortly after loading. A phone can no longer pass as a wide screen.
+- **A safety net in the styles:** if the desktop layout is ever drawn on a screen narrower than 900 px anyway, the right-hand status panel is hidden and the sidebar narrows to 150 px. The page then keeps about 240 px on an iPhone, and Settings → Display stays reachable.
+- **Tested** by making the test page report a 1400 px screen while it was really 390 px (`tools/harness/net.mjs`). The desktop layout appeared, the page kept 240 px, and Settings → Display could be opened and the layout changed.
+
+**Already stuck on an older v21.5?** The layout choice is saved in the browser on that device (Yumina keeps a card's storage in the browser for yumina.io), so it doesn't follow you to other devices. Importing v21.5.2 releases it. To get out without importing, open yumina.io in Safari, tap **aA → Request Desktop Website**, then go to More → Settings → Display → Automatic, and switch back to the mobile website.
 
 ## v21.5.1 — a chosen layout no longer traps a phone
 
