@@ -15,7 +15,7 @@ def sub(old, new, n=1):
 sub("function App(){", P('layout.tsx') + "\nfunction App(){")
 sub("if(!v['character-created']) return <><style>{CSS}</style><Creator api={api}/></>;",
     "const lay=useLayoutMode(api);\n if(!v['character-created']) return <><style>{CSS}</style><Creator api={api}/></>;")
-sub("<div className={'app screenTheme theme-'+screen}>", "<div className={'app screenTheme theme-'+screen+' lay-'+lay.mode}>")
+sub("<div className={'app screenTheme theme-'+screen}>", "<div className={'app screenTheme theme-'+screen+' lay-'+lay.mode} data-ui={ELDORIA_UI_VERSION}>")
 sub('</main><div className="composer">', '</main><SidePanel v={v} setScreen={setScreen}/><div className="composer">')
 sub("screen==='audio')body=<AudioSettings prefs={audioPrefs} onChange={changeAudioPref}/>",
     "screen==='audio')body=<AudioSettings prefs={audioPrefs} onChange={changeAudioPref} layout={lay}/>")

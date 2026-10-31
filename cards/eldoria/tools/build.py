@@ -11,6 +11,6 @@ assert 'index.tsx' in files and rc['entryFile'] == 'index.tsx'
 rc['files'] = files
 # the stored compiled copy belongs to the old files; Yumina would ignore it (its source hash no longer matches) and recompile
 rc.pop('compiled', None)
-w['version'] = '21.4.0'
+w['version'] = '21.4.1'
 json.dump(w, open(dst, 'w', encoding='utf-8'), ensure_ascii=False, indent=None, separators=(',', ':'))
 print('ok', dst, os.path.getsize(dst), 'bytes;', ', '.join('%s %d' % (k, len(v)) for k, v in files.items()))

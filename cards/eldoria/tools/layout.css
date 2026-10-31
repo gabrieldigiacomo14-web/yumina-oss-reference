@@ -77,3 +77,4 @@ nav button{min-width:0;overflow:hidden}nav button>span:not(.navIcon):not(.navBad
 .app.lay-landscape .composer .play-composer-textarea{min-height:0}
 /* character creation scrolls inside the screen whatever the page around it does */
 .creator{height:var(--eldoria-visible-height,100dvh);max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-sizing:border-box}
+.uiVersion{margin:4px 0 0;font-size:11px;letter-spacing:.06em;color:var(--rune)}

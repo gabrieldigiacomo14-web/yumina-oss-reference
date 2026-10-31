@@ -1,6 +1,13 @@
-# Eldoria: From F-Rank to Legend — v21.4
+# Eldoria: From F-Rank to Legend — v21.4.1
 
-Import `Eldoria_From_F-Rank_to_Legend_v21.4.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Only the interface files and the version number changed. Lore, rules, variables and the narrator's prompt are exactly as before, so the per-turn cost is unchanged.
+Import `Eldoria_From_F-Rank_to_Legend_v21.4.1.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Only the interface files and the version number changed. Lore, rules, variables and the narrator's prompt are exactly as before, so the per-turn cost is unchanged.
+
+## v21.4.1 — a visible version, to check which interface is running
+
+A tester's screenshots after v21.4 still showed the old interface in both orientations: the "Chronicle" banner on the story screen, no landscape side rail, and the page cut off on the right. In Yumina's code (`viewerSeesWorkingCopy`, `detectMaterialChange`), an import into a **published** card goes into a working copy that only its creator plays. Interface files count as a "material" change, so players only get them after the update is published and passes review.
+
+- **Settings → Display** now shows **"Interface v21.4.1 · layout now: …"**, and the app carries `data-ui="21.4.1"`. If that line is missing, the old interface is still the one being served.
+- Otherwise identical to v21.4.
 
 ## Layout: phone portrait, phone landscape, desktop
 

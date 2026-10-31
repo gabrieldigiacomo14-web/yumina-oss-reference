@@ -20,10 +20,12 @@ function useLayoutMode(api:any){
  function choose(m:string){setPref(m);try{api.storage&&api.storage.set&&api.storage.set('eldoria-layout-v1',m);}catch(_e){}}
  return {mode,pref,auto,choose};
 }
+var ELDORIA_UI_VERSION='21.4.1';
 var LAYOUT_NAMES:any={portrait:'Phone (portrait)',landscape:'Phone (landscape)',desktop:'Desktop'};
 function LayoutCard({layout}:{layout:any}){
  return <Card title="Display">
    <p className="muted">Eldoria picks a layout from your screen. Choose one here to keep it whatever the screen does.</p>
+   <p className="uiVersion">{'Interface v'+ELDORIA_UI_VERSION+' · layout now: '+LAYOUT_NAMES[layout.mode]}</p>
    <div className="layoutPick">{[['auto','Automatic'],['portrait','Phone (portrait)'],['landscape','Phone (landscape)'],['desktop','Desktop']].map(o=><button key={o[0]} type="button" className={'layoutOpt'+(layout.pref===o[0]?' on':'')} aria-pressed={layout.pref===o[0]} onClick={()=>layout.choose(o[0])}><b>{o[1]}</b>{o[0]==='auto'?<small>{'Right now: '+LAYOUT_NAMES[layout.auto]}</small>:null}</button>)}</div>
  </Card>
 }
