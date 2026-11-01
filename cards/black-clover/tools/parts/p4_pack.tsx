@@ -154,58 +154,7 @@ function PackView(p) {
         })}
       </div>
       <div ref={refs.inventory} data-sec="inventory" className="bc-sec-anchor" />
-      <Frame className="bc-inv-panel" pad="0 0 8px">
-        <SectionHead art="inv_head" icon="pack" title="Inventory" sub="Items, Materials, and Key Items you carry."
-          right={<span className="bc-inv-tools"><button type="button" className={"bc-capchip" + (carry.band !== "comfortable" ? " bc-crit" : "")} aria-label={"Carried " + Math.round(carry.weight * 10) / 10 + " of " + carry.max + " kilograms, " + carry.band + ". Show load details."} onClick={function () { setDetails(!details); }}>{Math.round(carry.weight * 10) / 10 + " / " + carry.max + " kg"}</button>
-            <select aria-label="Sort items" value={sort} onChange={function (e) { setSort(e.target.value); }}><option value="location">Location</option><option value="name">Name</option><option value="weight">Weight</option><option value="type">Type</option></select></span>} />
-        <div className="bc-chiprow bc-inv-filters">{[["all", "All"], ["item", "Items"], ["material", "Materials"], ["key", "Key Items"]].map(function (f) { return <Chip key={f[0]} on={filter === f[0]} onClick={function () { setFilter(f[0]); }}>{f[1]}</Chip>; })}</div>
-        {msg ? <div role="status" className="bc-inv-msg">{msg}</div> : null}
-        <div className="bc-inv-list">
-          {list.length ? list.map(function (it) {
-            var ic = itemIcon(it); var k = itemKind(it); var open = expanded === it.id;
-            return (
-              <div key={it.id} className={"bc-invrow-wrap" + (open ? " bc-invrow-open" : "")}>
-                <button type="button" className="bc-invrow" aria-expanded={open ? "true" : "false"} onClick={function () { setExpanded(open ? "" : it.id); setMsg(""); }}>
-                  <span className="bc-invrow-icon" style={{ color: ic[1] }}><Icon n={ic[0]} s={26} fill={ic[1]} /></span>
-                  <span className="bc-invrow-text"><strong>{str(it.name)}</strong><small>{str(it.notes) || bcPlaceLabel(inv, it)}</small></span>
-                  <span className="bc-invrow-qty">{"× " + num(it.qty, 1)}</span>
-                  <b className={"bc-kind bc-kind-" + k}>{KIND_LABEL[k]}</b>
-                  <Icon n={open ? "chevd" : "chevr"} s={13} />
-                </button>
-                {open ? itemActions(it) : null}
-              </div>
-            );
-          }) : <Empty>{inv.length ? "Nothing of that kind." : "Your hands and pockets are empty."}</Empty>}
-        </div>
-        <button type="button" className="bc-inv-more" aria-expanded={details ? "true" : "false"} onClick={function () { setDetails(!details); }}>{details ? "Hide load, slots & appearance" : "Load, equipment slots & appearance"}<Icon n={details ? "chevd" : "chevr"} s={12} /></button>
-        {details ? (
-          <div className="bc-inv-details">
-            <div className="bc-loadrow"><span>{'Carry load · ' + carry.band}</span><span>{carry.weight + ' / ' + carry.max + ' kg'}</span></div>
-            <div className="bc-loadbar"><i style={{ width: Math.min(100, 100 * carry.weight / Math.max(1, carry.max)) + '%', background: over ? '#ae7060' : undefined }} /></div>
-            <div className="bc-note">{'Comfortable ≤ ' + carry.comfortable + ' kg · Heavy ≤ ' + carry.heavy + ' kg · Arms ' + carry.armsBulk + ' / ' + BC_ARMS_BULK + ' bulk · purse ' + bcWalletProfile(v.money).weightKg.toFixed(3) + ' kg'}</div>
-            {carry.band !== 'comfortable' ? <div className="bc-note" style={{ color: over ? '#f1b8a8' : C.goldHi }}>{carry.band === 'immobile' ? 'Immobile: drop weight before moving.' : carry.band === 'overloaded' ? 'Overloaded: substantial penalties to travel, dodging and stamina.' : 'Heavy: movement and stamina are impaired.'}</div> : null}
-            <H size={15} m="12px 0 4px">Equipment slots</H>
-            {BC_SLOTS.filter(function (pair) { return EQUIP_ALWAYS[pair[0]] || inv.some(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; }); }).map(function (pair) {
-              var eq = inv.find(function (x) { return x.placement && x.placement.kind === 'body' && x.placement.slot === pair[0]; });
-              var val = eq ? str(eq.name) + (pair[0] === 'grimoire' ? ' \u00b7 floats at your side' : '') : '—';
-              if (pair[0] === 'grimoire' && !eq) {
-                var gi = inv.find(function (x) { return bcSpec(x).tags.indexOf('grimoire') >= 0; }), gp = gi && gi.placement ? gi.placement : null;
-                if (gp && gp.kind === 'container') { var bag = inv.find(function (x) { return x.id === gp.containerId; }); val = str(gi.name) + ' \u00b7 in ' + str(bag ? bag.name : 'its holder'); }
-                else if (gp && gp.kind === 'world') val = bcPlaceLabel(inv, gi) + ' \u2014 not with you';
-                else if (gp && gp.kind === 'loose') val = 'In your hands';
-                else val = isTrue(v.has_grimoire) ? 'Floats at your side' : 'Not yet received';
-              }
-              return <Row key={pair[0]} k={pair[1]} v={val} />;
-            })}
-            <div className="bc-note">{'"Full outfit" is one-piece clothing (a dress, a uniform, "everyday clothes") worn instead of a separate shirt and trousers. A squad robe or cloak goes over your clothes in "Cloak / Squad robe".'}</div>
-            <H size={15} m="12px 0 4px">Visible appearance</H>
-            <div className="bc-note" style={{ color: C.ivory }}>{appearance.summary}</div>
-            {appearance.social ? <div className="bc-note">{'Social presentation · ' + appearance.social.outfitTier + ' dress · setting: ' + appearance.social.setting}</div> : null}
-            {appearance.coverage !== 'dressed' ? <div className="bc-note" style={{ color: '#e7b5a4' }}>{'Dress: ' + appearance.inadequatelyDressed.join('; ') + '. NPCs may notice if present.'}</div> : null}
-            <div className="bc-note">Equipment actions are free (no AI call). Complex uses go through "Use in story".</div>
-          </div>
-        ) : null}
-      </Frame>
+      <BcKit api={api} v={v} inv={inv} can={can} move={move} useItem={useItem} msg={msg} setMsg={setMsg} atHome={atHome} atSquad={atSquad} toStory={p.toStory} />
       <div ref={refs.market} data-sec="market" className="bc-sec-anchor" />
       <div className="bc-hub-lower">
         <MarketView api={api} toStory={p.toStory} embedded={true} />

@@ -29,3 +29,9 @@ Object.assign(window.__MOCK_VARS,{
 "historical-knowledge":{"The Founding of Aurelia":{"summary":"Aurelia City was raised on the ford where the Gold Road crosses the Aurel.","confidence":80}},
 "material-knowledge":{"yew":{"name":"Yew heartwood","form":"stave","knownTraits":["springy","resists rot"],"source":"Sergeant Odda"}},
 "guild-team-registry":{"registered":false}});
+window.__MOCK_VARS.inventory = window.__MOCK_VARS.inventory.concat([
+ {"id":"pouch","name":"Belt Pouch","qty":1,"weight":0.3},
+ {"id":"quiv","name":"Leather Quiver","qty":1,"weight":0.6,"placement":{"kind":"body","slot":"back"}},
+ {"id":"rope","name":"Hemp Rope","qty":1,"weight":2},
+ {"id":"old-helm","name":"Dented Iron Helm","qty":1,"weight":3,"condition":22}]);
+window.__MOCK_VARS["ground-items"] = [{"id":"lantern","name":"Hooded Lantern","qty":1,"weight":1.5,"placement":{"kind":"world","location":"Aurelia City"}}];

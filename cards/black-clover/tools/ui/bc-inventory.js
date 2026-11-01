@@ -126,7 +126,8 @@ export function bcSpec(it) {
   else if (has(name+' '+type, /trousers|pants|leggings|breeches|shorts|skirt|kilt|slacks/)) {weight=.4;bulk=1.8;slot='base-lower';tag('clothing');}
   else if (has(name+' '+type, /shirt|blouse|tunic|jersey|sweater|pullover|waistcoat/)) {weight=.45;bulk=2;slot='base-upper';tag('clothing');}
   else if (has(name+' '+type, /\b(cloaks?|capes?|mantles?|ponchos?|shawls?|squad robes?|knight'?s robes?|captain'?s robes?)\b/) || has(name+' '+type, /(black bulls?|golden dawn|silver eagles?|crimson lions?|blue roses?|green mantis|coral peacocks?|purple orcas?|aqua deer|azure deer|magic knight).{0,24}\brobes?\b/)) {weight=1;bulk=3.5;slot='cloak';}
-  else if (has(name+' '+type, /dress|gown|robe|onesie|jumpsuit|outfit|uniform|everyday clothes|traveling clothes|civilian clothes|travelling clothes|clothes|clothing|garments|rags/)) {weight=.9;bulk=3.5;slot='clothes';tag('clothing');}
+  // a boot, glove, hat or belt whose type is merely "clothing" is still that piece, not a one-piece outfit
+  else if (has(name+' '+type, /dress|gown|robe|onesie|jumpsuit|outfit|uniform|everyday clothes|traveling clothes|civilian clothes|travelling clothes|clothes|clothing|garments|rags/) && !has(name, /\b(boots?|shoes?|sandals?|slippers?|clogs?|gloves?|gauntlets?|mittens?|hats?|caps?|helmets?|helms?|hoods?|circlets?|belts?|scarf|scarves|socks?)\b/)) {weight=.9;bulk=3.5;slot='clothes';tag('clothing');}
   else if (has(name+' '+type, /\b(vests?|aprons?|smocks?)\b/)) {weight=.45;bulk=1.5;slot='torso';}
   else if (has(name+' '+type, /armor|armour|breastplate|chestguard|coat|jacket/)) {weight=2;bulk=5;slot='torso';}
   else if (has(name+' '+type, /boot|shoe/)) {weight=.8;bulk=3;slot='feet';}

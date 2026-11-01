@@ -14,6 +14,7 @@ export function useYumina() {
     setVariable: (k, v) => window.__setVars({ [k]: v }), patchVariables: p => { window.__setVars(p); return Promise.resolve(); },
     sendMessage: t => { window.__sent = (window.__sent || []).concat([t]); },
     showToast: t => { window.__toasts = (window.__toasts || []).concat([t]); },
+    injectContext: t => { window.__ctx = (window.__ctx || []).concat([t]); },
     storage: { get: k => Promise.resolve(store[k] || null), set: (k, v) => { store[k] = v; return Promise.resolve(); }, remove: k => { delete store[k]; return Promise.resolve(); } },
     playAudio: () => {}, stopAudio: () => {}, setAudioVolume: () => {},
   };

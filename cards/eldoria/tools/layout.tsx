@@ -32,7 +32,7 @@ function useLayoutMode(api:any){
  function choose(m:string){setPref(m);try{api.storage&&api.storage.set&&api.storage.set('eldoria-layout-v1',m);}catch(_e){}}
  return {mode,pref,auto,choose,fits,width:dims.w,MIN_W};
 }
-var ELDORIA_UI_VERSION='21.5.2';
+var ELDORIA_UI_VERSION='21.6.0';
 var LAYOUT_NAMES:any={portrait:'Phone (portrait)',landscape:'Phone (landscape)',desktop:'Desktop'};
 function LayoutCard({layout}:{layout:any}){
  return <Panel title="Display" sub="Which layout Eldoria uses" icon="cog">

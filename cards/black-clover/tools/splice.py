@@ -86,7 +86,7 @@ s = remove_func(s, 'Cover')
 s = remove_func(s, 'GrimoireForgeSheet')
 # remaining parts before App
 app = s.index('\nexport default function App(')
-s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + P('p15_scenepics.tsx') + P('p16_cover.tsx') + s[app:]
+s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + P('p15_scenepics.tsx') + P('p16_cover.tsx') + P('p17_kit.tsx') + s[app:]
 # css
 # the original 430px media rule never closed its block, swallowing every later rule on wider screens
 s = s.replace('scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}",', 'scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}}",', 1)
@@ -95,6 +95,10 @@ end = s.index('].join("\\n");')
 pre = s[:end].rstrip()
 if not pre.endswith(','): pre += ','
 s = pre + '\n' + ',\n'.join('  ' + json.dumps(l) for l in css_lines) + '\n' + s[end:]
+
+# the Kit (p17) also needs the fit check, for Move to… reasons
+assert s.count('bcCanConsume, bcConsume } from "./bc-inventory.js";') == 1
+s = s.replace('bcCanConsume, bcConsume } from "./bc-inventory.js";', 'bcCanConsume, bcConsume, bcFits } from "./bc-inventory.js";')
 
 # ---- display names: the creator's "distinct interface" wording (distinct_labels.json, exact before/after pairs)
 def label(old, new, n=1):

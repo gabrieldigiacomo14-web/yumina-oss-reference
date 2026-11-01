@@ -1,6 +1,37 @@
-# Black Clover: A Mage's Tale — v21.17
+# Black Clover: A Mage's Tale — v21.18
 
-Import `Black_Clover_A_Mages_Tale_v21.17.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.18.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.18 — the Satchel's inventory works like the Barbarian Kit
+
+The inventory section of Satchel & Treasury is rebuilt the way Surviving the Game as a Barbarian's Kit works (`tools/parts/p17_kit.tsx`). It runs on Black Clover's own physical engine (`bc-inventory.js`): the same bags and pockets, kilograms and bulk, arms capacity, home storage and squad locker, and equipment log. No AI calls, and no prompt change. The purse, market and bank sections are unchanged.
+
+- **Load:** a bar with the comfortable and heavy marks, and how much your arms hold.
+- **Reach:** everything you carry, sorted by how fast you can get at it: in hand, worn, quick, ready, slow, buried, loose. In a fight it warns that only in-hand, worn, quick and ready things can be used at once; the engine already enforced this, and now you can see it.
+- **Equipped:** a tile for each slot (main and off hand, grimoire, head, cloak, outfit, shirt, trousers, coat, hands, feet, belt, hip, back, accessory). **Tap an empty slot** to see what you carry that goes there.
+- **Compare before you equip:** an item that would replace a worn one shows both side by side: weight, bulk, condition, whether the battle counts it as a weapon, and material. Black Clover items carry no damage or armour numbers, so there is less to compare than in the Barbarian card.
+- **Bags as tiles:** each bag is a card. Each pocket shows its reach, fill bars for room and weight, and what is inside; tap anything to open it. Put bags on or take them off from their card.
+- **Move to…:** lists every pocket of every bag, with the ones that fit first. The others say why not, in the engine's own words ("The item does not fit that type of compartment.", "Wear the bag first.", "Compartment is too full."). Plus **Best free place** and **Hold in your hands**.
+- **Left here:** what you left at your current location, at home when you are home, or in your squad locker when you are at headquarters, each with **Take it**.
+- **Find, filter and sort:** filters for Worn, Items, Materials, Key Items, Clothing and Needs mending; a search box; sort by reach, name, weight or type.
+- **Split stacks:** split half of a stack into your hands.
+- **Mending flags:** anything torn, damaged, frayed, cracked, broken, poor or ruined is marked and filterable. "Worn" alone is ordinary wear, not damage.
+- **Unchanged:** Use (free), Use in story (AI), Examine (free), Drop, Drop 1, Store at home and Squad locker work exactly as before.
+
+**Bug fixed (`bc-inventory.js`):** an item whose type was recorded as "clothing" was classed as a one-piece outfit before its name was read. So "Work boots" (or a hat, gloves or a belt) marked as clothing ended up in the outfit slot, and the normalizer quietly moved it into a bag. Boots, shoes, sandals, gloves, gauntlets, hats, caps, hoods, helmets, belts, scarves and socks are now recognised by name first, and stay where they are worn.
+
+**Tested** in the test page (`tools/harness/kittest.mjs`), all passing, with no page errors:
+- Equip a sword.
+- Put on a belt pouch.
+- Places that don't fit say why.
+- Move potions into the pouch.
+- Take a rope from the ground.
+- Split a stack.
+- A torn cloak is flagged.
+- A buried knife can't be used in a fight.
+- Every change is logged for the narrator.
+
+The existing inventory-sync test still runs, and the Satchel screen was checked at phone, landscape and desktop sizes (`docs/v21.18-kit-phone.png`, `docs/v21.18-kit-desktop.png`). Not tested on a real phone or in real play.
 
 ## v21.17 — the official world layout, and real grimoire cover crafting
 

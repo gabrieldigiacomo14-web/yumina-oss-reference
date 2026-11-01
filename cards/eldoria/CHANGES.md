@@ -1,8 +1,40 @@
-# Eldoria: From F-Rank to Legend — v21.5.2
+# Eldoria: From F-Rank to Legend — v21.6.0
 
-Import `Eldoria_From_F-Rank_to_Legend_v21.5.2.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Lore, rules and variables are as before. The only prompt change is one line in the Response Format entry (about 35 tokens a turn, see below).
+Import `Eldoria_From_F-Rank_to_Legend_v21.6.0.json`. It is built from `source/Eldoria_From_F-Rank_to_Legend_v21.3.json` by `tools/patch.py` (interface) and `tools/build.py` (card). Lore, rules and variables are as before. The only prompt change is one line in the Response Format entry (about 35 tokens a turn, see below).
 
-**Players only see this after the update is published and passes Yumina's review.** Until then an import plays as the creator's working copy. Settings → Display shows "Interface v21.5.2" when the new interface is the one running.
+**Players only see this after the update is published and passes Yumina's review.** Until then an import plays as the creator's working copy. Settings → Display shows "Interface v21.6.0" when the new interface is the one running.
+
+## v21.6.0 — the Pack: the Barbarian inventory system, in Eldoria
+
+Eldoria's inventory now works the way Surviving the Game as a Barbarian's does (`tools/eld-kit.tsx`). Every item is one real thing that is somewhere: worn in an equipment slot, in a named pocket of a bag you wear, loose in your hands, or on the ground where you left it. `inventory` and `equipment` keep their shape, so older saves and the narrator's directives keep working; items only gain a `placement`.
+
+- **Bags with pockets.** A backpack, satchel, expedition pack, belt pouch, quiver, scabbard or sheath is recognised by name and gets real pockets. Each pocket has room, a weight limit, what it accepts and how fast you can reach into it (quick, ready, slow, buried). For example, the backpack has a main compartment (buried), a top pouch and two side pockets (ready), bedroll straps and two weapon holders (slow). A pack worn in the `pack` slot keeps raising your carry limit as before.
+- **Items the narrator adds are put away for you.** Anything without a place goes into the quickest pocket that fits (arrows into the quiver, a knife into a pouch, rations deep in the pack), or into your hands if nothing fits. Worn gear stays on the body.
+- **Reach:** everything grouped by how fast you can get at it: in hand, worn, quick, ready, slow, buried, loose.
+- **In a fight,** only things in hand, worn, or in a quick or ready pocket can be used at once. The Gear screen refuses the rest, and so does the story's **Use an item** sheet, which now shows each item's reach.
+- **Equipped:** a tile for each slot with its condition bar. **Tap an empty slot** to see what you carry that goes there.
+- **Compare before you equip:** weight, condition, value, properties, and any damage, armour, reach or block numbers the item carries, side by side with what you wear, in green and red.
+- **Equip and take off move things physically.** Equipping something swaps out what was in that slot into the best free pocket (a two-handed weapon also clears the off hand). Taking something off puts it away the same way.
+- **Bags as tiles,** with fill bars and contents. **Move to…** lists every pocket that fits and says why the others don't ("not enough room", "that pocket does not take this kind of thing", "that bag is not being worn"). Plus **Best free place** and **Take it out**.
+- **Dropping** leaves the item at your current place, in a new `ground-items` variable. **On the ground here** lists what you left where you stand, with **Pick up** (into the best pocket).
+- **Find, filter and sort:** filters for Worn, Weapons, Armour, Supplies, Tools & bags, Other and Needs repair (under 35% condition); a search box; sort by reach, name, weight or worth.
+- **Split stacks**, and **Examine** and **Use**, which send to the story.
+
+**Prompt:** about 180 tokens a turn more (35,723 → 35,907 on the test turn): one sentence in the `inventory` instructions (placement is set by the screen, never by the narrator, and reach matters in a fight) and the short `ground-items` variable.
+
+**Tested** in the test page (`tools/harness/kittest.mjs`), all passing, with no page errors:
+- Every item gets a place, and arrows go into the quiver.
+- Equip a helm into the head slot.
+- Put on a belt pouch.
+- Move a draught into it.
+- Split arrows.
+- Pick up a lantern from the ground.
+- Drop rope.
+- Take off a bow (it goes into a weapon holder).
+- Buried rations are refused in a fight, while the draught in the belt pouch works.
+- The narrator is told about each physical change.
+
+All 27 screens still open in all three layouts without errors (`docs/v21.6-pack-phone.png`, `docs/v21.6-pack-desktop.png`). Not tested on a real phone or in real play.
 
 ## v21.5.2 — two more guards against the desktop trap
 

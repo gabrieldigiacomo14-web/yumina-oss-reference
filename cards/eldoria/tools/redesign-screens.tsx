@@ -183,68 +183,7 @@ function itemKind(it:any){
  if(/ore|ingot|hide|pelt|leather|wood|cloth|gem|material|reagent|part|fang|claw|scale/.test(h))return 'Materials';
  return 'Other';
 }
-function Inventory({api,v}:{api:any,v:any}){
- var inv=safeArr(v.inventory), eq=safeObj(v.equipment), ac=safeObj(v['bank-accounts']), assets=safeArr(v['financial-assets']); var bankTotal=Object.values(ac).reduce((n:number,a:any)=>n+Number(a.balanceCp||0),0);
- const [tab,setTab]=React.useState('All'); const [sel,setSel]=React.useState<any>(null);
- var go=useNav(); var busy=!!api.isStreaming;
- function doEquip(it:any){
-  var slot=guessSlot(it,eq); if(!slot)return;
-  var newEq={...eq}; var newInv=inv.map((x:any)=>({...x}));
-  var prevId=newEq[slot];
-  if(prevId&&prevId!==it.id){ var prev=newInv.find((x:any)=>x.id===prevId); if(prev)prev.equipped=false; }
-  if(slot==='weapon'&&isTwoHanded(it)&&newEq.offhand){ var prevOff=newInv.find((x:any)=>x.id===newEq.offhand); if(prevOff)prevOff.equipped=false; newEq.offhand=null; }
-  newEq[slot]=it.id;
-  var self=newInv.find((x:any)=>x.id===it.id); if(self)self.equipped=true;
-  api.setVariable('equipment',newEq); api.setVariable('inventory',newInv);
- }
- function doUnequip(slot:string){
-  var id=eq[slot]; if(!id)return;
-  var newEq={...eq}; newEq[slot]=null;
-  var newInv=inv.map((x:any)=>x.id===id?{...x,equipped:false}:x);
-  api.setVariable('equipment',newEq); api.setVariable('inventory',newInv);
- }
- function slotOfEquipped(it:any){ var s=Object.keys(eq).find(k=>k!=='tools'&&eq[k]===it.id); return s||null; }
- var ld=loadInfo(v);
- var kinds=['All','Equipped','Weapons','Armour','Supplies','Materials','Other'].filter(k=>k==='All'||k==='Equipped'?true:inv.some((it:any)=>itemKind(it)===k));
- var list=inv.filter((it:any)=>tab==='All'||(tab==='Equipped'?(it.equipped||slotOfEquipped(it)):itemKind(it)===tab));
- var nameOf=(id:any)=>id?((inv.find((x:any)=>x.id===id)||{}).name||String(id)):'';
- var s:any=sel?inv.find((x:any)=>(x.id||x.name)===sel):null; var sSlot=s?(slotOfEquipped(s)||guessSlot(s,eq)):null; var sOn=s?!!(s.equipped||slotOfEquipped(s)):false;
- return <div className="screen ledger">
-  <Panel className="purse" title="Purse" icon="coin" action={<button type="button" className="linkBtn" onClick={()=>go('banking')}>Banking</button>}>
-   <div className="coinRow">{money(v['player-money-cp']).split(' | ').map((c:string,i:number)=><span key={i} className={'coin c'+i}><i/>{c}</span>)}</div>
-   <div className="purseFacts"><div><small>Banked</small><b>{money(bankTotal)}</b></div><div><small>Notes & tender</small><b>{assets.length}</b></div></div>
-   <Meter label={'Load · '+(v.encumbrance||'Unburdened')} cur={ld.wt} max={ld.cap} kind="load" icon="gear" word={ld.wt<=ld.free?'Moving freely':'Carrying more than you can move freely with ('+ld.free+' lb)'}/>
-  </Panel>
-  <Panel title="Equipped" sub="Tap a slot to take it off" icon="shield">
-   <div className="slotGrid">{SLOT_ORDER.filter(([k])=>k in eq||k==='pack').map(([k,label],i)=>{ var id=eq[k]; return <button key={k+i} type="button" className={'slot'+(id?' full':'')} disabled={!id} onClick={()=>id&&setSel(id)}><ElIcon n={SLOT_ICON[k]||'spark'} s={16}/><small>{label}</small><b>{id?nameOf(id):'—'}</b></button>; })}</div>
-  </Panel>
-  <Panel title="Pack" sub={inv.length+' item'+(inv.length===1?'':'s')+' · '+ld.wt+' lb'} icon="gear">
-   {inv.length?<div className="chipRow">{kinds.map(k=><Chip key={k} on={tab===k} onClick={()=>setTab(k)}>{k}</Chip>)}</div>:null}
-   {list.length?<div className="tileGrid two">{list.map((it:any,i:number)=>{ var on=!!(it.equipped||slotOfEquipped(it)); var cond=it.condition??100; return <button key={it.id||i} type="button" className={'itemTile'+(on?' on':'')} onClick={()=>setSel(it.id||it.name)}>
-     <span className="itemTop"><b>{it.name||'Item'}</b>{(Number(it.qty)||1)>1?<em>{'×'+it.qty}</em>:null}</span>
-     <small>{[itemKind(it),(Number(it.weight)||0)+' lb',cond<100?'condition '+cond+'%':''].filter(Boolean).join(' · ')}</small>
-     {on?<span className="tag rune">Equipped</span>:null}
-    </button>; })}</div>:<Empty>{inv.length?'Nothing here.':'Your pack is empty.'}</Empty>}
-  </Panel>
-  {s?<Sheet title={s.name||'Item'} onClose={()=>setSel(null)}>
-   <div className="factGrid">
-    <div><small>Kind</small><b>{itemKind(s)}</b></div><div><small>Carried</small><b>{Number(s.qty)||1}</b></div>
-    <div><small>Weight</small><b>{(Number(s.weight)||0)+' lb'}</b></div><div><small>Condition</small><b>{(s.condition??100)+'%'}</b></div>
-    {sSlot?<div><small>Slot</small><b>{titleCase(sSlot)}{isTwoHanded(s)?' (two hands)':''}</b></div>:null}
-    {s.valueCp!=null?<div><small>Value</small><b>{money(s.valueCp)}</b></div>:null}
-   </div>
-   {s.description||s.notes?<p className="sheetText">{s.description||s.notes}</p>:null}
-   {Array.isArray(s.properties)&&s.properties.length?<div className="chipRow">{s.properties.map((p:any,i:number)=><span key={i} className="tag">{String(p)}</span>)}</div>:null}
-   <div className="sheetActs">
-    {sSlot&&!sOn?<button type="button" className="btnMain" onClick={()=>{doEquip(s);setSel(null);}}>Equip</button>:null}
-    {sOn?<button type="button" className="btnMain" onClick={()=>{doUnequip(slotOfEquipped(s)||sSlot);setSel(null);}}>Take off</button>:null}
-    <button type="button" className="btnGhost" disabled={busy} onClick={()=>{api.sendMessage('I use my '+(s.name||'item')+'.');setSel(null);}}>Use</button>
-    <button type="button" className="btnGhost" disabled={busy} onClick={()=>{api.sendMessage('I take a close look at my '+(s.name||'item')+'.');setSel(null);}}>Examine</button>
-   </div>
-   <p className="sheetNote">Equip and Take off change your gear straight away. Use and Examine send that action to the story.</p>
-  </Sheet>:null}
- </div>;
-}
+function Inventory({api,v}:{api:any,v:any}){ return <EldKit api={api} v={v}/>; }
 
 /* ---------- Magic ---------- */
 function Magic({api,v}:{api:any,v:any}){

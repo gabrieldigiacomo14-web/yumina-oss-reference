@@ -27,7 +27,7 @@ sub(" more:['✥','Eldoria Ledger','Choose another record']",
     " more:['✥','All Records','Every other part of your ledger'],\n home:['✦','The Ledger','Who you are, and every record']")
 
 # ---- layout (phone portrait / phone landscape / desktop), the Ledger shell and the new screens
-sub("function App(){", P('layout.tsx') + P('redesign-shell.tsx') + P('redesign-story.tsx') + P('redesign-screens.tsx') + P('redesign-records.tsx') + P('world.tsx') + "\nfunction App(){")
+sub("function App(){", P('layout.tsx') + P('redesign-shell.tsx') + P('redesign-story.tsx') + P('eld-kit.tsx') + P('redesign-screens.tsx') + P('redesign-records.tsx') + P('world.tsx') + "\nfunction App(){")
 sub("const [tsOpen,setTsOpen]=React.useState(false);",
     "const [tsOpen,setTsOpen]=React.useState(false);\n const [reading,setReadingState]=React.useState(false);\n"
     " React.useEffect(()=>{ try{ var r=api.storage&&api.storage.get?api.storage.get('eldoria-reading-v1'):null; Promise.resolve(r).then((x:any)=>{ if(x==='1')setReadingState(true); }).catch(()=>{}); }catch(_e){} },[]);\n"
@@ -50,9 +50,9 @@ s = s[:i0] + (" return <NavCtx.Provider value={setScreen}><style>{CSS}</style><s
 
 sub(" chronicle:['❦','Chronicle','History your character has learned'],", " chronicle:['❦','History','What your character has learned of the past'],")
 # the CSS block is one template literal; the new rules go at its end so they win
-assert '`' not in P('redesign.css') + P('layout.css')
+assert '`' not in P('redesign.css') + P('layout.css') + P('eld-kit.css')
 end = s.rindex('`;\nexport default App;')
-s = s[:end] + P('layout.css') + P('redesign.css') + s[end:]
+s = s[:end] + P('layout.css') + P('redesign.css') + P('eld-kit.css') + s[end:]
 
 # ---- the world map: Black Clover's generated map, rebuilt for Eldoria (el-cartography.js, el-worldmap.tsx)
 sub("// Built-ins (MessageList, MessageInput, useYumina) are provided by Yumina.\n",
