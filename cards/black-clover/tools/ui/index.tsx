@@ -1001,7 +1001,7 @@ function advanceClock(v, hours) {
 function applyTraining(api, hours, intensity) {
   var v = api.variables || {}; var rate = TRAIN_RATES[intensity] || TRAIN_RATES.Moderate;
   var newStamina = clamp(num(v.stamina, 0) - Math.round(rate.st * hours), 0, 100);
-  var newMana = clamp(num(v.mana, 0) - Math.round(rate.mn * hours), 0, 100);
+  var newMana = clamp(num(v.mana, 0) - Math.round(rate.mn * hours * manaScale(v)), 0, 100);
   var newFatigue = clamp(num(v.fatigue, 0) + Math.round(rate.ft * hours), 0, 100);
   var adv = advanceClock(v, hours);
   canWrite(api) && api.setVariable("stamina", newStamina);
@@ -1019,7 +1019,7 @@ function applyTravel(api, hours, mode, pace, destName) {
   var v = api.variables || {}; var rate = TRAVEL_RATES[mode] || TRAVEL_RATES["On foot"]; var mult = TRAVEL_PACE_MULT[pace] || 1;
   if(mode==="On foot") {var burden=bcCarryProfile(bcNormalize(arr(v.inventory),v),obj(v.body_profile),bcWalletProfile(v.money).weightKg);mult*=Number.isFinite(burden.paceMult)?burden.paceMult:3.5;}
   var newStamina = clamp(num(v.stamina, 0) - Math.round(rate.st * mult * hours), 0, 100);
-  var newMana = clamp(num(v.mana, 0) - Math.round(rate.mn * mult * hours), 0, 100);
+  var newMana = clamp(num(v.mana, 0) - Math.round(rate.mn * mult * hours * manaScale(v)), 0, 100);
   var newFatigue = clamp(num(v.fatigue, 0) + Math.round(rate.ft * mult * hours), 0, 100);
   var adv = advanceClock(v, hours);
   canWrite(api) && api.setVariable("stamina", newStamina);
@@ -4439,6 +4439,7 @@ function Game(p) {
   useAiLabeler(api);
   useSquadRoster(api);
   useMagicStage(api);
+  useVitalsGuard(api);
   useInventoryStorySync(api);
   useWorldThreads(api);
   useScenePictures(api);
@@ -6098,6 +6099,52 @@ function useMagicStage(api) {
     if (!line || line === str(v.magic_stage) || !canWrite(api)) return;
     bcPatch(api, { magic_stage: line }, function () {});
   }, [line, !!(api && api.isStreaming)]);
+}
+/* ===== Vitals guard (v21.19) =====
+   Spells are paid by the spell engine (spell_events), never by the narrator writing [mana: -N].
+   After each finished reply, any mana the narrator cut directly is given back, and a stamina cut
+   bigger than the moment allows is trimmed (12 outside a fight, 25 in one). Interface-applied
+   changes (arena, Grimoire casts, rest, training, travel) never go through directives, so they are
+   untouched. The reply already handled is remembered in vitals_guard so nothing is applied twice. */
+var VG_STAMINA_CAP = 12, VG_STAMINA_CAP_FIGHT = 25;
+function vgCut(text, key, before) {
+  // [mana: -8] subtracts; [mana: 40] or [mana: set 40] sets. Returns how much the reply took away.
+  var re = new RegExp("\\[" + key + ":\\s*(set\\s+)?([+-]?)\\s*(\\d+(?:\\.\\d+)?)\\s*\\]", "gi"), m, cut = 0, cur = before;
+  while ((m = re.exec(text))) {
+    var val = Number(m[3]);
+    if (m[2] === "-") { cut += val; cur -= val; }
+    else if (m[2] === "+") { cur += val; cut = Math.max(0, cut - val); }
+    else { if (val < cur) cut += cur - val; cur = val; }
+  }
+  return cut;
+}
+/* how much to scale a flat per-hour mana cost (training, broom flight) for this character's reserves */
+function vgMins(v) { var t = str(v.world_time).match(/^(\d{1,2}):(\d{2})/); return t ? num(v.elapsed_days, 0) * 1440 + Number(t[1]) * 60 + Number(t[2]) : null; }
+function manaScale(v) { var c = num(obj(v.magic_profile).capacity, 50); return Math.max(0.45, Math.min(1.25, 50 / Math.max(c, 20))); }
+function useVitalsGuard(api) {
+  var v = (api && api.variables) || {}, ms = arr(api && api.messages), streaming = !!(api && api.isStreaming);
+  var pre = React.useRef(null);
+  var last = null; for (var i = ms.length - 1; i >= 0; i--) { if (obj(ms[i]).role === "assistant") { last = ms[i]; break; } }
+  var lastId = last ? str(last.id || ms.length) : "", lastIsUser = ms.length && obj(ms[ms.length - 1]).role === "user";
+  // the values before the narrator answers: taken whenever the player has the floor
+  if (!streaming && (lastIsUser || lastId === str(obj(v.vitals_guard).replyId))) pre.current = { mana: num(v.mana, 100), stamina: num(v.stamina, 100), mins: vgMins(v), at: ms.length };
+  React.useEffect(function () {
+    if (streaming || !last || !isTrue(v.character_created) || !canWrite(api)) return;
+    var g = obj(v.vitals_guard); if (lastId === str(g.replyId)) return;
+    // first run on a save: start watching from here, never reach back into an old reply
+    if (!g.replyId) { bcPatch(api, { vitals_guard: { replyId: lastId, log: [] } }, function () {}); return; }
+    var text = str(last.content), base = pre.current || { mana: num(v.mana, 100), stamina: num(v.stamina, 100) };
+    var manaCut = vgCut(text, "mana", base.mana), stCut = vgCut(text, "stamina", base.stamina);
+    var fight = isTrue(v.in_combat) || /\[(in_combat:\s*(set\s+)?true|combat[:.])/i.test(text);
+    // time that passed in the reply allows more (hard labour is about 6 an hour)
+    var hours = pre.current && pre.current.mins !== null && vgMins(v) !== null ? Math.max(0, vgMins(v) - pre.current.mins) / 60 : 0;
+    var stExcess = Math.round(Math.max(0, stCut - (fight ? VG_STAMINA_CAP_FIGHT : VG_STAMINA_CAP) - 6 * hours));
+    var patch = { vitals_guard: { replyId: lastId, log: arr(g.log).slice(-4) } }, notes = [];
+    if (manaCut > 0) { patch.mana = Math.min(100, num(v.mana, 0) + manaCut); notes.push("mana +" + Math.round(manaCut) + " (spells are paid by the spell engine)"); }
+    if (stExcess > 0) { patch.stamina = Math.min(100, num(v.stamina, 0) + stExcess); notes.push("stamina +" + Math.round(stExcess) + " (more than the moment costs)"); }
+    if (notes.length) patch.vitals_guard.log = patch.vitals_guard.log.concat([{ reply: lastId, fixed: notes.join("; ") }]);
+    bcPatch(api, patch, function () {});
+  }, [lastId, streaming]);
 }
 
 export default function App() {

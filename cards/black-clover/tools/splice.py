@@ -116,6 +116,11 @@ assert s.count(_as) == 1, 'Assessment row'
 s = s.replace(_as, '<Row k="Magic Stage" v={playerStage(v).label} />')
 assert s.count('  useSquadRoster(api);\n') == 1, 'useSquadRoster call'
 s = s.replace('  useSquadRoster(api);\n', '  useSquadRoster(api);\n  useMagicStage(api);\n')
+# v21.19 vitals: the guard runs in the App; training and broom flight spend mana in proportion to the reserve
+s = s.replace('  useMagicStage(api);\n', '  useMagicStage(api);\n  useVitalsGuard(api);\n', 1)
+for _old in ('var newMana = clamp(num(v.mana, 0) - Math.round(rate.mn * hours), 0, 100);', 'var newMana = clamp(num(v.mana, 0) - Math.round(rate.mn * mult * hours), 0, 100);'):
+    assert s.count(_old) == 1, _old
+    s = s.replace(_old, _old.replace(' * hours)', ' * hours * manaScale(v))'))
 for old, new in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'distinct_labels.json'), encoding='utf-8')):
     label(old, new)
 # location lines like "Black Bulls Hideout — Clover Kingdom (Common Realm)": the kingdom is the middle part and the brackets hold the realm

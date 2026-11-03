@@ -56,12 +56,30 @@ Import `Black_Clover_A_Mages_Tale_v21.19.json`. It is built from `source/Black_C
 - **On the map:** canon places now answer to the names in their brackets, so the two merge into one place, keeping your notes and visited status.
 - **The narrator:** is told never to add a second entry for a canon place under another spelling.
 
-**Slower stamina and mana.**
-- **Stamina:** only real physical exertion spends it. Talking, resting or saying you feel tired costs nothing. A fighting exchange costs 2 to 6 (was 5 to 20), and a whole ordinary fight 10 to 25.
-- **Mana:** magic the narrator narrates itself now costs a share that shrinks as your reserves grow, matched to what the interface's own cast engine charges. With Exceptional reserves (capacity 85+), a standard spell is about 1.5% and a large one 4%. Casts from the Grimoire and the arena already charged correctly.
-- **Unchanged:** health (not reported).
+**Stamina and mana: a cost table, and a guard that enforces it.**
+- **The Spell Cost Table** is always sent, as part of the Spell Cost Bridge. It has five tiers, each with a plain description and canon examples, so the narrator can pick the one that fits what was cast:
+  - **Utility:** free. Light a candle, sense mana.
+  - **Small:** one bolt, a shield for one blow.
+  - **Standard:** a real combat spell, e.g. Explosive Fireball.
+  - **Large:** area or sustained magic, e.g. Sea Dragon's Nest.
+  - **Massive:** reshapes a battlefield.
 
-**Testing** (`tools/harness/v2119.mjs`, 15 checks, all passing, no page errors):
+  It also shows what each tier costs as a share of Modest, Average, Strong and Exceptional reserves (taken from the engine's own formula), plus the output multipliers. The narrator files the tier and the spell engine charges that caster's real reserves.
+- **When the player leaves it to the narrator** ("I fight him", "I use my magic"), the narrator chooses: the character's saved spells first, sized to the moment, usually 1–3 casts per reply in a fight. Every spell the character releases is paid through the engine, even ones the player never named. When mana runs low, spells falter or fail.
+- **The narrator never subtracts mana itself.** It may only raise it for real recovery. Two things had pushed it the other way:
+  - My first v21.19 mana rule told it to subtract percentages. That contradicted the engine and is replaced.
+  - The GM contract used `[mana: -8]` as its example of a number change. It now uses stamina.
+- **The vitals guard (interface):** after every finished reply it reads the narrator's directives.
+  - **Mana:** any direct mana cut (`[mana: -20]` or setting it lower) is given back, because spells are paid by the engine.
+  - **Stamina:** a cut larger than the moment allows is trimmed. The limit is 12 outside a fight and 25 in one, plus 6 for every hour that passed in the reply, so a six-hour march can still cost 40.
+  - **Untouched:** arena fights, Grimoire casts, rest, training and travel are applied by the interface, not by directives.
+  - **Once per reply:** each reply is checked once, and an existing save starts being watched from its next reply.
+- **Training and broom flight:** their flat per-hour mana cost now scales with your reserves (×0.59 at Exceptional, up to ×1.25 at the low end).
+- **Stamina rule:** only real exertion spends it. Saying you're tired costs nothing, and a fighting exchange costs 2–6 (was 5–20).
+- **Health:** not changed (not reported). The guard doesn't touch it yet.
+
+**Testing** (`tools/harness/v2119.mjs`, 15 checks, and `tools/harness/vitals.mjs`, 7 checks, all passing, no page errors):
+- **Vitals guard:** a reply that cuts 20 mana and 30 stamina after "I'm tired" gets the mana back and the stamina trimmed to 12. A standard spell paid through the engine keeps its cost (about 4% of Average reserves). A six-hour march may cost 40 stamina. Recovery is left alone, an existing save's old reply is not touched, and no reply is corrected twice.
 - **Magic Stages:** your stage is written for the narrator, and your stage card shows on the Magic screen. A created bandit mage is measured from their magic profile. A created Time mage is Arcane by uniqueness with their raw power shown, and Asta is canon Arcane. A fresh recruit still gets the "far beyond you" warning against Yami, a well-trained mage doesn't, and a bandit is still an easy win.
 - **Squad:** the roster picks up Luck (injured) and Yami from a reply with no squad events; Magna, mentioned as away, stays away; Luck drops off after three quiet replies.
 - **Power scale:** shown on Yami's squad card and person sheet ("Far beyond you", Captain-class). The combat bar shows Yami as far beyond you and a bandit as weaker. No scale for an unknown baker.
@@ -70,7 +88,7 @@ Import `Black_Clover_A_Mages_Tale_v21.19.json`. It is built from `source/Black_C
 - **Earlier tests still pass:** the Kit, inventory sync, squad and fight tests (including the Yami fight) and the map test. Every interface file compiles with Yumina's Sucrase transforms.
 - **Not tested:** how a live narrator follows the new rules. The spell lists and clothing reactions only show in play.
 
-**Prompt cost:** about 250 more tokens per turn from the longer stamina, mana, appearance, map and squad rules. The canon cast entries are only sent when one of those people is named.
+**Prompt cost:** about 450 more tokens per turn (the cost table is always sent) from the longer stamina, mana, appearance, map and squad rules. The canon cast entries are only sent when one of those people is named.
 
 Screens: `docs/v21.19-stage-card.png`, `docs/v21.19-power-person.png`, `docs/v21.19-power-squad.png`, `docs/v21.19-combat-bar.png`.
 
