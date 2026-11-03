@@ -485,7 +485,7 @@ export function bcSocialPresentation(inv, context, appearance) {
   const origin=/^royal\b/i.test(originText)?'Royal':/^noble\b/i.test(originText)?'Noble':/^commoner\b/i.test(originText)?'Commoner':/^peasant\b/i.test(originText)?'Peasant':'Unspecified';
   const equipped=(inv||[]).filter(it=>it&&it.placement&&it.placement.kind==='body');
   const outerGarments=equipped.filter(it=>bcIsClothing(it)||['cloak','torso','shoulders','legs','head'].includes(it.placement.slot)&&/cloak|mantle|coat|jacket|robe|tunic|uniform/i.test(txt(it.name)+' '+txt(it.type)));
-  let finery=0,wear=0,formal=false,uniform=false;
+  let finery=0,wear=0,formal=false,uniform=false,bloody=false,burnt=false;
   const signals=[];
   outerGarments.forEach(it=>{
     const description=[it.name,it.type,it.material,it.quality,it.notes,...(Array.isArray(it.tags)?it.tags:[])].map(txt).join(' ').toLowerCase();
@@ -493,8 +493,12 @@ export function bcSocialPresentation(inv, context, appearance) {
     if(/\b(royal|regal|silk|velvet|brocade|gold.thread|silver.thread|jeweled|jewelled|haute|luxury|luxurious|exquisite|extravagant)\b/.test(description))finery=Math.max(finery,3);
     else if(/\b(fine|fine.ly|tailored|embroider|formal|high.quality|ceremonial|noble|ornate|elegant|refined|fashionable)\b/.test(description))finery=Math.max(finery,2);
     else if(/\b(neat|respectable|well.made|sturdy|uniform|pressed|smart|polished)\b/.test(description))finery=Math.max(finery,1);
-    if(/\b(ragged|rags|threadbare|tattered|torn|patched|poorly.fitting|frayed|shabby)\b/.test(description)||/^(poor|tattered|torn|ruined)$/.test(cond))wear=Math.max(wear,2);
-    else if(/\b(dirty|muddy|dusty|stained|soiled|bloodied|weather.worn|faded|worn)\b/.test(description)||/^(damaged|worn|dirty)$/.test(cond))wear=Math.max(wear,1);
+    // the condition line can be compound ("ruined and bloodied"), so it is read word by word
+    const look=description+' '+cond;
+    if(/\b(ruined|shredded|ripped|ragged|rags|threadbare|tattered|torn|patched|poorly.fitting|frayed|shabby|burn(ed|t)|scorched|singed|charred|in tatters|falling apart)\b/.test(look)||/\bpoor\b/.test(cond))wear=Math.max(wear,2);
+    else if(/\b(dirty|muddy|dusty|stained|soiled|bloodied|bloody|blood.?stained|grimy|sweat.?stained|weather.worn|faded|worn|damaged|scuffed|wet|soaked|drenched)\b/.test(look))wear=Math.max(wear,1);
+    if(/\b(blood(ied|y)?|blood.?stained|gore)\b/.test(look))bloody=true;
+    if(/\b(burn(ed|t)|scorched|singed|charred)\b/.test(look))burnt=true;
     if(/\b(formal|ceremonial|court|ball.gown|dress.uniform)\b/.test(description))formal=true;
     if(/\b(magic.knight|knight.squad|squad.uniform|squad.cloak|black.bulls|golden.dawn|silver.eagles|crimson.lion|blue.rose|green.mantis|coral.peacock|purple.orca|azure.deer)\b/.test(description))uniform=true;
   });
@@ -504,11 +508,13 @@ export function bcSocialPresentation(inv, context, appearance) {
   if(armour.length)signals.push('Visible armor: '+armour.map(it=>txt(it.name)).join(', '));
   if(uniform)signals.push('Recognizable-looking Magic Knight or squad garments (verify insignia before assigning authority)');
   if(formal)signals.push('Formal or ceremonial style');
-  if(wear>=2)signals.push('Visibly damaged, patched, or shabby fabric');
+  if(bloody)signals.push('Visible blood on the clothes (anyone who sees it notices and reacts: concern, suspicion, fear or disgust)');
+  if(burnt)signals.push('Scorched or burnt clothing');
+  if(wear>=2)signals.push('Visibly ruined, torn or shabby clothes');
   else if(wear===1)signals.push('Weathered or soiled presentation');
   if(finery>=2)signals.push('Fine tailoring or costly fabric');
   const outfitTier=finery>=3?'lavish':finery>=2?'fine':finery===1?'respectable':'ordinary';
-  const condition=wear>=2?'shabby':wear===1?'weathered':'no visible damage recorded';
+  const condition=(bloody?'bloodied, ':'')+(burnt?'scorched, ':'')+(wear>=2?'ruined or shabby':wear===1?'weathered or soiled':'no visible damage recorded');
   const privatePlace=!!(appearance&&appearance.privatePlace);
   // Royal Capital is a city, not automatically a royal audience chamber.
   const court=/\b(throne.room|royal court|royal audience|audience chamber|palace|royal banquet|royal ball|castle reception)\b/i.test(place+' '+scene);
@@ -571,13 +577,15 @@ export function bcAppearance(inv, context) {
   const loc=txt(context&&context.current_location),scene=txt(context&&context.scene_type);
   const privatePlace=/home|bedroom|bath|changing|private/i.test(loc+' '+scene);
   const names=pieces.map(it=>txt(it.name));
+  // what an onlooker sees: a garment's state is shown with it ("Black Bulls robe (ruined and bloodied)")
+  const seen=pieces.map(it=>{const c=txt(it.cond||it.condition).trim();return txt(it.name)+(c&&!/^(good|fine|new|pristine|excellent|clean|ok|okay|intact|normal)$/i.test(c)?' ('+c+')':'');});
   const appearance = {initialized:true,coverage,upperCovered,lowerCovered,underwearVisible,
     exposed,inadequatelyDressed,clothing:names,visibleArmor:armor.map(it=>txt(it.name)),
     drawnWeapons:arms.map(it=>txt(it.name)),notableGear:fancy.map(it=>txt(it.name)),privatePlace,location:loc,
     summary:coverage==='undressed'?'No clothing covering the torso or legs':
       coverage==='underdressed'?'Wearing only undergarments':
       coverage==='partially_dressed'?'Not fully dressed':
-      (names.length?'Wearing '+names.join(', '):'Wearing outer garments or armor'),
+      (seen.length?'Wearing '+seen.join(', '):'Wearing outer garments or armor'),
     // A possible reaction is NOT an event. Only real witnesses can observe it.
     attention:coverage==='undressed'?'high':coverage==='underdressed'?'high':
       coverage==='partially_dressed'?'possible':arms.length?'possible':

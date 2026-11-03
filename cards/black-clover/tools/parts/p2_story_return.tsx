@@ -115,7 +115,8 @@
           <div className="bc-combatbar-head"><div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
             {p.openBattle ? <button type="button" className="bc-fightbtn" disabled={busy} onClick={function () { p.openBattle("combat"); }}><Icon n="sword" s={16} fill="#2a0907" />Fight it out</button> : null}</div>
           {reading ? null : arr(combat.participants).slice(0, 4).map(function (c, i) {
-            return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
+            var pw = /enemy|hostile|foe/i.test(str(c.side)) ? powerRead(v, str(c.name), c) : null;
+            return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}{pw ? <em className={"bc-combatbar-pw g" + (pw.gap < 0 ? "m" : Math.min(3, pw.gap))}>{pw.label + " · " + pw.word}</em> : null}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
           })}
         </div>
       ) : null}

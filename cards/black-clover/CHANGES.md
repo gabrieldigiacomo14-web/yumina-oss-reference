@@ -1,6 +1,51 @@
-# Black Clover: A Mage's Tale — v21.18
+# Black Clover: A Mage's Tale — v21.19
 
-Import `Black_Clover_A_Mages_Tale_v21.18.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+Import `Black_Clover_A_Mages_Tale_v21.19.json`. It is built from `source/Black_Clover_A_Mages_Tale_Narrative_Spell_Bridge.json` (v21.4 + the narrative spell bridge), so every mechanic from that file is kept.
+
+## v21.19 — JoJo's play-test fixes
+
+**A power scale: know your limits.** Everyone whose strength the game can judge shows a seven-step ladder from Weak to Beyond mortal, with you and them marked on it, a plain verdict ("Far beyond you", "About your level", "Weaker than you") and what it means for a fight ("You can't win this by force. Survive, stall, flee, or be spared.").
+- **Where:** on every person's sheet (Relations), on each squadmate's card (Renown), and next to each foe in the Story screen's combat bar. The battle arena's pre-fight warning was already there.
+- **How strong they are:** named canon characters use the canon power table (Yami is Captain-class whatever the narrator says). Others use their recorded magic output, else their rank (captain, vice-captain, senior knight). Someone the game can't judge, such as a baker, shows no scale rather than a guess.
+- **You:** your magic output.
+
+**Canon mages use their real spells.** A new `tools/canon_cast.py` lists each major canon mage's true spells and the details the narrator was getting wrong. It covers the Black Bulls, the captains and the Wizard King, Golden Dawn and others.
+- **The narrator:** gets the list as three lore entries, sent only when one of those people is named in the scene. The entries tell it to vary a canon mage's named spells and never reduce them to one fireball. For anyone not on the list, it describes their magic plainly instead of inventing names that pass for canon.
+- **Luck Voltia:** his lightning is blue / pale electric blue, never yellow.
+- **Magna Swing:** he does not carry a bat. He pulls a flame-forged one out of his grimoire with magic when he fights.
+- **Spells named:** Yami's Black Moon, Magna's Explosive Fireball and Hellfire Torture Rail, Luck's Thunder God's Boots and Gloves, Noelle's Sea Dragon's Roar and Valkyrie Dress, Fuegoleon's Leo Rugiens, Julius's Chronostasis, and so on. Only spells we are sure of are named; the rest are described.
+- **Battle arena:** canon foes and allies call out their true spells as they cast, in rotation, and take their own colour (Luck's attacks and token are blue).
+
+**Characters react to your clothes.** A garment's condition is now part of what people see: "Wearing Linen tunic (ruined and bloodied)".
+- **Compound conditions:** "ruined and bloodied" used to be missed, because the check only matched single words. Blood, burns and rips are now flagged as visible signals ("Visible blood on the clothes").
+- **The narrator's rule:** anyone who can see blood, burns or ruined clothes reacts in character (a look, a question, worry, suspicion, an offer of fresh clothes). The clothes stay that way until they are washed, mended or replaced.
+
+**Squadmates update from the story.** The roster only changed when the narrator filed a squad event, which it rarely did, so it froze. Now the roster also reads each finished reply.
+- **Named in the scene:** a squadmate named there is with you, here, today. If the same sentence puts them somewhere else ("Magna is still on his mission"), they are not counted as with you.
+- **Condition words:** words in that sentence update their condition (bleeding → injured, out cold → unconscious, patched up → healthy).
+- **Dropping off:** anyone not mentioned for three replies, and not in your party, is no longer "with you".
+- **The narrator:** is told to file the event in the same reply the change happens.
+
+**One Sosshi on the map.** The narrator invented "Sosshi Village" for a mission, and the map drew it next to the canon "Saussy (Sosshi)".
+- **On the map:** canon places now answer to the names in their brackets, so the two merge into one place, keeping your notes and visited status.
+- **The narrator:** is told never to add a second entry for a canon place under another spelling.
+
+**Slower stamina and mana.**
+- **Stamina:** only real physical exertion spends it. Talking, resting or saying you feel tired costs nothing. A fighting exchange costs 2 to 6 (was 5 to 20), and a whole ordinary fight 10 to 25.
+- **Mana:** magic the narrator narrates itself now costs a share that shrinks as your reserves grow, matched to what the interface's own cast engine charges. With Exceptional reserves (capacity 85+), a standard spell is about 1.5% and a large one 4%. Casts from the Grimoire and the arena already charged correctly.
+- **Unchanged:** health (not reported).
+
+**Testing** (`tools/harness/v2119.mjs`, all passing, no page errors):
+- **Squad:** the roster picks up Luck (injured) and Yami from a reply with no squad events; Magna, mentioned as away, stays away; Luck drops off after three quiet replies.
+- **Power scale:** shown on Yami's squad card and person sheet ("Far beyond you", Captain-class). The combat bar shows Yami as far beyond you and a bandit as weaker. No scale for an unknown baker.
+- **Clothes:** "ruined and bloodied" reaches the appearance summary and the visible signals.
+- **Map:** "Sosshi Village" no longer draws a second canon pin.
+- **Earlier tests still pass:** the Kit, inventory sync, squad and fight tests (including the Yami fight) and the map test. Every interface file compiles with Yumina's Sucrase transforms.
+- **Not tested:** how a live narrator follows the new rules. The spell lists and clothing reactions only show in play.
+
+**Prompt cost:** about 250 more tokens per turn from the longer stamina, mana, appearance, map and squad rules. The canon cast entries are only sent when one of those people is named.
+
+Screens: `docs/v21.19-power-person.png`, `docs/v21.19-power-squad.png`, `docs/v21.19-combat-bar.png`.
 
 ## v21.18 — the Satchel's inventory works like the Barbarian Kit
 

@@ -8,6 +8,7 @@
    legend         the Wizard King and the very top (Mereoleona-class)
    apex           far beyond any mage of the opening era (devils, Licht, Patri…)
    Matching is by name tokens: "Captain Yami" and "Yami Sukehiro" both find "yami". */
+import { CANON_CAST } from "./bc-canon-cast.js";
 export var CANON_POWER = [
   // captains (opening era)
   { n: ["yami sukehiro", "yami"], t: "captain", k: "brute", a: "dark", sig: "Dark Slash" },
@@ -75,5 +76,8 @@ export function canonPower(name) {
       if (at.every(function (x) { return tk.indexOf(x) >= 0; }) && at.length > bestLen) { best = e; bestLen = at.length; }
     });
   });
-  return best;
+  if (!best) return null;
+  // true spell names and the colour of their magic (Luck's lightning is blue) from the canon cast
+  var cast = CANON_CAST[best.n[0]];
+  return cast ? Object.assign({}, best, { sp: cast.sp, col: cast.col, sig: cast.sp[0] || best.sig }) : best;
 }

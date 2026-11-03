@@ -18,6 +18,10 @@ var AW = 360, AH = 540; // arena units
 var ATTR_COL = { fire: "#ff7a3c", water: "#4aa3e8", wind: "#5fe0b4", earth: "#c69a5a", lightning: "#ffd84a", plant: "#6cd15a", ice: "#a6e4ff", sand: "#e3c27a", smoke: "#b5bac2",
   stone: "#c4c8cf", steel: "#d6dbe3", sound: "#c49af0", cotton: "#f4efe4", thread: "#f0c85a", mirror: "#9fe0ff", poison: "#a46ae0", ash: "#9a9a9a", light: "#fff2a6", dark: "#8a6ad8",
   spatial: "#c0a6ff", time: "#e8d48a", blood: "#d4344a", gravity: "#7a5ab8", bone: "#e8e2d2", body: "#e89a7a", curse: "#9a3ad8", anti: "#2a2a2a" };
+/* a canon foe's own colour (Luck's lightning is blue), else the attribute's */
+function fCol(f, def) { return f.col || attrCol(f.attr || def); }
+/* the next of a canon foe's true spells, as a short call-out ("Black Moon") */
+function nextSpell(f) { if (!f.sp || !f.sp.length) return f.sig || ""; f.spi = ((f.spi || 0) + 1) % f.sp.length; var x = f.sp[f.spi]; return x.split(": ").pop(); }
 function attrCol(x) { var k = low(x).replace(/\(.*\)/, "").trim().split(/\s+/)[0]; return ATTR_COL[k] || "#f3dda0"; }
 export var THREATS = {
   weak: { hp: 46, atk: 6, spd: 66, cd: 1.7, label: "Weak" }, average: { hp: 78, atk: 8, spd: 76, cd: 1.45, label: "Average" },
@@ -65,13 +69,34 @@ export function buildFoes(v, mode) {
     var hpMul = /badly|critical|near death/.test(cond) ? 0.35 : /wounded|injured/.test(cond) ? 0.6 : /hurt|bruised|winded/.test(cond) ? 0.82 : 1;
     var attr = s(p.attribute || mp.attribute || (canon && canon.a));
     return { key: key, name: s(p.name) || "Foe " + (i + 1), kind: kind, threat: threat, attr: attr, hp: Math.round(T.hp * GAP.hp[gi] * hpMul), max: Math.round(T.hp * GAP.hp[gi]),
-      gap: gap, unbeatable: gap >= UNBEATABLE_GAP, dmgMul: GAP.dmg[gi], atkMul: GAP.atk[gi], spdMul: GAP.spd[gi], cdMul: GAP.cd[gi], poiseMax: T.hp * 0.32, sig: s(canon && canon.sig),
+      gap: gap, unbeatable: gap >= UNBEATABLE_GAP, dmgMul: GAP.dmg[gi], atkMul: GAP.atk[gi], spdMul: GAP.spd[gi], cdMul: GAP.cd[gi], poiseMax: T.hp * 0.32, sig: s(canon && canon.sig), sp: canon && canon.sp ? canon.sp.slice() : [], col: s(canon && canon.col),
       manaPool: kind === "caster" ? Math.round(40 + THREAT_ORDER.indexOf(threat) * 30) : 0, persisted: !!npcs[key] };
   });
 }
+/* How strong someone is next to the player, for the power scale on people,
+   squadmates and foes. Canon characters use the canon table (a floor);
+   others their recorded magic output, else their rank. null = unknown. */
+export var POWER_TIERS = THREAT_ORDER.map(function (t) { return [t, THREATS[t].label]; });
+export function powerRead(v, name, extra) {
+  v = o(v); extra = o(extra);
+  var npcs = o(o(v.world_truth).npcs), key = low(name).replace(/[^a-z0-9]+/g, "-");
+  var npc = o(npcs[key] || npcs[low(name)] || npcs["npc-" + key]);
+  var canon = canonPower(name);
+  var out = threatFromOutput(n(o(extra.magic_profile).output, n(o(npc.magic_profile).output, -1)));
+  var text = low([extra.role, extra.rank, npc.role, npc.occupation, npc.rank].map(s).join(" "));
+  var byRank = /wizard king/.test(text) ? "legend" : /\bcaptain\b/.test(text) && !/vice/.test(text) ? "captain" : /vice.?captain|royal knight|commander/.test(text) ? "elite" : /senior|veteran|\bknight\b/.test(text) ? "strong" : "";
+  var tier = canon ? canon.t : out || byRank || (low(extra.threat) && THREATS[low(extra.threat)] ? low(extra.threat) : "");
+  if (!tier) return null;
+  if (out && tierIdx(out) > tierIdx(tier)) tier = out;
+  var me = playerTierIdx(v), them = tierIdx(tier), gap = them - me;
+  var word = gap >= 3 ? "Far beyond you" : gap === 2 ? "Much stronger than you" : gap === 1 ? "Stronger than you" : gap === 0 ? "About your level" : gap === -1 ? "Weaker than you" : "Far weaker than you";
+  var advice = gap >= UNBEATABLE_GAP ? "You can't win this by force. Survive, stall, flee, or be spared." : gap === 2 ? "A straight fight would go badly. Only with help or a clever plan." : gap === 1 ? "Winnable, but it will cost you." : gap === 0 ? "An even fight." : "You have the edge.";
+  return { tier: tier, label: THREATS[tier].label, me: THREAT_ORDER[me], meLabel: THREATS[THREAT_ORDER[me]].label, gap: gap, word: word, advice: advice,
+    source: canon ? "canon" : out ? "magic" : "rank", col: s(canon && canon.col) };
+}
 export function buildAllies(v) {
   return a(o(v.combat).participants).map(o).filter(function (p) { return /ally|friend|player/.test(low(p.side)) && low(p.name) !== "you" && !/defeated|dead|fled|unconscious|down\b/.test(low(p.condition)); }).slice(0, 2)
-    .map(function (p) { return { key: s(p.key) || low(p.name), name: s(p.name), attr: s(p.attribute) }; });
+    .map(function (p) { var c = canonPower(p.name); return { key: s(p.key) || low(p.name), name: s(p.name), attr: s(p.attribute || (c && c.a)), col: s(c && c.col), sp: c && c.sp ? c.sp.slice() : [] }; });
 }
 
 /* What a recorded spell IS in the arena. The spell's own name decides first
@@ -528,7 +553,7 @@ export function BattleArena(p) {
         if (f.atk === "slam") { if (Math.hypot(P.x - f.x, P.y - f.y) < 58 + P.r * 0.5) hurtPlayer(T.atk * 1.15, { windEnd: wEnd, x: f.x, y: f.y, breaker: tierIdx(f.threat) >= 4 }); burst(f.x, f.y, "#ff6a5a", 14, 180); S.shake = Math.max(S.shake, 4); f.dmgDealt++;
           if (f.chain > 0) { f.chain--; f.state = "windup"; f.t = 0.36; f.atk = "slam"; var cx = P.x - f.x, cy = P.y - f.y, cdd = Math.hypot(cx, cy) || 1, stp = Math.min(40, cdd * 0.6); f.x += cx / cdd * stp; f.y += cy / cdd * stp; pushOut(f); } }
         else if (f.atk === "charge" || f.atk === "lunge") { f.state = "charge"; f.t = f.atk === "lunge" ? 0.26 : 0.42; f.chargeSpd = f.atk === "lunge" ? 470 : 400; f.hitOnce = false; f.windEnd = wEnd; }
-        else if (f.atk === "volley") { var cnt = f.threat === "weak" ? 1 : 3; for (var i = 0; i < cnt; i++) { var an = f.aim + (i - (cnt - 1) / 2) * 0.22; S.shots.push({ own: "e", x: f.x, y: f.y, vx: Math.cos(an) * 250, vy: Math.sin(an) * 250, r: 7, life: 2.2, dmg: T.atk * 0.85, col: attrCol(f.attr || "dark"), windEnd: wEnd, hit: {} }); } }
+        else if (f.atk === "volley") { var cnt = f.threat === "weak" ? 1 : 3; for (var i = 0; i < cnt; i++) { var an = f.aim + (i - (cnt - 1) / 2) * 0.22; S.shots.push({ own: "e", x: f.x, y: f.y, vx: Math.cos(an) * 250, vy: Math.sin(an) * 250, r: 7, life: 2.2, dmg: T.atk * 0.85, col: fCol(f, "dark"), windEnd: wEnd, hit: {} }); } }
       }
       return;
     }
@@ -561,15 +586,15 @@ export function BattleArena(p) {
     // choose attack (telegraphed so it can be read and dodged)
     var hard = Math.min(5, tierIdx(f.threat));
     if (f.kind === "caster" && f.manaPool > 0) {
-      f.casts++; f.manaPool -= 12;
-      if (f.casts % 3 === 0) { S.zones.push({ own: "e", x: P.x, y: P.y, r: 46 + hard * 4, t: 0, wind: 0.95 - hard * 0.05, dmg: T.atk * 1.3, col: attrCol(f.attr || "fire"), born: S.time }); if (hard >= 4) S.zones.push({ own: "e", x: cl(P.x + (P.mdx || 0) * 72, 10, AW - 10), y: cl(P.y + (P.mdy || 0) * 72, 10, AH - 10), r: 46 + hard * 4, t: 0, wind: 0.95 - hard * 0.05, dmg: T.atk * 1.3, col: attrCol(f.attr || "fire"), born: S.time, breaker: true }); f.cd = T.cd + 0.4; }
+      f.casts++; f.manaPool -= 12; if (f.sp && f.sp.length) say(nextSpell(f), f.x, f.y - 52, fCol(f, "fire"), true);
+      if (f.casts % 3 === 0) { S.zones.push({ own: "e", x: P.x, y: P.y, r: 46 + hard * 4, t: 0, wind: 0.95 - hard * 0.05, dmg: T.atk * 1.3, col: fCol(f, "fire"), born: S.time }); if (hard >= 4) S.zones.push({ own: "e", x: cl(P.x + (P.mdx || 0) * 72, 10, AW - 10), y: cl(P.y + (P.mdy || 0) * 72, 10, AH - 10), r: 46 + hard * 4, t: 0, wind: 0.95 - hard * 0.05, dmg: T.atk * 1.3, col: fCol(f, "fire"), born: S.time, breaker: true }); f.cd = T.cd + 0.4; }
       else { f.state = "windup"; f.t = 0.45; f.atk = "volley"; f.aim = Math.atan2(dy, dx); f.cd = T.cd; }
       if (f.manaPool <= 0) say("Out of mana!", f.x, f.y - 30, "#9fc7e8");
       return;
     }
     if (f.kind === "beast" && d < 230 && d > 50) { f.state = "windup"; f.t = 0.55 - hard * 0.04; f.atk = "charge"; f.aim = Math.atan2(dy, dx); f.cd = T.cd + 0.3; return; }
-    if (hard >= 2 && d < 125 && S.R() < 0.26 + hard * 0.03) { S.zones.push({ own: "e", x: f.x, y: f.y, r: 82 + hard * 7, t: 0, wind: 0.8 - hard * 0.04, dmg: T.atk * 1.1, col: attrCol(f.attr || "blood"), born: S.time, breaker: hard >= 4 }); f.state = "recover"; f.t = 0.8; f.cd = T.cd + 0.25; if (hard >= 4 && f.sig) say(f.sig, f.x, f.y - 52, attrCol(f.attr || "blood"), true); return; }
-    if (d < 70) { f.state = "windup"; f.t = 0.62 - hard * 0.05; f.atk = "slam"; f.cd = T.cd; f.chain = hard >= 4 ? 2 : hard >= 3 ? 1 : 0; if (hard >= 4 && f.sig) say(f.sig, f.x, f.y - 52, attrCol(f.attr || "blood"), true); return; }
+    if (hard >= 2 && d < 125 && S.R() < 0.26 + hard * 0.03) { S.zones.push({ own: "e", x: f.x, y: f.y, r: 82 + hard * 7, t: 0, wind: 0.8 - hard * 0.04, dmg: T.atk * 1.1, col: fCol(f, "blood"), born: S.time, breaker: hard >= 4 }); f.state = "recover"; f.t = 0.8; f.cd = T.cd + 0.25; if ((hard >= 4 && f.sig) || (f.sp && f.sp.length)) say(nextSpell(f), f.x, f.y - 52, fCol(f, "blood"), true); return; }
+    if (d < 70) { f.state = "windup"; f.t = 0.62 - hard * 0.05; f.atk = "slam"; f.cd = T.cd; f.chain = hard >= 4 ? 2 : hard >= 3 ? 1 : 0; if ((hard >= 4 && f.sig) || (f.sp && f.sp.length)) say(nextSpell(f), f.x, f.y - 52, fCol(f, "blood"), true); return; }
     if (f.kind !== "caster" && d >= 90 && d < 190 && S.R() < 0.02 + hard * 0.012 + (hard >= 4 ? 0.04 : 0)) { f.state = "windup"; f.t = 0.5 - hard * 0.04; f.atk = "lunge"; f.aim = Math.atan2(dy, dx); f.cd = T.cd + 0.5; }
   }
   function allyAI(al, dt) {
@@ -577,7 +602,7 @@ export function BattleArena(p) {
     var dx = t.x - al.x, dy = t.y - al.y, d = Math.hypot(dx, dy) || 1;
     if (d > 140) { al.x += dx / d * 80 * dt; al.y += dy / d * 80 * dt; pushOut(al); }
     al.cd -= dt;
-    if (al.cd <= 0 && d < 260) { al.cd = 1.7; S.shots.push({ own: "a", x: al.x, y: al.y, vx: dx / d * 330, vy: dy / d * 330, r: 6, life: 1.2, dmg: 6, col: attrCol(al.attr || "steel"), hit: {} }); }
+    if (al.cd <= 0 && d < 260) { al.cd = 1.7; S.shots.push({ own: "a", x: al.x, y: al.y, vx: dx / d * 330, vy: dy / d * 330, r: 6, life: 1.2, dmg: 6, col: al.col || attrCol(al.attr || "steel"), hit: {} }); if (al.sp && al.sp.length && S.R() < 0.35) say(nextSpell(al), al.x, al.y - 40, al.col || attrCol(al.attr || "steel")); }
   }
 
   // ---- rendering ----
@@ -655,7 +680,7 @@ export function BattleArena(p) {
     S.foes.forEach(function (f) {
       if (!f.alive) { ctx.globalAlpha = 0.35; token(ctx, f.x, f.y, f.r, "#555", "✕", null, 0); ctx.globalAlpha = 1; return; }
       var fsx = f.hitFlash > 0 ? (S.R() - 0.5) * 4 : 0;
-      token(ctx, f.x + fsx, f.y, f.r, f.hitFlash > 0 ? "#ffffff" : attrCol(f.attr || (f.kind === "beast" ? "earth" : "blood")), f.kind === "beast" ? "\u{1F43A}" : initials(f.name), null, f.stun > 0 ? 1 : 0);
+      token(ctx, f.x + fsx, f.y, f.r, f.hitFlash > 0 ? "#ffffff" : fCol(f, f.kind === "beast" ? "earth" : "blood"), f.kind === "beast" ? "\u{1F43A}" : initials(f.name), null, f.stun > 0 ? 1 : 0);
       if (f.sealedT > 0) { ctx.strokeStyle = "rgba(255,246,220,.8)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(f.x - 8, f.y - f.r - 18); ctx.lineTo(f.x + 8, f.y - f.r - 18); ctx.lineTo(f.x + 8, f.y - f.r - 8); ctx.lineTo(f.x - 8, f.y - f.r - 8); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.arc(f.x, f.y - f.r - 18, 5, Math.PI, 0); ctx.stroke(); }
       var w = 34; ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(f.x - w / 2, f.y - f.r - 10, w, 4); ctx.fillStyle = "#e05a4b"; ctx.fillRect(f.x - w / 2, f.y - f.r - 10, w * Math.max(0, f.hp) / f.max, 4);
       if (S.target === f) { ctx.strokeStyle = "#f3dda0"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(f.x, f.y, f.r + 6, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
@@ -737,7 +762,7 @@ export function BattleArena(p) {
         <div className="bcb-vs">
           <div className="bcb-vs-side bcb-vs-you"><div className="bcb-vs-portrait" style={{ borderColor: S0.col }}>{p.portrait ? <img src={p.portrait} alt="" /> : <span>{initials(v.player_name || "You")}</span>}</div><strong>{s(v.player_name) || "You"}</strong><small>{S0.attr ? S0.attr + " magic" : "Untested magic"}</small></div>
           <div className="bcb-vs-mark">VS</div>
-          <div className="bcb-vs-side bcb-vs-foes">{foesList.map(function (f) { return <div key={f.key} className="bcb-vs-foe"><span className="bcb-vs-chip" style={{ borderColor: attrCol(f.attr || "blood") }}>{f.kind === "beast" ? "\u{1F43A}" : initials(f.name)}</span><div><strong>{f.name}</strong><small>{THREATS[f.threat].label + (f.gap >= 3 ? " — far beyond you" : f.gap === 2 ? " — stronger than you" : "") + " · " + (f.kind === "caster" ? "Caster" : f.kind === "beast" ? "Beast" : "Brawler") + (f.attr ? " · " + f.attr : "")}</small></div></div>; })}</div>
+          <div className="bcb-vs-side bcb-vs-foes">{foesList.map(function (f) { return <div key={f.key} className="bcb-vs-foe"><span className="bcb-vs-chip" style={{ borderColor: fCol(f, "blood") }}>{f.kind === "beast" ? "\u{1F43A}" : initials(f.name)}</span><div><strong>{f.name}</strong><small>{THREATS[f.threat].label + (f.gap >= 3 ? " — far beyond you" : f.gap === 2 ? " — stronger than you" : "") + " · " + (f.kind === "caster" ? "Caster" : f.kind === "beast" ? "Beast" : "Brawler") + (f.attr ? " · " + f.attr : "")}</small></div></div>; })}</div>
         </div>
         {S0.moves.length ? <div className="bcb-spellread" aria-label="How your spells work here">{S0.moves.map(function (m) { return <div key={m.id}><span className="bcb-spellread-dot" style={{ background: m.st ? m.st.b : "#f3dda0", boxShadow: "0 0 8px " + (m.st ? m.st.glow : "#f3dda0") }} /><strong>{m.name}</strong><em>{m.label}</em></div>; })}</div> : null}
         {foesList.some(function (f) { return f.unbeatable; }) ? <div className="bcb-warn" role="alert"><strong>{foesList.filter(function (f) { return f.unbeatable; }).map(function (f) { return f.name; }).join(", ")} is far beyond you.</strong> You cannot win this fight here. Survive about 45 seconds, or run, and let the story decide what happens next.</div> : null}

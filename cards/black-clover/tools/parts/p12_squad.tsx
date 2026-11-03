@@ -16,13 +16,25 @@ function sqPartyEntry(v, name) { var k = sqKey(name); return arr(v.party).filter
 function sqInParty(v, name) { var k = sqKey(name); return arr(v.party).some(function (p) { var n = sqKey(obj(p).name || p); return n && (n === k || n.split(" ")[0] === k.split(" ")[0] && k.split(" ")[0].length > 3); }); }
 function sqSquadName(v) { var s = str(obj(v.mk_status).squad); return s && s !== "none" ? s : ""; }
 function sqPlaceOf(v) { var t = str(v.current_location); return t.split(/\s+[—–-]\s+|\(/)[0].trim() || t; }
+/* v21.19: the roster also reads each finished reply, because the narrator seldom files squad_events.
+   A squadmate named in the latest scene was seen here today (with you, unless the sentence puts them
+   somewhere else); condition words in the same sentence update their condition; anyone the story has
+   not mentioned for 3 replies, and who is not in the party, is no longer "with you". */
+var SQ_AWAY = /\b(away|absent|elsewhere|back at|back home|left for|off on|on a mission|in a letter|letter from|remember\w*|thinks? (of|about)|mention\w*|rumou?r\w*|heard|news|report\w*|wonder\w*|miss\w*|wish\w*)\b/i;
+var SQ_SEEN_WORDS = [[/\b(unconscious|passed out|knocked out|out cold|collapsed)\b/i, "unconscious"], [/\b(critical(ly)?|near death|dying)\b/i, "critical"],
+  [/\b(badly (hurt|wounded|injured)|gravely|grievous\w*|broken (arm|leg|ribs?))\b/i, "badly hurt"], [/\b(injur\w+|wounded|bleeding|blood(ied|y))\b/i, "injured"],
+  [/\b(hurt|limp\w*|bruis\w+|battered|scraped)\b/i, "hurt"], [/\b(exhausted|tired|worn out|winded|panting|out of breath|drained|spent)\b/i, "tired"],
+  [/\b(healed|recovered|back on (his|her|their) feet|patched up|good as new)\b/i, "healthy"]];
+function sqLastReply(api) { var ms = arr(api && api.messages); for (var i = ms.length - 1; i >= 0; i--) { var m = obj(ms[i]); if (m.role === "assistant") return m; } return null; }
+function sqNameRe(name) { var k = sqKey(name), parts = k.split(" ").filter(function (w) { return w.length > 3; }), alts = [k].concat(parts); return new RegExp("\\b(" + alts.map(function (a) { return a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }).join("|") + ")\\b", "i"); }
+function sqSentences(text, re) { return String(text).split(/(?<=[.!?\n])\s+/).filter(function (x) { return re.test(x); }); }
 function sqAgo(days) { return days <= 0 ? "today" : days === 1 ? "yesterday" : days + " days ago"; }
 
 /* apply queued events and keep last-seen / summary current */
 function useSquadRoster(api) {
   var v = (api && api.variables) || {};
   var squad = sqSquadName(v);
-  var sig = JSON.stringify([v.squad_events, squad, v.party, v.current_location, v.elapsed_days, v.world_date, v.squad_summary, Object.keys(obj(obj(obj(v.squad_roster).squads)[squad])).length]);
+  var sig = JSON.stringify([str(obj(sqLastReply(api)).id) + "/" + arr(api && api.messages).length, v.squad_events, squad, v.party, v.current_location, v.elapsed_days, v.world_date, v.squad_summary, Object.keys(obj(obj(obj(v.squad_roster).squads)[squad])).length]);
   var attempted = React.useRef("");
   React.useEffect(function () {
     if (!isTrue(v.character_created) || !canWrite(api) || attempted.current === sig) return;
@@ -55,6 +67,23 @@ function useSquadRoster(api) {
     });
     // anyone in the party right now is with you; everyone else keeps their last known place
     var book0 = squad ? roster.squads[squad] = obj(roster.squads[squad]) : {};
+    var reply = sqLastReply(api), replyId = reply ? str(reply.id || arr(api.messages).length) : "";
+    if (reply && !(api && api.isStreaming) && replyId !== str(roster.scanId)) {
+      var text = str(reply.content).replace(/\[[\w-]+(\.[\w.-]+)?:[^\]]*\]/g, " ");
+      Object.keys(book0).forEach(function (k) {
+        var m = book0[k]; if (m.status === "dead" || m.status === "left") return;
+        var said = sqSentences(text, sqNameRe(m.name));
+        if (said.length) {
+          var present = said.some(function (x) { return !SQ_AWAY.test(x); });
+          if (present) { m.with = true; m.withAt = here; m.lastSeenDay = day; m.lastSeen = date; m.location = here; m.locDay = day; m.locDate = date; m.quiet = 0; if (m.mission) { m.mission = ""; } }
+          var joined = said.join(" ");
+          for (var i = 0; i < SQ_SEEN_WORDS.length; i++) if (SQ_SEEN_WORDS[i][0].test(joined)) { if (m.condition !== SQ_SEEN_WORDS[i][1]) { m.condition = SQ_SEEN_WORDS[i][1]; m.hp = SQ_HP[m.condition]; m.history = arr(m.history).concat([{ date: date, text: "Seen " + m.condition }]).slice(-8); } break; }
+        } else if (m.with && !sqInParty(v, m.name)) {
+          m.quiet = num(m.quiet, 0) + 1; if (m.quiet >= 3) { m.with = false; m.withAt = ""; m.viaParty = false; }
+        }
+      });
+      roster.scanId = replyId; changed = true;
+    }
     Object.keys(book0).forEach(function (k) {
       var m = book0[k]; if (m.status === "dead" || m.status === "left") { if (m.with) { m.with = false; changed = true; } return; }
       var present = sqInParty(v, m.name);
@@ -145,6 +174,7 @@ function SquadRoster(p) {
                 {m.joined ? <div className="bc-note">{"Joined " + m.joined + " (" + sqAgo(day - (m.joinedDay || 0)) + ")"}</div> : null}
                 {m.lastSeen && !m.with ? <div className="bc-note">{"Last with you " + m.lastSeen}</div> : null}
                 {m.notes ? <div className="bc-note" style={{ color: C.ivory }}>{m.notes}</div> : null}
+                {m.status !== "dead" ? <PowerScale read={powerRead(v, m.name, m)} short={m.name.split(" ")[0]} /> : null}
                 {arr(m.history).length ? <div className="bc-sq-hist">{arr(m.history).slice(-4).reverse().map(function (h, i) { return <div key={i}><span>{str(h.date)}</span>{str(h.text)}</div>; })}</div> : null}
                 {m.status !== "dead" ? <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                   {!m.with ? <Btn small disabled={busy} onClick={function () { send(api, "I go looking for " + m.name + (m.location ? ", last known to be at " + m.location : "") + "."); if (p.toStory) p.toStory(); }}>Go find them</Btn> : <Btn small disabled={busy} onClick={function () { send(api, "I turn to " + m.name + " and talk with them for a bit."); if (p.toStory) p.toStory(); }}>Talk</Btn>}

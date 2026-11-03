@@ -35,7 +35,7 @@ def remove_var(src, name):
         i += 1
     return src[:start] + '\n' + src[i + 1:]
 
-s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS } from "./bc-battle";\nimport { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS, bcIsClothing } from "./bc-inventory.js";\nimport { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY, canonPlace } from "./bc-worldmap";\nimport {bcManaMax', 1)
+s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS, powerRead, POWER_TIERS } from "./bc-battle";\nimport { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS, bcIsClothing } from "./bc-inventory.js";\nimport { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY, canonPlace } from "./bc-worldmap";\nimport {bcManaMax', 1)
 # the hero banner is a hosted image (bc-art.js), not an embedded data: URI
 s, nb = re.subn(r'banner:\s*"data:image/[a-z]+;base64,[A-Za-z0-9+/=]+"', 'banner: (BC_IMG && BC_IMG.banner) || ""', s, count=1)
 assert nb == 1, "banner data URI not found"
@@ -86,7 +86,7 @@ s = remove_func(s, 'Cover')
 s = remove_func(s, 'GrimoireForgeSheet')
 # remaining parts before App
 app = s.index('\nexport default function App(')
-s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + P('p15_scenepics.tsx') + P('p16_cover.tsx') + P('p17_kit.tsx') + s[app:]
+s = s[:app] + '\n' + P('p3_grimoire.tsx') + P('p4_pack.tsx') + P('p7_rest.tsx') + P('p8_game.tsx') + P('p9_creator.tsx') + P('p10_battle.tsx') + P('p11_labels.tsx') + P('p12_squad.tsx') + P('p13_invsync.tsx') + P('p14_threads.tsx') + P('p15_scenepics.tsx') + P('p16_cover.tsx') + P('p17_kit.tsx') + P('p18_power.tsx') + s[app:]
 # css
 # the original 430px media rule never closed its block, swallowing every later rule on wider screens
 s = s.replace('scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}",', 'scroll-padding-bottom:calc(126px + env(safe-area-inset-bottom))}}",', 1)
@@ -106,6 +106,10 @@ def label(old, new, n=1):
     c = s.count(old)
     assert c == n, "label %r: expected %d, found %d" % (old[:80], n, c)
     s = s.replace(old, new)
+# the power scale on every person's sheet (p18_power.tsx)
+_ps = '      <div style={{ fontSize: 13.5, color: C.gold, fontWeight: 700, marginBottom: 2 }}>{str(r.role)}{r.status && r.status !== "alive" ? ", " + str(r.status) : ""}</div>\n'
+assert s.count(_ps) == 1, 'PersonSheet role line'
+s = s.replace(_ps, _ps + '      {r.status !== "dead" ? <PowerScale read={powerRead(obj(p.api && p.api.variables), str(r.name) || p.id, r)} short={(str(r.name) || p.id).split(" ")[0]} /> : null}\n')
 for old, new in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'distinct_labels.json'), encoding='utf-8')):
     label(old, new)
 # location lines like "Black Bulls Hideout — Clover Kingdom (Common Realm)": the kingdom is the middle part and the brackets hold the realm

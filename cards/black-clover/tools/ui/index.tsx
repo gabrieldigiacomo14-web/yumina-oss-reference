@@ -1,5 +1,5 @@
 import { BC_IMG } from "./bc-art.js";
-import { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS } from "./bc-battle";
+import { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS, powerRead, POWER_TIERS } from "./bc-battle";
 import { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS, bcIsClothing } from "./bc-inventory.js";
 import { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY, canonPlace } from "./bc-worldmap";
 import {bcManaMax,bcReserve,bcIsMagicless,bcSpellMechanics,bcNormalizeSpells,bcCastPlan,bcApplyPlayerCast,bcProcessEvents} from "./bc-spell-engine.js";
@@ -873,7 +873,21 @@ var CSS = [
   ".bck-move{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;min-height:46px;padding:8px 11px;border-radius:6px;border:1px dashed #283344;background:#0b1420;color:#887f71;text-align:left;opacity:.75}",
   ".bck-move b{font-size:15.5px;font-weight:600}.bck-move small{font-size:13px}",
   ".bck-move.ok{opacity:1;border-style:solid;border-color:rgba(214,174,92,.55);background:linear-gradient(90deg,rgba(18,30,48,.9),rgba(9,16,27,.95));color:#f6edd7}.bck-move.ok small{color:#b8ad99}",
-  "@media(min-width:900px){.bck-slots{grid-template-columns:repeat(3,minmax(0,1fr))}.bck-comps{grid-template-columns:repeat(3,minmax(0,1fr))}}"
+  "@media(min-width:900px){.bck-slots{grid-template-columns:repeat(3,minmax(0,1fr))}.bck-comps{grid-template-columns:repeat(3,minmax(0,1fr))}}",
+  ".bc-pw{margin:8px 0 10px;padding:9px 11px 8px;border:1px solid rgba(214,174,92,.35);border-radius:8px;background:rgba(8,14,24,.7)}",
+  ".bc-pw-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:#b8ad99}",
+  ".bc-pw-head b{font-size:14.5px;letter-spacing:0;text-transform:none;color:#f6edd7}",
+  ".bc-pw.g3 .bc-pw-head b{color:#ff8a7a}.bc-pw.g2 .bc-pw-head b{color:#ffb27a}.bc-pw.g1 .bc-pw-head b{color:#f3dda0}.bc-pw.gm1 .bc-pw-head b,.bc-pw.gm2 .bc-pw-head b{color:#9be3a8}",
+  ".bc-pw-track{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:22px 0 4px;position:relative}",
+  ".bc-pw-track i{position:relative;height:8px;border-radius:2px;background:linear-gradient(90deg,#2b3a50,#3a4a62)}",
+  ".bc-pw-track i:nth-child(5),.bc-pw-track i:nth-child(6),.bc-pw-track i:nth-child(7){background:linear-gradient(90deg,#5a2f3a,#7a3040)}",
+  ".bc-pw-track i.me{background:#d6ae5c;box-shadow:0 0 8px rgba(214,174,92,.6)}",
+  ".bc-pw-track i.them{outline:2px solid #ff8a7a;outline-offset:1px}",
+  ".bc-pw-track em{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:700;white-space:nowrap;padding:1px 5px;border-radius:3px;background:#7a3040;color:#fff}",
+  ".bc-pw-track u{position:absolute;left:50%;top:11px;transform:translateX(-50%);text-decoration:none;font-size:11px;font-weight:700;color:#d6ae5c;white-space:nowrap}",
+  ".bc-pw-ends{display:flex;justify-content:space-between;font-size:11px;color:#887f71;margin-top:14px}",
+  ".bc-pw small{display:block;margin-top:4px;font-size:13px;line-height:1.4;color:#d8cfbd}",
+  ".bc-combatbar-pw{display:block;font-size:12px;font-weight:700}.bc-combatbar-pw.g3{color:#ff8a7a}.bc-combatbar-pw.g2{color:#ffb27a}.bc-combatbar-pw.g1{color:#f3dda0}.bc-combatbar-pw.g0{color:#c7cfdb}.bc-combatbar-pw.gm{color:#9be3a8}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -1906,6 +1920,7 @@ function PersonSheet(p) {
   return (
     <Sheet title={str(r.name) || p.id} onClose={p.onClose}>
       <div style={{ fontSize: 13.5, color: C.gold, fontWeight: 700, marginBottom: 2 }}>{str(r.role)}{r.status && r.status !== "alive" ? ", " + str(r.status) : ""}</div>
+      {r.status !== "dead" ? <PowerScale read={powerRead(obj(p.api && p.api.variables), str(r.name) || p.id, r)} short={(str(r.name) || p.id).split(" ")[0]} /> : null}
       {art && art.setPersonImage ? (
         <div>
           <ImgSlot url={imgUrl} h={220} marginBottom={portMsg ? 6 : 14} placeholderIcon="bust" busy={portBusy}
@@ -2756,7 +2771,8 @@ function StoryView(p) {
           <div className="bc-combatbar-head"><div className="bc-combatbar-title">{"Combat" + (combat.location ? ", " + str(combat.location) : "")}</div>
             {p.openBattle ? <button type="button" className="bc-fightbtn" disabled={busy} onClick={function () { p.openBattle("combat"); }}><Icon n="sword" s={16} fill="#2a0907" />Fight it out</button> : null}</div>
           {reading ? null : arr(combat.participants).slice(0, 4).map(function (c, i) {
-            return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
+            var pw = /enemy|hostile|foe/i.test(str(c.side)) ? powerRead(v, str(c.name), c) : null;
+            return <div key={i} className={"bc-combatbar-row" + (c.side === "enemy" ? " bc-enemy" : "")}><span>{str(c.name)}{pw ? <em className={"bc-combatbar-pw g" + (pw.gap < 0 ? "m" : Math.min(3, pw.gap))}>{pw.label + " · " + pw.word}</em> : null}</span><small>{[str(c.condition), str(c.distance)].filter(Boolean).join(", ")}</small></div>;
           })}
         </div>
       ) : null}
@@ -5125,13 +5141,25 @@ function sqPartyEntry(v, name) { var k = sqKey(name); return arr(v.party).filter
 function sqInParty(v, name) { var k = sqKey(name); return arr(v.party).some(function (p) { var n = sqKey(obj(p).name || p); return n && (n === k || n.split(" ")[0] === k.split(" ")[0] && k.split(" ")[0].length > 3); }); }
 function sqSquadName(v) { var s = str(obj(v.mk_status).squad); return s && s !== "none" ? s : ""; }
 function sqPlaceOf(v) { var t = str(v.current_location); return t.split(/\s+[—–-]\s+|\(/)[0].trim() || t; }
+/* v21.19: the roster also reads each finished reply, because the narrator seldom files squad_events.
+   A squadmate named in the latest scene was seen here today (with you, unless the sentence puts them
+   somewhere else); condition words in the same sentence update their condition; anyone the story has
+   not mentioned for 3 replies, and who is not in the party, is no longer "with you". */
+var SQ_AWAY = /\b(away|absent|elsewhere|back at|back home|left for|off on|on a mission|in a letter|letter from|remember\w*|thinks? (of|about)|mention\w*|rumou?r\w*|heard|news|report\w*|wonder\w*|miss\w*|wish\w*)\b/i;
+var SQ_SEEN_WORDS = [[/\b(unconscious|passed out|knocked out|out cold|collapsed)\b/i, "unconscious"], [/\b(critical(ly)?|near death|dying)\b/i, "critical"],
+  [/\b(badly (hurt|wounded|injured)|gravely|grievous\w*|broken (arm|leg|ribs?))\b/i, "badly hurt"], [/\b(injur\w+|wounded|bleeding|blood(ied|y))\b/i, "injured"],
+  [/\b(hurt|limp\w*|bruis\w+|battered|scraped)\b/i, "hurt"], [/\b(exhausted|tired|worn out|winded|panting|out of breath|drained|spent)\b/i, "tired"],
+  [/\b(healed|recovered|back on (his|her|their) feet|patched up|good as new)\b/i, "healthy"]];
+function sqLastReply(api) { var ms = arr(api && api.messages); for (var i = ms.length - 1; i >= 0; i--) { var m = obj(ms[i]); if (m.role === "assistant") return m; } return null; }
+function sqNameRe(name) { var k = sqKey(name), parts = k.split(" ").filter(function (w) { return w.length > 3; }), alts = [k].concat(parts); return new RegExp("\\b(" + alts.map(function (a) { return a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }).join("|") + ")\\b", "i"); }
+function sqSentences(text, re) { return String(text).split(/(?<=[.!?\n])\s+/).filter(function (x) { return re.test(x); }); }
 function sqAgo(days) { return days <= 0 ? "today" : days === 1 ? "yesterday" : days + " days ago"; }
 
 /* apply queued events and keep last-seen / summary current */
 function useSquadRoster(api) {
   var v = (api && api.variables) || {};
   var squad = sqSquadName(v);
-  var sig = JSON.stringify([v.squad_events, squad, v.party, v.current_location, v.elapsed_days, v.world_date, v.squad_summary, Object.keys(obj(obj(obj(v.squad_roster).squads)[squad])).length]);
+  var sig = JSON.stringify([str(obj(sqLastReply(api)).id) + "/" + arr(api && api.messages).length, v.squad_events, squad, v.party, v.current_location, v.elapsed_days, v.world_date, v.squad_summary, Object.keys(obj(obj(obj(v.squad_roster).squads)[squad])).length]);
   var attempted = React.useRef("");
   React.useEffect(function () {
     if (!isTrue(v.character_created) || !canWrite(api) || attempted.current === sig) return;
@@ -5164,6 +5192,23 @@ function useSquadRoster(api) {
     });
     // anyone in the party right now is with you; everyone else keeps their last known place
     var book0 = squad ? roster.squads[squad] = obj(roster.squads[squad]) : {};
+    var reply = sqLastReply(api), replyId = reply ? str(reply.id || arr(api.messages).length) : "";
+    if (reply && !(api && api.isStreaming) && replyId !== str(roster.scanId)) {
+      var text = str(reply.content).replace(/\[[\w-]+(\.[\w.-]+)?:[^\]]*\]/g, " ");
+      Object.keys(book0).forEach(function (k) {
+        var m = book0[k]; if (m.status === "dead" || m.status === "left") return;
+        var said = sqSentences(text, sqNameRe(m.name));
+        if (said.length) {
+          var present = said.some(function (x) { return !SQ_AWAY.test(x); });
+          if (present) { m.with = true; m.withAt = here; m.lastSeenDay = day; m.lastSeen = date; m.location = here; m.locDay = day; m.locDate = date; m.quiet = 0; if (m.mission) { m.mission = ""; } }
+          var joined = said.join(" ");
+          for (var i = 0; i < SQ_SEEN_WORDS.length; i++) if (SQ_SEEN_WORDS[i][0].test(joined)) { if (m.condition !== SQ_SEEN_WORDS[i][1]) { m.condition = SQ_SEEN_WORDS[i][1]; m.hp = SQ_HP[m.condition]; m.history = arr(m.history).concat([{ date: date, text: "Seen " + m.condition }]).slice(-8); } break; }
+        } else if (m.with && !sqInParty(v, m.name)) {
+          m.quiet = num(m.quiet, 0) + 1; if (m.quiet >= 3) { m.with = false; m.withAt = ""; m.viaParty = false; }
+        }
+      });
+      roster.scanId = replyId; changed = true;
+    }
     Object.keys(book0).forEach(function (k) {
       var m = book0[k]; if (m.status === "dead" || m.status === "left") { if (m.with) { m.with = false; changed = true; } return; }
       var present = sqInParty(v, m.name);
@@ -5254,6 +5299,7 @@ function SquadRoster(p) {
                 {m.joined ? <div className="bc-note">{"Joined " + m.joined + " (" + sqAgo(day - (m.joinedDay || 0)) + ")"}</div> : null}
                 {m.lastSeen && !m.with ? <div className="bc-note">{"Last with you " + m.lastSeen}</div> : null}
                 {m.notes ? <div className="bc-note" style={{ color: C.ivory }}>{m.notes}</div> : null}
+                {m.status !== "dead" ? <PowerScale read={powerRead(v, m.name, m)} short={m.name.split(" ")[0]} /> : null}
                 {arr(m.history).length ? <div className="bc-sq-hist">{arr(m.history).slice(-4).reverse().map(function (h, i) { return <div key={i}><span>{str(h.date)}</span>{str(h.text)}</div>; })}</div> : null}
                 {m.status !== "dead" ? <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                   {!m.with ? <Btn small disabled={busy} onClick={function () { send(api, "I go looking for " + m.name + (m.location ? ", last known to be at " + m.location : "") + "."); if (p.toStory) p.toStory(); }}>Go find them</Btn> : <Btn small disabled={busy} onClick={function () { send(api, "I turn to " + m.name + " and talk with them for a bit."); if (p.toStory) p.toStory(); }}>Talk</Btn>}
@@ -5991,6 +6037,27 @@ function BcKit(p) {
     </div>
     {sheet}{slotSheet}
   </Frame>;
+}
+/* ===== Power scale (v21.19): how strong someone is next to you =====
+   A seven-step ladder from Weak to Beyond mortal. You and them are marked on
+   it, with a plain verdict ("Far beyond you") and what that means for a fight,
+   so a player knows their limits before picking one. */
+function PowerScale(p) {
+  var r = p.read; if (!r) return null;
+  var g = Math.max(-2, Math.min(3, r.gap));
+  return (
+    <div className={"bc-pw g" + (g < 0 ? "m" + (-g) : g)} aria-label={"Power: " + r.word}>
+      <div className="bc-pw-head"><span>Power</span><b>{r.word}</b></div>
+      <div className="bc-pw-track" aria-hidden="true">
+        {POWER_TIERS.map(function (t) {
+          var me = t[0] === r.me, them = t[0] === r.tier;
+          return <i key={t[0]} className={(me ? "me " : "") + (them ? "them" : "")} title={t[1]}>{them ? <em style={r.col ? { background: r.col } : null}>{p.short || "Them"}</em> : null}{me ? <u>You</u> : null}</i>;
+        })}
+      </div>
+      <div className="bc-pw-ends"><span>Weak</span><span>Beyond mortal</span></div>
+      <small>{(p.name ? p.name + ": " : "") + r.label + (r.source === "canon" ? " (canon)" : r.source === "rank" ? " (by rank)" : "") + " · you: " + r.meLabel + ". " + r.advice}</small>
+    </div>
+  );
 }
 
 export default function App() {

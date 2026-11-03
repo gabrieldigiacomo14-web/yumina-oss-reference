@@ -46,6 +46,12 @@ function baseName(name) {
   return low(name).replace(/\(.*?\)/g, "").replace(/^the\s+/, "").replace(/^(village|town|city|hamlet|port|castle) of\s+/, "")
     .replace(/\s+(village|town|city|hamlet|settlement)$/, "").replace(/\s+/g, " ").trim();
 }
+/* every name a canon place answers to: "Saussy (Sosshi)" is also "sosshi" */
+export function canonKeys(name) {
+  var keys = [baseName(name)], m, re = /\(([^)]+)\)/g;
+  while ((m = re.exec(low(name)))) m[1].split(/[\/,]| or /).forEach(function (x) { var k = baseName(x); if (k) keys.push(k); });
+  return keys;
+}
 export function lookupName(name, placed) {
   var key = baseName(name); if (!key) return null;
   if (GAZ[key]) return { x: GAZ[key][0], y: GAZ[key][1] };
@@ -176,7 +182,7 @@ var STATUS_COL = { visited: "#f3dda0", known: "#e8e2d2", rumored: "#b48ae8", app
 var STATUS_COL = { visited: "#f3dda0", known: "#e8e2d2", rumored: "#b48ae8", approximate: "#9fc7e8" };
 var DEF_LAYERS = { realms: true, fog: true, symbols: true, roads: true, canon: true };
 var CANON_OTHER = { diamond: "Diamond Kingdom", heart: "Heart Kingdom", spade: "Spade Kingdom" };
-export function canonPlace(name) { var k = baseName(name); for (var i = 0; i < CANON_PLACES.length; i++) if (baseName(CANON_PLACES[i].name) === k || baseName(CANON_PLACES[i].name).indexOf(k) === 0 && k.length > 3) return CANON_PLACES[i]; return null; }
+export function canonPlace(name) { var k = baseName(name); for (var i = 0; i < CANON_PLACES.length; i++) { var ks = canonKeys(CANON_PLACES[i].name); if (ks.indexOf(k) >= 0 || ks[0].indexOf(k) === 0 && k.length > 3) return CANON_PLACES[i]; } return null; }
 export function WorldMap(p) {
   var v = p.v || {};
   var rs0 = React.useState(MAP_READY); var ready = rs0[0], setReady = rs0[1];
@@ -379,7 +385,7 @@ export function WorldMap(p) {
             );
           }) : null}
           {lay.canon ? CANON_PLACES.map(function (c) {
-            if (knownKeys[baseName(c.name)] || (c.name === "Royal Capital" && knownKeys["royal capital"])) return null;
+            if (canonKeys(c.name).some(function (k) { return knownKeys[k]; })) return null;
             var x = sx(c.x), y = sy(c.y); if (x < -30 || y < -30 || x > size.w + 30 || y > size.h + 30) return null;
             var on = sel === "canon:" + c.name; var big = c.kind === "castle" || c.kind === "town" || c.kind === "forest";
             if (c.kind === "forest") return null;

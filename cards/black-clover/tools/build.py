@@ -190,7 +190,13 @@ DROP = {'bc-spell-mechanics-ledger', 'bc-bank-treasury-law', 'greeting-prologue'
         'core-phase-router', 'combat-live', 'bc-visible-equipment-social-perception', 'bc-physical-inventory-law',
         'post-turn-checklist', 'auto-sync-command', 'cot-bypass-directive-gate', 'example-turn', 'core-prime-law'}
 lore = [e for e in w['entries'] if e['id'] not in DROP and e['section'] == 'chat-history']
-w['entries'] = new_entries + lore + [bank, inv, vis, ledger]
+# canon cast: each named mage's true spells and the details the narrator kept getting wrong (Luck's blue lightning, Magna's conjured bat)
+sys.path.insert(0, HERE)
+import canon_cast
+canon_cast.write_js(os.path.join(HERE, 'ui', 'bc-canon-cast.js'))
+cast = [entry(cid, title, text, section='chat-history', position=62, tags=('canon', 'magic'), depth=3, alwaysSend=False,
+              keywords=kws, matchWholeWords=True) for cid, title, text, kws in canon_cast.lore_entries()]
+w['entries'] = new_entries + lore + cast + [bank, inv, vis, ledger]
 ids = [e['id'] for e in w['entries']]
 assert len(ids) == len(set(ids)), 'duplicate entry ids'
 
@@ -208,7 +214,13 @@ V['player_age']['behaviorRules'] = "Derived by the interface from birth_date and
 V['routine']['behaviorRules'] = "Written by the routine editor. Read it for ROUTINE time."
 V['equipment_activity']['behaviorRules'] = "Recent free UI equipment actions, already applied. Never replay or re-narrate them."
 V['carry_state']['behaviorRules'] = "Derived by the interface from inventory, purse and body_profile. bands: comfortable · heavy (slower, more stamina) · overloaded (big travel/dodge/combat penalties) · immobile."
-V['appearance_state']['behaviorRules'] = "Derived from worn inventory. The observable truth of the character's look; NPCs react only with sight lines, context and reason."
+V['stamina']['behaviorRules'] = ("Only real physical exertion spends stamina. Talking, thinking, resting, or the player saying they feel tired costs nothing (describe it, don't charge it). "
+    "Walking -1 an hour, brisk travel -2 to -4 an hour, hard labour -4 to -8 an hour, sprinting or a fighting exchange -2 to -6 (a whole ordinary fight -10 to -25). "
+    "A strong physique spends less. Recover +10 to +30 per hour of rest; a full night's sleep restores to 90-100.")
+V['mana']['behaviorRules'] = ("0-100 percent of mana_reserve (absolute units are the engine's; casts from the interface already debit, so never deduct twice). Routine utility magic, sensing mana and carrying a grimoire cost nothing. "
+    "Magic you narrate yourself costs a share that shrinks as magic_profile.capacity grows. Per spell, small/standard/large: capacity under 40: 3/9/25%; 40-69: 1/4/11%; 70-84: 1/2/6%; 85+ (Exceptional or more): 0.5/1.5/4%. Massive spells about 3x large. "
+    "Recover with rest and sleep (a night restores most of it). A capacity of 0 means no mana at all.")
+V['appearance_state']['behaviorRules'] = "Derived from worn inventory. The observable truth of the character's look; NPCs react only with sight lines, context and reason. Visible damage is never ignored: anyone who can see blood, burns, rips or ruined clothes reacts in character (a look, a question, worry, suspicion, an offer of fresh clothes). Clothes stay ruined or bloodied until they are washed, mended or replaced in the story."
 V['creation_profile']['behaviorRules'] = "The creation screen's record. Read it for the Life Begins Protocol."
 V['sim_settings']['behaviorRules'] = "Player settings (settings panel). Obey every field."
 V['character_created']['behaviorRules'] = "Set by the creation screen."
@@ -243,6 +255,7 @@ V['known_locations']['behaviorRules'] = ("Push {name,kingdom,region,status:visit
 # battle arena + generated map
 V['combat']['behaviorRules'] = ("While fighting: {\"active\":true,\"location\",\"participants\":[{\"name\",\"key\",\"side\",\"threat\":\"weak|average|strong|elite|captain|legend|apex\",\"kind\":\"brute|caster|beast\",\"attribute\",\"condition\",\"distance\",\"notes\"}],\"objectives\":[],\"hazards\":[]} "
     "— only what the character can perceive (threat/kind = honest read of the foe from canon rank: captains captain, Wizard King/Mereoleona legend, devils/Licht apex; never rate a famous fighter lower; the battle arena uses them). Reset to {\"active\":false} when it ends.")
+V['known_locations']['behaviorRules'] += (" A canon place keeps its canon entry: never add a second one under another spelling or a new mission name (Sosshi is Saussy (Sosshi); update its status and notes instead).")
 V['known_locations']['behaviorRules'] += (" If exact coordinates are unknown, give \"near\":\"<known place>\",\"dir\":\"N|NE|E|SE|S|SW|W|NW\",\"km\":<number> instead — the interface draws its map from these.")
 combat['content'] += ("\nARENA: the player may settle a fight in the interface's battle arena instead of turn-by-turn. A [UI:BATTLE] message then reports the outcome; "
     "its results are already applied.")
@@ -272,7 +285,7 @@ w['variables'].append({"id": "squad_summary", "name": "squad_summary", "type": "
     "behaviorRules": "Truth about the character's squadmates as far as the record goes. Squadmates have their own duties and are only present when this line or the scene says so."})
 w['variables'].append({"id": "squad_events", "name": "squad_events", "type": "json", "category": "custom", "defaultValue": [],
     "description": "Queue the interface applies to the squad roster, then clears.",
-    "behaviorRules": "Push one {type,name,...} per real change to someone in the character's squad: join (a member the character meets or who joins; role,rank,magic; joined:\"before\" if already a member), update (location, condition, mission, notes), seen, leave, death. with:true/false when they join or part from the character in the scene. Never rewrite squad_summary."})
+    "behaviorRules": "Push one {type,name,...} per real change to someone in the character's squad: join (a member the character meets or who joins; role,rank,magic; joined:\"before\" if already a member), update (location, condition, mission, notes), seen, leave, death. with:true/false when they join or part from the character in the scene. File it in the same reply the change happens (someone arrives, leaves, is hurt, recovers, sets off on a mission); the roster goes stale otherwise. Never rewrite squad_summary."})
 # world threads (interface-owned clocks; the narrator files thread_events, as with the squad roster)
 w['variables'].append({"id": "scene_pics", "name": "Scene pictures", "type": "json", "category": "custom", "aiAccess": "none", "defaultValue": {},
     "description": "Scene-picture setting (off / key moments / every reply) and which replies were already handled (interface-owned, not sent to the AI)."})
@@ -356,9 +369,9 @@ w['settings'].update({
 for v in w['variables']:
     if v.get('aiAccess') != 'none' and (v.get('behaviorRules') or v.get('updateHints')):
         v['name'] = v['id']
-w["version"] = "21.18.0"
+w["version"] = "21.19.0"
 w['description'] = d['description'] + \
-    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.18: the Satchel's inventory works like the Barbarian Kit (reach, body slots with compare, bags as tiles, Move to with reasons, what you left here, filters, search, split stacks, mending flags); boots, gloves and hats recorded as clothing stay worn. | v21.17: world map follows the official layout (neutral arch around Spade, Heart and Diamond beside Clover); far more detailed grimoire cover crafting. v21.16.1: upload your own grimoire cover from the Grimoire Forge. v21.16: optional scene pictures framed with place, time and weather. v21.15: the world moves on its own (4-6 world threads with clocks, overheard news filed in the Journal) and scenes keep living around the character. v21.14: strong foes are strong (canon power table, power gap, endure-or-run fights against far stronger foes, tougher attacks). v21.13: the inventory follows the story (taking clothes off, setting things down, picking them up), short-lived gear notes, regenerate rewinds travel and training. v21.12: squad roster (names, whereabouts, condition, recent joins). v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
+    " | v21.5: leaner prompt (about half the always-on rules, tighter lore triggers, summary + latest 30 messages), engine-rolled world events, reorganized interface. | v21.19: a power scale on people, squadmates and foes shows how strong they are next to you; canon mages use their real spells (Luck's lightning is blue, Magna conjures his bat); NPCs react to ruined or bloodied clothes; slower stamina and mana drain; squadmates update from the story; no duplicate canon places on the map. | v21.18: the Satchel's inventory works like the Barbarian Kit (reach, body slots with compare, bags as tiles, Move to with reasons, what you left here, filters, search, split stacks, mending flags); boots, gloves and hats recorded as clothing stay worn. | v21.17: world map follows the official layout (neutral arch around Spade, Heart and Diamond beside Clover); far more detailed grimoire cover crafting. v21.16.1: upload your own grimoire cover from the Grimoire Forge. v21.16: optional scene pictures framed with place, time and weather. v21.15: the world moves on its own (4-6 world threads with clocks, overheard news filed in the Journal) and scenes keep living around the character. v21.14: strong foes are strong (canon power table, power gap, endure-or-run fights against far stronger foes, tougher attacks). v21.13: the inventory follows the story (taking clothes off, setting things down, picking them up), short-lived gear notes, regenerate rewinds travel and training. v21.12: squad roster (names, whereabouts, condition, recent joins). v21.11: world map rebuilt on a UWE-style generated world with fog of discovery, rivers, roads and a position fix. v21.10: AI labels for items and spells (free in the reply, plus a rare one-off classifier call), leaner variable headers. v21.9: squad robe / cloak slot, holsters, grimoire in its holder, unplaced items stowed in bags. v21.8.1: world map land stays aligned with places when zooming. v21.8: battle spells act like their descriptions (lances pierce, shields block, seals seal) with drag-to-aim. v21.7: story screen gives the narration most of the screen (compact header, one action row, Reading mode); distinct interface wording. v21.6.4: bottom bar above page content. v21.6.3: always-present back button. v21.6.2: renamed interface sections, hosted art. v21.6: real-time battle arena (fights and spars, no AI turn spent), a world map the interface draws from the story's own descriptions."
 
 # ---------------------------------------------------------------- 7. interface files
 files = w['rootComponent']['files']

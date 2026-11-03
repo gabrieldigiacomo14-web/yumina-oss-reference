@@ -687,3 +687,17 @@
 .bck-move b{font-size:15.5px;font-weight:600}.bck-move small{font-size:13px}
 .bck-move.ok{opacity:1;border-style:solid;border-color:rgba(214,174,92,.55);background:linear-gradient(90deg,rgba(18,30,48,.9),rgba(9,16,27,.95));color:#f6edd7}.bck-move.ok small{color:#b8ad99}
 @media(min-width:900px){.bck-slots{grid-template-columns:repeat(3,minmax(0,1fr))}.bck-comps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bc-pw{margin:8px 0 10px;padding:9px 11px 8px;border:1px solid rgba(214,174,92,.35);border-radius:8px;background:rgba(8,14,24,.7)}
+.bc-pw-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:#b8ad99}
+.bc-pw-head b{font-size:14.5px;letter-spacing:0;text-transform:none;color:#f6edd7}
+.bc-pw.g3 .bc-pw-head b{color:#ff8a7a}.bc-pw.g2 .bc-pw-head b{color:#ffb27a}.bc-pw.g1 .bc-pw-head b{color:#f3dda0}.bc-pw.gm1 .bc-pw-head b,.bc-pw.gm2 .bc-pw-head b{color:#9be3a8}
+.bc-pw-track{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:22px 0 4px;position:relative}
+.bc-pw-track i{position:relative;height:8px;border-radius:2px;background:linear-gradient(90deg,#2b3a50,#3a4a62)}
+.bc-pw-track i:nth-child(5),.bc-pw-track i:nth-child(6),.bc-pw-track i:nth-child(7){background:linear-gradient(90deg,#5a2f3a,#7a3040)}
+.bc-pw-track i.me{background:#d6ae5c;box-shadow:0 0 8px rgba(214,174,92,.6)}
+.bc-pw-track i.them{outline:2px solid #ff8a7a;outline-offset:1px}
+.bc-pw-track em{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:700;white-space:nowrap;padding:1px 5px;border-radius:3px;background:#7a3040;color:#fff}
+.bc-pw-track u{position:absolute;left:50%;top:11px;transform:translateX(-50%);text-decoration:none;font-size:11px;font-weight:700;color:#d6ae5c;white-space:nowrap}
+.bc-pw-ends{display:flex;justify-content:space-between;font-size:11px;color:#887f71;margin-top:14px}
+.bc-pw small{display:block;margin-top:4px;font-size:13px;line-height:1.4;color:#d8cfbd}
+.bc-combatbar-pw{display:block;font-size:12px;font-weight:700}.bc-combatbar-pw.g3{color:#ff8a7a}.bc-combatbar-pw.g2{color:#ffb27a}.bc-combatbar-pw.g1{color:#f3dda0}.bc-combatbar-pw.g0{color:#c7cfdb}.bc-combatbar-pw.gm{color:#9be3a8}
