@@ -36,7 +36,7 @@ await p.screenshot({ path: dir + out + '/1-squad-power.png' });
 // 3. person sheet
 await nav('Relations'); await p.locator('[aria-label="Open Yami Sukehiro"]').click(); await p.waitForTimeout(400);
 const pspw = await p.evaluate(() => { const e = document.querySelector('.bc-pw'); return e ? e.textContent : ''; });
-check('power scale on person sheet', /Captain-class/.test(pspw), pspw.slice(0, 160));
+check('power scale on person sheet', /Arcane Stage/.test(pspw), pspw.slice(0, 160));
 await p.screenshot({ path: dir + out + '/2-person-power.png' });
 await p.keyboard.press('Escape'); await p.evaluate(() => { const c = [...document.querySelectorAll('button')].find(b => /close|back/i.test(b.getAttribute('aria-label') || b.textContent)); c && c.click(); }); await p.waitForTimeout(300);
 await p.locator('[aria-label="Open Mira"]').click().catch(() => {}); await p.waitForTimeout(300);
@@ -61,5 +61,22 @@ await p.waitForSelector('.bcwm-terrain:not([style*="display: none"])', { timeout
 const pins = await p.evaluate(() => ({ canon: [...document.querySelectorAll('.bcwm-canon')].map(e => e.textContent).filter(t => /sosshi|saussy/i.test(t)), all: document.body.innerText.match(/Sosshi|Saussy/g) }));
 check('map: no second canon pin for Sosshi', pins.canon.length === 0, JSON.stringify(pins));
 await p.screenshot({ path: dir + out + '/4-map.png' });
+// 7. Magic Stages: same measure for the player, a created NPC and canon
+await p.evaluate(() => window.__setVars({ known_locations: [] }));
+const st = await p.evaluate(() => window.__getVars().magic_stage);
+check('magic_stage written for the narrator', /^Stage \d|Arcane|Saint/.test(st || ''), st);
+await p.evaluate(() => window.__setVars({ world_truth: { npcs: { "bandit-mage": { name: "Bandit Mage", magic_profile: { output: 62, capacity: 55, control: 50, attribute: "Earth" } },
+  "odd-boy": { name: "Odd Boy", magic_profile: { output: 72, capacity: 70, control: 65, attribute: "Time" } } } },
+  relationships: { "bandit-mage": { name: "Bandit Mage", role: "Outlaw" }, "odd-boy": { name: "Odd Boy", role: "Wanderer" }, "asta": { name: "Asta", role: "Black Bulls" } } }));
+await p.waitForTimeout(500);
+await nav('Relations');
+const read = async (nm) => { await p.locator('[aria-label="Open ' + nm + '"]').click(); await p.waitForTimeout(300); const t = await p.evaluate(() => { const e = document.querySelector('.bc-pw'); return e ? e.querySelector('small').textContent : ''; }); await p.evaluate(() => { const c = [...document.querySelectorAll('button')].find(b => /^close$/i.test((b.getAttribute('aria-label') || b.textContent).trim())); c && c.click(); }); await p.waitForTimeout(200); return t; };
+const bm = await read('Bandit Mage'); check('created NPC measured from magic profile', /^Bandit Mage|Stage \d/.test(bm) && !/canon/.test(bm), bm);
+const ob = await read('Odd Boy'); check('created NPC with one-of-a-kind magic is Arcane, raw power shown', /Arcane Stage \(one-of-a-kind magic; raw power Stage \d\)/.test(ob), ob);
+const as = await read('Asta'); check('Asta is canon Arcane by unique magic', /Arcane Stage \(one-of-a-kind/.test(as) && /canon/.test(as), as);
+await nav('Magic'); await p.waitForTimeout(300);
+const card = await p.evaluate(() => { const e = document.querySelector('.bc-stagecard'); if (e) e.scrollIntoView({ block: 'center' }); return e ? e.textContent : ''; });
+check('Magic screen shows your stage card', /Magic Stage/.test(card) && /Toward/.test(card), card.slice(0, 140));
+await p.waitForTimeout(200); await p.screenshot({ path: dir + out + '/5-stage-card.png' });
 console.log('errors', errs.join('\n').slice(0, 800));
 await b.close();

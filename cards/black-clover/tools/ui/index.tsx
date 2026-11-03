@@ -1,5 +1,6 @@
 import { BC_IMG } from "./bc-art.js";
 import { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS, powerRead, POWER_TIERS } from "./bc-battle";
+import { playerStage } from "./bc-stage.js";
 import { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS, bcIsClothing } from "./bc-inventory.js";
 import { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY, canonPlace } from "./bc-worldmap";
 import {bcManaMax,bcReserve,bcIsMagicless,bcSpellMechanics,bcNormalizeSpells,bcCastPlan,bcApplyPlayerCast,bcProcessEvents} from "./bc-spell-engine.js";
@@ -878,16 +879,24 @@ var CSS = [
   ".bc-pw-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:#b8ad99}",
   ".bc-pw-head b{font-size:14.5px;letter-spacing:0;text-transform:none;color:#f6edd7}",
   ".bc-pw.g3 .bc-pw-head b{color:#ff8a7a}.bc-pw.g2 .bc-pw-head b{color:#ffb27a}.bc-pw.g1 .bc-pw-head b{color:#f3dda0}.bc-pw.gm1 .bc-pw-head b,.bc-pw.gm2 .bc-pw-head b{color:#9be3a8}",
-  ".bc-pw-track{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:22px 0 4px;position:relative}",
-  ".bc-pw-track i{position:relative;height:8px;border-radius:2px;background:linear-gradient(90deg,#2b3a50,#3a4a62)}",
-  ".bc-pw-track i:nth-child(5),.bc-pw-track i:nth-child(6),.bc-pw-track i:nth-child(7){background:linear-gradient(90deg,#5a2f3a,#7a3040)}",
-  ".bc-pw-track i.me{background:#d6ae5c;box-shadow:0 0 8px rgba(214,174,92,.6)}",
+  ".bc-pw-track{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin:22px 0 4px;position:relative}",
+  ".bc-pw-track i{position:relative;height:14px;border-radius:2px;background:linear-gradient(90deg,#2b3a50,#3a4a62)}",
+  ".bc-pw-track i b{display:block;text-align:center;font-size:9.5px;line-height:14px;font-weight:700;color:rgba(246,237,215,.55)}",
+  ".bc-pw-track i.hi{background:linear-gradient(90deg,#5a2f3a,#7a3040)}",
+  ".bc-pw-track i.past{background:#6b5a35}",
+  ".bc-pw-track i.me{background:#d6ae5c;box-shadow:0 0 8px rgba(214,174,92,.6)}.bc-pw-track i.me b{color:#1a1206}",
   ".bc-pw-track i.them{outline:2px solid #ff8a7a;outline-offset:1px}",
-  ".bc-pw-track em{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:700;white-space:nowrap;padding:1px 5px;border-radius:3px;background:#7a3040;color:#fff}",
-  ".bc-pw-track u{position:absolute;left:50%;top:11px;transform:translateX(-50%);text-decoration:none;font-size:11px;font-weight:700;color:#d6ae5c;white-space:nowrap}",
+  ".bc-pw-track em{position:absolute;left:50%;bottom:18px;z-index:1;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:700;white-space:nowrap;padding:1px 5px;border-radius:3px;background:#7a3040;color:#fff}",
+  ".bc-pw-track u{position:absolute;left:50%;top:17px;transform:translateX(-50%);text-decoration:none;font-size:11px;font-weight:700;color:#d6ae5c;white-space:nowrap}",
   ".bc-pw-ends{display:flex;justify-content:space-between;font-size:11px;color:#887f71;margin-top:14px}",
   ".bc-pw small{display:block;margin-top:4px;font-size:13px;line-height:1.4;color:#d8cfbd}",
-  ".bc-combatbar-pw{display:block;font-size:12px;font-weight:700}.bc-combatbar-pw.g3{color:#ff8a7a}.bc-combatbar-pw.g2{color:#ffb27a}.bc-combatbar-pw.g1{color:#f3dda0}.bc-combatbar-pw.g0{color:#c7cfdb}.bc-combatbar-pw.gm{color:#9be3a8}"
+  ".bc-combatbar-pw{display:block;font-size:12px;font-weight:700}.bc-combatbar-pw.g3{color:#ff8a7a}.bc-combatbar-pw.g2{color:#ffb27a}.bc-combatbar-pw.g1{color:#f3dda0}.bc-combatbar-pw.g0{color:#c7cfdb}.bc-combatbar-pw.gm{color:#9be3a8}",
+  ".bc-stagecard{margin:0 0 12px;padding:11px 12px 10px;border:1px solid rgba(214,174,92,.45);border-radius:8px;background:linear-gradient(180deg,#141f31,#0b1422)}",
+  ".bc-stagecard-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:#b8ad99}",
+  ".bc-stagecard-head strong{font-size:19px;letter-spacing:.02em;text-transform:none;color:#f3dda0}",
+  ".bc-stage-track{margin:10px 0 8px}",
+  ".bc-stage-next{display:flex;align-items:center;gap:8px;font-size:13px;color:#d8cfbd}.bc-stage-next .bc-progbar{flex:1}",
+  ".bc-stagecard small{display:block;margin-top:6px;font-size:13px;line-height:1.4;color:#b8ad99}"
 ].join("\n");
 
 /* ---------- value helpers ---------- */
@@ -2882,7 +2891,7 @@ function CharacterView(p) {
         <Row k="Control" v={(str(mb.control) || bandOf(mp.control)) + nv("control", mp)} />
         <Row k="Sensing" v={(str(mb.sensing) || bandOf(mp.sensing)) + nv("sensing", mp)} />
         <Row k="Physique" v={str(bb.physique) || "Unknown"} /><Row k="Fighting" v={str(bb.combat) || "Unknown"} />
-        <Row k="Assessment" v={!mp.stage || str(mp.stage) === "unassessed" ? "Never assessed" : str(mp.stage)} />
+        <Row k="Magic Stage" v={playerStage(v).label} />
         {Object.keys(obj(bp.skills)).length ? <div><H size={16} m="16px 0 6px">Skills</H>{Object.keys(obj(bp.skills)).map(function (k) { return <Row key={k} k={k} v={str(obj(bp.skills)[k])} />; })}</div> : null}
       </div>
     );
@@ -3749,6 +3758,7 @@ function GrimoireView(p) {
       <Row k="Sensing" v={str(mb.sensing) && mb.sensing !== "Unknown" ? str(mb.sensing) : bandOf(mp.sensing)} />
       <Row k="Physique" v={str(obj(bp.bands).physique) && obj(bp.bands).physique !== "Unknown" ? str(obj(bp.bands).physique) : bandOf((num(bp.strength, 0) + num(bp.endurance, 0)) / 2)} />
       {arr(mp.forms).length ? <Row k="Forms" v={arr(mp.forms).map(str).join(", ")} /> : null}
+      <StageCard v={v} />
       <div className="bc-note">Descriptions only — the numbers behind them stay hidden. They grow through training, real use and breakthroughs.</div>
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         <Btn small kind="gold" onClick={function () { setProfileOpen(false); p.goTrain("Mana control", ""); }}>Train my magic</Btn>
@@ -3861,6 +3871,7 @@ function GrimoireView(p) {
             );
           }) : <Empty>{spells.length ? "No pages of that kind yet." : "Every page is still blank. Spells appear when your magic grows into them, through practice, experiments and the moments that test you."}</Empty>}
         </Frame>
+        <StageCard v={v} />
         <div className="bc-grim-lower">
           <button type="button" className="bc-attr-panel bc-cardbtn" onClick={function () { setProfileOpen(true); }} aria-label="Open your magical profile">
             <SectionHead icon="compass" iconSize={24} title="Attributes" sub="Your current magical profile." />
@@ -4427,6 +4438,7 @@ function Game(p) {
   useHousekeeping(api);
   useAiLabeler(api);
   useSquadRoster(api);
+  useMagicStage(api);
   useInventoryStorySync(api);
   useWorldThreads(api);
   useScenePictures(api);
@@ -6038,26 +6050,54 @@ function BcKit(p) {
     {sheet}{slotSheet}
   </Frame>;
 }
-/* ===== Power scale (v21.19): how strong someone is next to you =====
-   A seven-step ladder from Weak to Beyond mortal. You and them are marked on
-   it, with a plain verdict ("Far beyond you") and what that means for a fight,
-   so a player knows their limits before picking one. */
+/* ===== Magic Stages and the power scale (v21.19) =====
+   One measure for everyone (bc-stage.js): Stage 9 up to Stage 0, then Arcane and Saint.
+   PowerScale marks you and them on that ladder with a plain verdict ("Far beyond you")
+   and what it means for a fight. StageCard shows your own stage and how close the next is. */
+var STAGE_SHORT = ["9", "8", "7", "6", "5", "4", "3", "2", "1", "0", "A", "S"];
+function stageNote(st) { return st.arcaneBy === "unique" ? " (one-of-a-kind magic; raw power " + st.raw + ")" : ""; }
 function PowerScale(p) {
   var r = p.read; if (!r) return null;
   var g = Math.max(-2, Math.min(3, r.gap));
   return (
-    <div className={"bc-pw g" + (g < 0 ? "m" + (-g) : g)} aria-label={"Power: " + r.word}>
-      <div className="bc-pw-head"><span>Power</span><b>{r.word}</b></div>
+    <div className={"bc-pw g" + (g < 0 ? "m" + (-g) : g)} aria-label={"Power: " + r.label + ", " + r.word}>
+      <div className="bc-pw-head"><span>{r.label}</span><b>{r.word}</b></div>
       <div className="bc-pw-track" aria-hidden="true">
-        {POWER_TIERS.map(function (t) {
-          var me = t[0] === r.me, them = t[0] === r.tier;
-          return <i key={t[0]} className={(me ? "me " : "") + (them ? "them" : "")} title={t[1]}>{them ? <em style={r.col ? { background: r.col } : null}>{p.short || "Them"}</em> : null}{me ? <u>You</u> : null}</i>;
+        {POWER_TIERS.map(function (t, i) {
+          var me = i === r.mine.idx, them = i === r.stage.idx;
+          return <i key={t} className={(i >= 10 ? "hi " : "") + (me ? "me " : "") + (them ? "them" : "")} title={t}>
+            {them ? <em style={r.col ? { background: r.col, color: "#0b1422" } : null}>{p.short || "Them"}</em> : null}{me ? <u>You</u> : null}<b>{STAGE_SHORT[i]}</b></i>;
         })}
       </div>
-      <div className="bc-pw-ends"><span>Weak</span><span>Beyond mortal</span></div>
-      <small>{(p.name ? p.name + ": " : "") + r.label + (r.source === "canon" ? " (canon)" : r.source === "rank" ? " (by rank)" : "") + " · you: " + r.meLabel + ". " + r.advice}</small>
+      <div className="bc-pw-ends"><span>Stage 9</span><span>Stage 0 · Arcane · Saint</span></div>
+      <small>{(p.name ? p.name + ": " : "") + r.label + stageNote(r.stage) + (r.source === "canon" ? ", canon" : r.source === "rank" ? ", judged by rank" : "") + ". You: " + r.meLabel + ". " + r.advice}</small>
     </div>
   );
+}
+function StageCard(p) {
+  var st = playerStage(obj(p.v));
+  var pct = Math.round(st.into * 100);
+  return (
+    <div className="bc-stagecard" aria-label={"Your Magic Stage: " + st.label}>
+      <div className="bc-stagecard-head"><span>Magic Stage</span><strong>{st.label}</strong></div>
+      <div className="bc-pw-track bc-stage-track" aria-hidden="true">
+        {POWER_TIERS.map(function (t, i) { return <i key={t} className={(i >= 10 ? "hi " : "") + (i < st.idx ? "past " : "") + (i === st.idx ? "me" : "")}><b>{STAGE_SHORT[i]}</b></i>; })}
+      </div>
+      {st.next ? <div className="bc-stage-next"><span>{"Toward " + (st.next === "Arcane" ? "Arcane Stage" : st.next)}</span><span className="bc-progbar"><i style={{ width: pct + "%" }} /></span></div> : null}
+      <small>{st.arcaneBy === "unique" ? "Your magic is one of a kind, which marks you Arcane; your raw power is " + st.raw + ", and fights are measured by that." :
+        st.raw === "Saint" ? "A spirit host at the very peak of magic." : st.arcaneBy === "power" ? "Among the most powerful mages alive." :
+        "Measured from your output, reserves, control, your best spells and any bond. It rises with training and real breakthroughs."}</small>
+    </div>
+  );
+}
+/* the stage goes to the narrator as a read-only line, so the story and the interface agree */
+function useMagicStage(api) {
+  var v = (api && api.variables) || {};
+  var st = playerStage(v), line = isTrue(v.character_created) ? st.label + stageNote(st) + (st.next ? "; toward " + st.next + " " + Math.round(st.into * 100) + "%" : "") : "";
+  React.useEffect(function () {
+    if (!line || line === str(v.magic_stage) || !canWrite(api)) return;
+    bcPatch(api, { magic_stage: line }, function () {});
+  }, [line, !!(api && api.isStreaming)]);
 }
 
 export default function App() {

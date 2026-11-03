@@ -53,6 +53,7 @@ function GrimoireView(p) {
       <Row k="Sensing" v={str(mb.sensing) && mb.sensing !== "Unknown" ? str(mb.sensing) : bandOf(mp.sensing)} />
       <Row k="Physique" v={str(obj(bp.bands).physique) && obj(bp.bands).physique !== "Unknown" ? str(obj(bp.bands).physique) : bandOf((num(bp.strength, 0) + num(bp.endurance, 0)) / 2)} />
       {arr(mp.forms).length ? <Row k="Forms" v={arr(mp.forms).map(str).join(", ")} /> : null}
+      <StageCard v={v} />
       <div className="bc-note">Descriptions only — the numbers behind them stay hidden. They grow through training, real use and breakthroughs.</div>
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         <Btn small kind="gold" onClick={function () { setProfileOpen(false); p.goTrain("Mana control", ""); }}>Train my magic</Btn>
@@ -165,6 +166,7 @@ function GrimoireView(p) {
             );
           }) : <Empty>{spells.length ? "No pages of that kind yet." : "Every page is still blank. Spells appear when your magic grows into them, through practice, experiments and the moments that test you."}</Empty>}
         </Frame>
+        <StageCard v={v} />
         <div className="bc-grim-lower">
           <button type="button" className="bc-attr-panel bc-cardbtn" onClick={function () { setProfileOpen(true); }} aria-label="Open your magical profile">
             <SectionHead icon="compass" iconSize={24} title="Attributes" sub="Your current magical profile." />

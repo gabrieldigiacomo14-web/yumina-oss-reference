@@ -6,6 +6,7 @@
  * applies it to state and asks the GM for one aftermath narration. */
 import { bcCastPlan, bcSpellMechanics, bcReserve, bcManaMax } from "./bc-spell-engine.js";
 import { canonPower } from "./bc-canon-power.js";
+import { playerScore, playerStage, npcStage, scoreToThreat, scoreFromProfile, scoreFromStageText, STAGE_STEPS } from "./bc-stage.js";
 
 function n(v, d) { var z = Number(v); return isFinite(z) ? z : (d === undefined ? 0 : d); }
 function s(v) { return v === undefined || v === null ? "" : String(v); }
@@ -38,7 +39,8 @@ var GAP = { hp: [1, 1.2, 1.7, 3.2, 4.5, 6, 8], dmg: [1, 0.92, 0.75, 0.5, 0.38, 0
 var UNBEATABLE_GAP = 3, ENDURE_SECONDS = 45, MAX_HIT = 45;
 var PLAYER_DMG = [0.9, 1, 1.1, 1.22, 1.35, 1.5, 1.6]; // training and rank make your own spells bite
 function tierIdx(t) { var i = THREAT_ORDER.indexOf(t); return i < 0 ? 1 : i; }
-function playerTierIdx(v) { var out = n(o(v.magic_profile).output, -1); return out < 0 ? 1 : tierIdx(threatFromOutput(out)); }
+/* the player's tier comes from their Magic Stage score (bc-stage.js), the same measure every NPC uses */
+function playerTierIdx(v) { return tierIdx(scoreToThreat(playerScore(v))); }
 function threatFromOutput(out) { out = n(out, -1); if (out < 0) return ""; return out < 25 ? "weak" : out < 45 ? "average" : out < 65 ? "strong" : out < 85 ? "elite" : "captain"; }
 
 /* Build the opposing side from combat.participants (and their saved NPC
@@ -56,7 +58,9 @@ export function buildFoes(v, mode) {
     var npc = o(npcs[key] || npcs[low(p.name)] || npcs["npc-" + key]);
     var mp = o(npc.magic_profile);
     var text = low([p.name, p.notes, p.kind, p.role, p.threat, npc.role, npc.occupation].map(s).join(" "));
-    var threat = THREATS[low(p.threat)] ? low(p.threat) : threatFromOutput(mp.output) ||
+    // a recorded magic profile or stage decides first (the same Magic Stage measure as the player), then the narrator's label, then words
+    var measured = scoreFromProfile(mp); if (measured === null) measured = scoreFromStageText(p.stage || npc.stage || mp.stage);
+    var threat = measured !== null ? scoreToThreat(measured) : THREATS[low(p.threat)] ? low(p.threat) :
       (/captain|wizard king|general|vice-captain|royal knight|witch queen/.test(text) ? "elite" : /elite|veteran|knight|strong|noble mage|commander/.test(text) ? "strong" : /weak|novice|child|thug|petty|untrained/.test(text) ? "weak" : "average");
     var kind = /^(brute|caster|beast)$/.test(low(p.kind)) ? low(p.kind) : canon && canon.k ? canon.k :
       /beast|wolf|boar|bear|monster|creature|drake|serpent|hound|spider/.test(text) ? "beast" :
@@ -76,23 +80,24 @@ export function buildFoes(v, mode) {
 /* How strong someone is next to the player, for the power scale on people,
    squadmates and foes. Canon characters use the canon table (a floor);
    others their recorded magic output, else their rank. null = unknown. */
-export var POWER_TIERS = THREAT_ORDER.map(function (t) { return [t, THREATS[t].label]; });
+export var POWER_TIERS = STAGE_STEPS;
 export function powerRead(v, name, extra) {
   v = o(v); extra = o(extra);
   var npcs = o(o(v.world_truth).npcs), key = low(name).replace(/[^a-z0-9]+/g, "-");
   var npc = o(npcs[key] || npcs[low(name)] || npcs["npc-" + key]);
   var canon = canonPower(name);
-  var out = threatFromOutput(n(o(extra.magic_profile).output, n(o(npc.magic_profile).output, -1)));
-  var text = low([extra.role, extra.rank, npc.role, npc.occupation, npc.rank].map(s).join(" "));
-  var byRank = /wizard king/.test(text) ? "legend" : /\bcaptain\b/.test(text) && !/vice/.test(text) ? "captain" : /vice.?captain|royal knight|commander/.test(text) ? "elite" : /senior|veteran|\bknight\b/.test(text) ? "strong" : "";
-  var tier = canon ? canon.t : out || byRank || (low(extra.threat) && THREATS[low(extra.threat)] ? low(extra.threat) : "");
-  if (!tier) return null;
-  if (out && tierIdx(out) > tierIdx(tier)) tier = out;
-  var me = playerTierIdx(v), them = tierIdx(tier), gap = them - me;
+  var st = npcStage(npc, canon, extra), source = canon ? "canon" : st ? "measured" : "";
+  if (!st) {
+    // no magic on record: judge by rank, as a rough Magic Stage
+    var text = low([extra.role, extra.rank, npc.role, npc.occupation, npc.rank].map(s).join(" "));
+    var guess = /wizard king/.test(text) ? 98 : /\bcaptain\b/.test(text) && !/vice/.test(text) ? 86 : /vice.?captain|royal knight|commander/.test(text) ? 64 : /senior|veteran|\bknight\b/.test(text) ? 42 : THREATS[low(extra.threat)] ? { weak: 10, average: 26, strong: 42, elite: 64, captain: 86, legend: 98, apex: 112 }[low(extra.threat)] : null;
+    if (guess === null) return null;
+    st = npcStage({ stage: "" }, { t: scoreToThreat(guess), s: guess }, {}); source = "rank";
+  }
+  var me = playerStage(v), myTier = playerTierIdx(v), tier = scoreToThreat(st.score), gap = tierIdx(tier) - myTier;
   var word = gap >= 3 ? "Far beyond you" : gap === 2 ? "Much stronger than you" : gap === 1 ? "Stronger than you" : gap === 0 ? "About your level" : gap === -1 ? "Weaker than you" : "Far weaker than you";
   var advice = gap >= UNBEATABLE_GAP ? "You can't win this by force. Survive, stall, flee, or be spared." : gap === 2 ? "A straight fight would go badly. Only with help or a clever plan." : gap === 1 ? "Winnable, but it will cost you." : gap === 0 ? "An even fight." : "You have the edge.";
-  return { tier: tier, label: THREATS[tier].label, me: THREAT_ORDER[me], meLabel: THREATS[THREAT_ORDER[me]].label, gap: gap, word: word, advice: advice,
-    source: canon ? "canon" : out ? "magic" : "rank", col: s(canon && canon.col) };
+  return { stage: st, mine: me, tier: tier, label: st.label, meLabel: me.label, gap: gap, word: word, advice: advice, source: source, col: s(canon && canon.col) };
 }
 export function buildAllies(v) {
   return a(o(v.combat).participants).map(o).filter(function (p) { return /ally|friend|player/.test(low(p.side)) && low(p.name) !== "you" && !/defeated|dead|fled|unconscious|down\b/.test(low(p.condition)); }).slice(0, 2)

@@ -4,10 +4,36 @@ Import `Black_Clover_A_Mages_Tale_v21.19.json`. It is built from `source/Black_C
 
 ## v21.19 — JoJo's play-test fixes
 
-**A power scale: know your limits.** Everyone whose strength the game can judge shows a seven-step ladder from Weak to Beyond mortal, with you and them marked on it, a plain verdict ("Far beyond you", "About your level", "Weaker than you") and what it means for a fight ("You can't win this by force. Survive, stall, flee, or be spared.").
+**Magic Stages: canon labels, one measure for everyone.** Every mage is rated on the manga's scale: Stage 9 (weakest) up to Stage 0, then Arcane Stage, then Saint Stage.
+- **One score for everyone** (`tools/ui/bc-stage.js`), worked out the same way for everyone from their magic stats:
+  - **Magic stats:** output counts most, then mana reserves, then control, plus attribute mastery.
+  - **The player** also gets credit for their best spell's proficiency and for a spirit or devil bond.
+  - **Created NPCs** use the magic profile the narrator records for them, or a stage it gives them ("Stage 4").
+  - **Canon characters** use the canon power table, which is also a floor: Yami is never below Arcane.
+- **Score to stage:** 0–79 covers Stage 9 to Stage 0 at 8 points a stage. 80–99 is Arcane, and 100+ is Saint for a spirit host; anyone else that strong stays Arcane, "beyond measure" past 105.
+- **Calibration:** a recruit with average stats is Stage 6 or 7, and Magna is Stage 4. Maxed stats alone reach Stage 1. Arcane also takes mastered spells or a bond.
+- **Arcane, by power or by uniqueness:**
+  - **By power:** a score of 80 or more is Arcane.
+  - **By uniqueness:** one-of-a-kind magic (Anti-Magic, Time, World Tree, Sealing, Transformation, Dream, Soul, Gravity, Fate) also makes a mage Arcane once they reach at least Stage 4. They are shown as "Arcane Stage (one-of-a-kind magic; raw power Stage 4)", and fights use the raw power.
+  - **Canon names:** Asta, Yami, William, Julius, Vanessa, Secre and Grey are marked Arcane, as the manga names them.
+- **Where it shows:**
+  - The Magic screen and the Your magic sheet show your stage, the ladder, and progress toward the next stage.
+  - The Character screen's never-used "Assessment" row now shows your stage.
+- **The narrator:**
+  - It gets your stage as a read-only line (`magic_stage`).
+  - A rule tells it to record a magic profile or stage for any created mage who matters, and to keep what they can do in line with it.
+  - Canon cast entries carry each person's stage, e.g. "Yami Sukehiro [Arcane Stage, opening era]".
+  - Stage numbers are a Heart Kingdom measure, so characters don't quote them casually.
+- **The battle arena:** your fight tier and every measured foe's tier now come from the same score.
+- **Honest limits:**
+  - The labels and the Arcane and Saint tiers are canon.
+  - The manga gives a stage to only a few characters, so the numbered stages of the others (Magna Stage 4, and so on) are this card's estimates.
+  - The formula is a design choice, not a canon equation.
+  - Canon stages are opening-era; characters who grow later in canon aren't moved up automatically.
+
+**A power scale: know your limits.** Everyone whose strength the game can judge shows that ladder with you and them marked on it, a plain verdict ("Far beyond you", "About your level", "Weaker than you") and what it means for a fight ("You can't win this by force. Survive, stall, flee, or be spared.").
 - **Where:** on every person's sheet (Relations), on each squadmate's card (Renown), and next to each foe in the Story screen's combat bar. The battle arena's pre-fight warning was already there.
-- **How strong they are:** named canon characters use the canon power table (Yami is Captain-class whatever the narrator says). Others use their recorded magic output, else their rank (captain, vice-captain, senior knight). Someone the game can't judge, such as a baker, shows no scale rather than a guess.
-- **You:** your magic output.
+- **No guesses:** someone with no magic on record and no telling rank, such as a baker, shows no scale.
 
 **Canon mages use their real spells.** A new `tools/canon_cast.py` lists each major canon mage's true spells and the details the narrator was getting wrong. It covers the Black Bulls, the captains and the Wizard King, Golden Dawn and others.
 - **The narrator:** gets the list as three lore entries, sent only when one of those people is named in the scene. The entries tell it to vary a canon mage's named spells and never reduce them to one fireball. For anyone not on the list, it describes their magic plainly instead of inventing names that pass for canon.
@@ -35,7 +61,8 @@ Import `Black_Clover_A_Mages_Tale_v21.19.json`. It is built from `source/Black_C
 - **Mana:** magic the narrator narrates itself now costs a share that shrinks as your reserves grow, matched to what the interface's own cast engine charges. With Exceptional reserves (capacity 85+), a standard spell is about 1.5% and a large one 4%. Casts from the Grimoire and the arena already charged correctly.
 - **Unchanged:** health (not reported).
 
-**Testing** (`tools/harness/v2119.mjs`, all passing, no page errors):
+**Testing** (`tools/harness/v2119.mjs`, 15 checks, all passing, no page errors):
+- **Magic Stages:** your stage is written for the narrator, and your stage card shows on the Magic screen. A created bandit mage is measured from their magic profile. A created Time mage is Arcane by uniqueness with their raw power shown, and Asta is canon Arcane. A fresh recruit still gets the "far beyond you" warning against Yami, a well-trained mage doesn't, and a bandit is still an easy win.
 - **Squad:** the roster picks up Luck (injured) and Yami from a reply with no squad events; Magna, mentioned as away, stays away; Luck drops off after three quiet replies.
 - **Power scale:** shown on Yami's squad card and person sheet ("Far beyond you", Captain-class). The combat bar shows Yami as far beyond you and a bandit as weaker. No scale for an unknown baker.
 - **Clothes:** "ruined and bloodied" reaches the appearance summary and the visible signals.
@@ -45,7 +72,7 @@ Import `Black_Clover_A_Mages_Tale_v21.19.json`. It is built from `source/Black_C
 
 **Prompt cost:** about 250 more tokens per turn from the longer stamina, mana, appearance, map and squad rules. The canon cast entries are only sent when one of those people is named.
 
-Screens: `docs/v21.19-power-person.png`, `docs/v21.19-power-squad.png`, `docs/v21.19-combat-bar.png`.
+Screens: `docs/v21.19-stage-card.png`, `docs/v21.19-power-person.png`, `docs/v21.19-power-squad.png`, `docs/v21.19-combat-bar.png`.
 
 ## v21.18 — the Satchel's inventory works like the Barbarian Kit
 

@@ -35,7 +35,7 @@ def remove_var(src, name):
         i += 1
     return src[:start] + '\n' + src[i + 1:]
 
-s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS, powerRead, POWER_TIERS } from "./bc-battle";\nimport { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS, bcIsClothing } from "./bc-inventory.js";\nimport { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY, canonPlace } from "./bc-worldmap";\nimport {bcManaMax', 1)
+s = s.replace('import {bcManaMax', 'import { BC_IMG } from "./bc-art.js";\nimport { BattleArena, BATTLE_CSS, readSpell, setSpellLabels, spellLabelKey, BC_ARENA, BC_LOOKS, powerRead, POWER_TIERS } from "./bc-battle";\nimport { playerStage } from "./bc-stage.js";\nimport { bcSetLabels, bcIsUncertain, bcLabelKey, BC_KINDS, BC_WEAR, BC_HOLDS, bcIsClothing } from "./bc-inventory.js";\nimport { WorldMap, WORLDMAP_CSS, layoutPlaces, playerXY, canonPlace } from "./bc-worldmap";\nimport {bcManaMax', 1)
 # the hero banner is a hosted image (bc-art.js), not an embedded data: URI
 s, nb = re.subn(r'banner:\s*"data:image/[a-z]+;base64,[A-Za-z0-9+/=]+"', 'banner: (BC_IMG && BC_IMG.banner) || ""', s, count=1)
 assert nb == 1, "banner data URI not found"
@@ -110,6 +110,12 @@ def label(old, new, n=1):
 _ps = '      <div style={{ fontSize: 13.5, color: C.gold, fontWeight: 700, marginBottom: 2 }}>{str(r.role)}{r.status && r.status !== "alive" ? ", " + str(r.status) : ""}</div>\n'
 assert s.count(_ps) == 1, 'PersonSheet role line'
 s = s.replace(_ps, _ps + '      {r.status !== "dead" ? <PowerScale read={powerRead(obj(p.api && p.api.variables), str(r.name) || p.id, r)} short={(str(r.name) || p.id).split(" ")[0]} /> : null}\n')
+# Magic Stages (p18_power.tsx): the stage replaces the never-used "Assessment" row; the App keeps magic_stage current for the narrator
+_as = '<Row k="Assessment" v={!mp.stage || str(mp.stage) === "unassessed" ? "Never assessed" : str(mp.stage)} />'
+assert s.count(_as) == 1, 'Assessment row'
+s = s.replace(_as, '<Row k="Magic Stage" v={playerStage(v).label} />')
+assert s.count('  useSquadRoster(api);\n') == 1, 'useSquadRoster call'
+s = s.replace('  useSquadRoster(api);\n', '  useSquadRoster(api);\n  useMagicStage(api);\n')
 for old, new in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'distinct_labels.json'), encoding='utf-8')):
     label(old, new)
 # location lines like "Black Bulls Hideout — Clover Kingdom (Common Realm)": the kingdom is the middle part and the brackets hold the realm

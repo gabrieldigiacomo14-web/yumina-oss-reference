@@ -83,14 +83,30 @@ RULE = ("Use these real spells and details whenever these people use magic or ap
         "varies them; never reduce one to a single repeated fireball or bolt. For anyone not listed, describe their magic plainly rather than "
         "inventing names that pass for canon.")
 
+# the canon stage of each cast member, read from the battle arena's canon power table (one source)
+TIER_SCORE = {"weak": 10, "average": 26, "strong": 42, "elite": 64, "captain": 86, "legend": 98, "apex": 112}
+def canon_stages():
+    import re
+    js = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui", "bc-canon-power.js"), encoding="utf-8").read()
+    out = {}
+    for m in re.finditer(r'\{ n: \["([^"]+)"[^\]]*\], t: "(\w+)"([^}]*)\}', js):
+        score = TIER_SCORE[m.group(2)]; arc = "arc: true" in m.group(3)
+        if score >= 80: label = "Arcane Stage" + (" (beyond measure)" if score >= 105 else "")
+        elif arc: label = "Arcane Stage (one-of-a-kind magic)"
+        else: label = "Stage %d" % (9 - score // 8)
+        out[m.group(1)] = label
+    return out
+
 def lore_entries():
     out = []
+    stages = canon_stages()
     for gid, (title, people) in CAST.items():
         lines = [RULE, ""]
         kws = []
         for p in people:
             name = p["key"].title() if p["key"] != "grey of the black bulls" else "Grey"
-            lines.append("%s: %s. %s" % (name, "; ".join(p["spells"]), p["note"]))
+            st = stages.get(p["key"])
+            lines.append("%s%s: %s. %s" % (name, " [" + st + ", opening era]" if st else "", "; ".join(p["spells"]), p["note"]))
             kws += p["kw"]
         out.append(("canon-cast-" + gid, title, "\n".join(lines), sorted(set(kws))))
     return out
